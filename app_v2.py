@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- STRICT F&O STOCKS BLACKLIST ---
+# --- F&O STOCKS BLACKLIST ---
 FNO_STOCKS = {
     "AARTIIND", "ABB", "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS",
     "ALKEM", "AMBUJACEMENT", "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "ASTRAL",
@@ -44,7 +44,7 @@ FNO_STOCKS = {
     "CAMS", "PATANJALI", "UTIAMC", "CHOICEIN", "SUNDRMFAST"
 }
 
-# --- THEME STATE MANAGEMENT ---
+# --- THEME STATE MANAGEMENT (PERSISTENT VIA QUERY PARAMS) ---
 query_params = st.query_params
 
 if 'theme' not in st.session_state:
@@ -74,10 +74,12 @@ else:
 
 st.markdown(f"""
     <style>
+        /* Hide Default Streamlit Chrome */
         header {{visibility: hidden;}}
         footer {{visibility: hidden;}}
         #MainMenu {{visibility: hidden;}}
         
+        /* Remove Page Padding */
         .block-container {{
             padding-top: 0.1rem !important;
             padding-bottom: 0.1rem !important;
@@ -86,23 +88,27 @@ st.markdown(f"""
             max-width: 100% !important;
         }}
         
+        /* Dynamic Terminal Background */
         body, .stApp {{
             background-color: {bg_color} !important;
             color: {text_main} !important;
             font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         }}
         
+        /* PREVENT PAGE BLUR / FLICKER ON AUTO REFRESH */
         .stApp > div {{
             opacity: 1 !important;
             transition: none !important;
         }}
 
+        /* HIDE ALL LOADING POPUPS / SPINNERS */
         div[data-testid="stStatusWidget"], div[data-testid="stSpinner"], .stSpinner {{
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;
         }}
 
+        /* Custom Small Button Styling */
         .stButton>button {{
             background-color: {btn_bg} !important;
             color: {accent_blue} !important;
@@ -120,6 +126,7 @@ st.markdown(f"""
             color: {text_main} !important;
         }}
 
+        /* Top Bar Styling */
         .top-nav {{
             display: flex;
             justify-content: space-between;
@@ -131,6 +138,7 @@ st.markdown(f"""
             margin-bottom: 12px;
         }}
         
+        /* CLEAN TITLE TEXT */
         .nav-title-clean {{
             font-size: 18px;
             font-weight: 900;
@@ -162,6 +170,7 @@ st.markdown(f"""
         .idx-up {{ color: #3fb950; font-weight: bold; }}
         .idx-down {{ color: #f85149; font-weight: bold; }}
 
+        /* LIVE BLINKING ANIMATION */
         .live-blink {{
             animation: pulseBlink 1.2s ease-in-out infinite;
             display: inline-block;
@@ -172,6 +181,7 @@ st.markdown(f"""
             100% {{ opacity: 1; transform: scale(1); }}
         }}
 
+        /* MARKET STATUS TAGS */
         .market-status-open {{
             background-color: rgba(63, 185, 80, 0.15);
             color: #3fb950;
@@ -198,6 +208,7 @@ st.markdown(f"""
             gap: 5px;
         }}
 
+        /* Metric Summary Cards */
         .metric-container {{
             background-color: {card_bg};
             border: 1px solid {border_color};
@@ -224,6 +235,7 @@ st.markdown(f"""
             margin-top: 2px;
         }}
 
+        /* Section Title Header */
         .box-container {{
             background-color: {card_bg};
             border: 1px solid {border_color};
@@ -239,6 +251,7 @@ st.markdown(f"""
             letter-spacing: 0.5px;
         }}
         
+        /* MARKET MOVERS STOCK CARDS */
         .stock-card {{
             background-color: {sub_card_bg};
             border: 1px solid {border_color};
@@ -258,6 +271,7 @@ st.markdown(f"""
         .stock-price-down {{ font-size: 16px; font-weight: 900; color: #f85149; margin: 2px 0; }}
         .stock-meta {{ font-size: 10px; color: {text_sub}; font-weight: 600; }}
 
+        /* SETUP CONTAINER BOX */
         .setup-box {{
             background-color: {card_bg};
             border: 1px solid {border_color};
@@ -283,6 +297,7 @@ st.markdown(f"""
             gap: 6px;
         }}
 
+        /* TABLE HEADER BAR */
         .row-header {{
             display: flex;
             justify-content: space-between;
@@ -296,6 +311,7 @@ st.markdown(f"""
             margin-bottom: 6px;
         }}
 
+        /* ROW ITEM WITH ROUNDED BUTTON BOX FOR SYMBOL */
         .stock-row-item {{
             display: flex;
             justify-content: space-between;
@@ -341,11 +357,12 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOAD CASH ONLY STOCKS ---
+# --- LOAD STOCKS WITH AUTOMATIC NON-FNO FILTER ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
     raw_symbols = []
     
+    # Check for local CSV files
     possible_files = [
         "Hira_Filtered_Cash_Stocks_100_2500.csv", 
         "Hira_Non_FNO_Stocks.csv", 
@@ -375,7 +392,7 @@ def load_hira_stocks():
             "DOMS", "HAPPYFORGE", "DATAPATTNS", "PREMIERENE", "TATAINVEST", "OLECTRA", "RAYMOND", "RITES"
         ]
 
-    # STRICT NON-FNO FILTER
+    # STRICT NON-FNO FILTERING LOGIC
     clean_cash_symbols = []
     for s in raw_symbols:
         clean_name = s.replace(".NS", "").strip().upper()
@@ -422,7 +439,7 @@ def analyze_stock_5m(symbol):
     try:
         clean_symbol = symbol.replace(".NS", "").strip().upper()
         
-        # 1. HARD BLOCK FNO STOCKS
+        # DOUBLE CHECK: BLOCK FNO STOCKS
         if clean_symbol in FNO_STOCKS:
             return None
 
@@ -433,12 +450,12 @@ def analyze_stock_5m(symbol):
         if len(df_5m) < 25 or len(df_daily) < 2:
             return None
 
-        # 2. PRICE RANGE FILTER: 100 TO 2500 ONLY
+        # PRICE RANGE FILTER: ₹100 TO ₹2500 ONLY
         latest_price_check = df_5m['Close'].iloc[-1]
         if not (100 <= latest_price_check <= 2500):
             return None
 
-        # 3. BALANCED LIQUIDITY FILTER (REVERTED TO WORKING 100,000 LIMIT)
+        # LIQUIDITY FILTER: DAILY AVG VOLUME > 1L - 3L
         avg_daily_vol = df_daily['Volume'].iloc[-2] if len(df_daily) >= 2 else 0
         if avg_daily_vol < 100000:
             return None
@@ -449,59 +466,33 @@ def analyze_stock_5m(symbol):
         if len(today_df) < 3:
             return None
 
-        prev_close = df_daily['Close'].iloc[-2]
+        # Minimum 5m Candle Volume Filter
+        avg_5m_vol = today_df['Volume'].mean()
+        if avg_5m_vol < 1000:
+            return None
 
+        # Minimum Candle Body Size Check
+        avg_candle_range = (today_df['High'] - today_df['Low']).mean()
+        if avg_candle_range <= 0.2:
+            return None
+            
         today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
         today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
         today_df['VWAP'] = calculate_vwap(today_df)
 
         c1 = today_df.iloc[0]
-        c1_open = c1['Open']
-        c1_high = c1['High']
-        c1_low = c1['Low']
-        c1_close = c1['Close']
-        c1_range = c1_high - c1_low
-
-        if c1_range <= 0:
-            return None
-
-        # 4. GAP CONDITION: OPEN NEAR PREVIOUS DAY CLOSE (GAP <= 0.8%)
-        gap_pct = abs((c1_open - prev_close) / prev_close) * 100
-        if gap_pct > 0.8:
-            return None
-
-        # 5. C1 HEIGHT FILTER: <= 1.2%
-        c1_height_pct = (c1_range / c1_open) * 100
-        if c1_height_pct > 1.2:
-            return None
-
-        # 6. WICK CONDITION (BALANCED 30% LIMIT FOR SOLID BODY)
-        c1_upper_wick = c1_high - max(c1_open, c1_close)
-        c1_lower_wick = min(c1_open, c1_close) - c1_low
-        if (c1_upper_wick / c1_range > 0.30) or (c1_lower_wick / c1_range > 0.30):
-            return None
-
-        # 7. C2 (9:20) PAUSE CANDLE (INSIDE BAR)
-        c2 = today_df.iloc[1]
-        c2_inside = (c2['High'] <= c1_high) and (c2['Low'] >= c1_low)
-        if not c2_inside:
-            return None
-
-        # 8. BALANCED EMA PROXIMITY CHECK
-        c1_ema20 = c1['EMA20']
-        c1_ema200 = c1['EMA200']
+        c1_green = c1['Close'] > c1['Open']
+        c1_red = c1['Close'] < c1['Open']
+        c1_range_pct = ((c1['High'] - c1['Low']) / c1['Open']) * 100
         
-        dist_ema20 = abs(c1_close - c1_ema20) / c1_ema20 * 100
-        dist_ema200 = abs(c1_close - c1_ema200) / c1_ema200 * 100
-
-        if dist_ema20 > 1.5 or dist_ema200 > 2.0:
-            return None
-
-        c1_green = c1_close > c1_open
-        c1_red = c1_close < c1_open
+        c2 = today_df.iloc[1]
+        
+        # STRICT PROFIT BOOKING PAUSE CANDLE: C2 inside C1 range
+        c2_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
         latest = today_df.iloc[-1]
         curr_price = latest['Close']
+        prev_close = df_daily['Close'].iloc[-2]
         pdl = df_daily['Low'].iloc[-2]
         day_change_pct = ((curr_price - prev_close) / prev_close) * 100
         change_pts = curr_price - prev_close
@@ -513,12 +504,11 @@ def analyze_stock_5m(symbol):
         signal_time = ""
         vol_multiple = 1.0
 
-        # 9. BREAKOUT LOGIC (100% MATCHING WORKING BASE)
         # BULLISH CHECK
-        if c1_green and (c1_close >= c1_ema20) and (c1_close >= c1_ema200):
+        if c1_green and (c1_range_pct <= 2.0) and c2_inside:
             for i in range(2, len(today_df)):
                 c_curr = today_df.iloc[i]
-                if (c_curr['Close'] > c1_high and 
+                if (c_curr['Close'] > c1['High'] and 
                     c_curr['Volume'] > c2['Volume'] and 
                     c_curr['Close'] > c_curr['EMA200'] and 
                     c_curr['Close'] > c_curr['EMA20'] and
@@ -530,11 +520,11 @@ def analyze_stock_5m(symbol):
                     break
 
         # BEARISH CHECK
-        is_near_pdl = c1_open <= (pdl * 1.015)
-        if c1_red and (c1_close <= c1_ema20) and (c1_close <= c1_ema200) and is_near_pdl:
+        is_near_pdl = c1['Open'] <= (pdl * 1.015)
+        if c1_red and (c1_range_pct <= 2.0) and c2_inside and is_near_pdl:
             for i in range(2, len(today_df)):
                 c_curr = today_df.iloc[i]
-                if (c_curr['Close'] < c1_low and 
+                if (c_curr['Close'] < c1['Low'] and 
                     c_curr['Volume'] > c2['Volume'] and 
                     c_curr['Close'] < c_curr['EMA200'] and 
                     c_curr['Close'] < c_curr['EMA20'] and
@@ -545,7 +535,7 @@ def analyze_stock_5m(symbol):
                     vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
                     break
 
-        # POSITION SIZING: ₹10,000 Capital with 5x Intraday Margin
+        # CALCULATION: ₹10,000 Capital with 5x Intraday Margin (₹50,000 buying power)
         calc_qty = int((10000 * 5) / curr_price) if curr_price > 0 else 0
 
         if signal_bullish or signal_bearish:
@@ -594,14 +584,14 @@ def run_market_scanner():
 
     return bullish_top10, bearish_top10, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
-# --- AUTOMATIC MARKET OPEN / CLOSE LOGIC ---
+# --- AUTOMATIC MARKET OPEN / CLOSE LOGIC (INDIAN TIME IST FIXED) ---
 ist_tz = pytz.timezone('Asia/Kolkata')
 now_dt = datetime.datetime.now(ist_tz)
 
 market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
 market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
 
-is_weekday = now_dt.weekday() < 5
+is_weekday = now_dt.weekday() < 5  # Monday = 0, Friday = 4
 is_market_open = is_weekday and (market_open_time <= now_dt <= market_close_time)
 
 if is_market_open:
@@ -733,7 +723,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- SETUP TABLES ---
+# --- ROW LIST (TOP 10 VOL SURGE FILTERED WITH QTY) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -798,7 +788,7 @@ with tb_col2:
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- AUTO REFRESH ---
+# --- AUTOMATIC SILENT AUTO-REFRESH (EVERY 30 SECONDS - ONLY WHEN MARKET IS OPEN) ---
 if is_market_open:
     time.sleep(30)
     st.rerun()
