@@ -16,6 +16,34 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# --- F&O STOCKS BLACKLIST ---
+FNO_STOCKS = {
+    "AARTIIND", "ABB", "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS",
+    "ALKEM", "AMBUJACEMENT", "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "ASTRAL",
+    "ATUL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJFINANCE",
+    "BALKRISIND", "BALRAMCHIN", "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT",
+    "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BSOFT", "BOSCHLTD", "BPCL", "BRITANNIA",
+    "CANBK", "CANFINHOME", "CHAMBLFERT", "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE",
+    "COLPAL", "CONCOR", "COROMANDEL", "CROMPTON", "CUB", "CUMMINSIND", "DABUR", "DALBHARAT",
+    "DEEPAKNTR", "DIVISLAB", "DIXON", "DLF", "DRREDDY", "EICHERMOT", "ESCORTS", "EXIDEIND",
+    "FEDERALBNK", "GAIL", "GLENMARK", "GMMPFAUDLR", "GNFC", "GODREJPROP", "GRANULES",
+    "GRASIM", "GUJGASLTD", "HAL", "HAVELLS", "HCLTECH", "HDFCAMC", "HDFCBANK", "HDFCLIFE",
+    "HEROMOTOCO", "HINDALCO", "HINDCOPPER", "HINDPETRO", "HINDUNILVR", "ICICIBANK",
+    "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IEX", "IGL", "INDHOTEL", "INDIACEM",
+    "INDIAMART", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "IOC", "IPCALAB", "IRCTC",
+    "ITC", "JINDALSTEL", "JKCEMENT", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "LALPATHLAB",
+    "LAURUSLABS", "LICHSGFIN", "LT", "LTIM", "LTTS", "LUPIN", "M&M", "M&MFIN", "MANAPPURAM",
+    "MARICO", "MARUTI", "MCDOWELL-N", "MCX", "METROPOLIS", "MFSL", "MGL", "MOTHERSON",
+    "MPHASIS", "MRF", "MUTHOOTFIN", "NATIONALUM", "NAUKRI", "NAVINFLUOR", "NESTLEIND",
+    "NMDC", "NTPC", "OBEROIRLTY", "OFSS", "ONGC", "PAGEIND", "PERSISTENT", "PETRONET",
+    "PFC", "PIDILITIND", "PIIND", "PNB", "POLYCAB", "POWERGRID", "PVRINOX", "RAMCOCEM",
+    "RBLBANK", "RECLTD", "RELIANCE", "SAIL", "SBICARD", "SBILIFE", "SBIN", "SHREECEM",
+    "SHRIRAMFIN", "SIEMENS", "SRF", "SUNPHARMA", "SUNTV", "SYNGENE", "TATACHEM", "TATACOMM",
+    "TATACONSUM", "TATAMOTORS", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TITAN", "TORNTPHARM",
+    "TRENT", "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL", "ZYDUSLIFE",
+    "CAMS", "PATANJALI", "UTIAMC", "CHOICEIN", "SUNDRMFAST"
+}
+
 # --- THEME STATE MANAGEMENT (PERSISTENT VIA QUERY PARAMS) ---
 query_params = st.query_params
 
@@ -329,30 +357,49 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOAD SYMBOLS FROM HIRA STOCKS CSV FILE ---
+# --- LOAD STOCKS WITH AUTOMATIC NON-FNO FILTER ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
-    csv_file = "Hira Stocks.csv"
-    if os.path.exists(csv_file):
-        try:
-            df = pd.read_csv(csv_file)
-            syms = df['symbol'].dropna().astype(str).str.strip().unique().tolist()
-            return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
-        except Exception:
-            pass
-            
-    return [
-        "BLUESTARCO.NS", "JSWDULUX.NS", "ABSLAMC.NS", "BAJAJCON.NS", "MMFL.NS", "PGIL.NS", "ABREL.NS",
-        "GANDHITUBE.NS", "TRITURBINE.NS", "PRAJIND.NS", "MPHASIS.NS", "ASAHIINDIA.NS", "APCOTEXIND.NS",
-        "HEROMOTOCO.NS", "BBTC.NS", "TIPSINDUST.NS", "EQUITASBNK.NS", "EASEMYTRIP.NS",
-        "INDRAMEDCO.NS", "GRAVITA.NS", "PRECAM.NS", "PRICOLLTD.NS", "BHARATWIRE.NS", "SUNDRMFAST.NS",
-        "RADICO.NS", "INDOTECH.NS", "KEC.NS", "SUBROS.NS", "CARBORUNIV.NS", "UBL.NS", "MASTEK.NS",
-        "DCMSHRIRAM.NS", "MINDACORP.NS", "GMRINFRA.NS", "GRANULES.NS", "AARTIDRUGS.NS", "GENUSPOWER.NS",
-        "KPITTECH.NS", "SCHAEFFLER.NS", "FINPIPE.NS", "JBCHEPHARM.NS", "SWANENERGY.NS", "SUPREMEIND.NS",
-        "ZENSARTECH.NS", "NIVALLI.NS", "CGPOWER.NS", "CDSL.NS", "SWSOLAR.NS", "KFINTECH.NS", "CAMS.NS",
-        "MAPMYINDIA.NS", "KAYNES.NS", "TRIDENT.NS", "CEINFO.NS", "NETWEB.NS", "DOMS.NS", "HAPPYFORGE.NS",
-        "DATAPATTNS.NS", "PREMIERENE.NS", "TATAINVEST.NS", "OLECTRA.NS", "RAYMOND.NS", "RITES.NS"
+    raw_symbols = []
+    
+    # Check for local CSV files
+    possible_files = [
+        "Hira_Filtered_Cash_Stocks_100_2500.csv", 
+        "Hira_Non_FNO_Stocks.csv", 
+        "Hira Stocks.csv"
     ]
+    
+    loaded = False
+    for csv_file in possible_files:
+        if os.path.exists(csv_file):
+            try:
+                df = pd.read_csv(csv_file)
+                syms = df['symbol'].dropna().astype(str).str.strip().unique().tolist()
+                raw_symbols = syms
+                loaded = True
+                break
+            except Exception:
+                pass
+            
+    if not loaded:
+        raw_symbols = [
+            "BLUESTARCO", "JSWDULUX", "ABSLAMC", "BAJAJCON", "MMFL", "PGIL", "ABREL",
+            "GANDHITUBE", "TRITURBINE", "PRAJIND", "ASAHIINDIA", "APCOTEXIND", "BBTC",
+            "INDOTECH", "KEC", "SUBROS", "CARBORUNIV", "MASTEK", "DCMSHRIRAM", "MINDACORP",
+            "GMRINFRA", "AARTIDRUGS", "GENUSPOWER", "KPITTECH", "SCHAEFFLER", "FINPIPE",
+            "JBCHEPHARM", "SWANENERGY", "SUPREMEIND", "ZENSARTECH", "CGPOWER", "CDSL",
+            "SWSOLAR", "KFINTECH", "MAPMYINDIA", "KAYNES", "TRIDENT", "CEINFO", "NETWEB",
+            "DOMS", "HAPPYFORGE", "DATAPATTNS", "PREMIERENE", "TATAINVEST", "OLECTRA", "RAYMOND", "RITES"
+        ]
+
+    # STRICT NON-FNO FILTERING LOGIC
+    clean_cash_symbols = []
+    for s in raw_symbols:
+        clean_name = s.replace(".NS", "").strip().upper()
+        if clean_name not in FNO_STOCKS:
+            clean_cash_symbols.append(f"{clean_name}.NS")
+
+    return clean_cash_symbols
 
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
@@ -390,6 +437,12 @@ def calculate_vwap(df):
 
 def analyze_stock_5m(symbol):
     try:
+        clean_symbol = symbol.replace(".NS", "").strip().upper()
+        
+        # DOUBLE CHECK: BLOCK FNO STOCKS
+        if clean_symbol in FNO_STOCKS:
+            return None
+
         ticker = yf.Ticker(symbol)
         df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
@@ -397,13 +450,15 @@ def analyze_stock_5m(symbol):
         if len(df_5m) < 25 or len(df_daily) < 2:
             return None
 
-        # ----------------------------------------------------
-        # 🟢 LIQUIDITY & SMOOTHNESS CHECK (لیکویڈیٹی کا نیا سٹرکٹ فلٹر)
-        # ----------------------------------------------------
-        # 1. Minimum Daily Volume Filter: روزانہ کم از کم 5 لاکھ والیوم ہونا ضروری ہے
+        # PRICE RANGE FILTER: ₹100 TO ₹2500 ONLY
+        latest_price_check = df_5m['Close'].iloc[-1]
+        if not (100 <= latest_price_check <= 2500):
+            return None
+
+        # LIQUIDITY FILTER: DAILY AVG VOLUME > 1L - 3L
         avg_daily_vol = df_daily['Volume'].iloc[-2] if len(df_daily) >= 2 else 0
-        if avg_daily_vol < 500000:
-            return None  # Illiquid Stock Cut (Wealth First جیسے اسٹاک بلاک)
+        if avg_daily_vol < 100000:
+            return None
 
         today = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == today].copy()
@@ -411,16 +466,15 @@ def analyze_stock_5m(symbol):
         if len(today_df) < 3:
             return None
 
-        # 2. Minimum 5m Candle Volume Filter: 5 منٹ کی ہر کینڈل میں والیوم ہونی چاہیے (ڈوٹ یا خالی کینڈلز بلاک)
+        # Minimum 5m Candle Volume Filter
         avg_5m_vol = today_df['Volume'].mean()
         if avg_5m_vol < 1000:
             return None
 
-        # 3. Minimum Candle Body Size Check (وکنگ اور ڈاٹ کینڈل بلاک کرنے کا لاجک)
+        # Minimum Candle Body Size Check
         avg_candle_range = (today_df['High'] - today_df['Low']).mean()
-        if avg_candle_range <= 0.2:  # اگر پرائس موومنٹ نکے برابر ہو
+        if avg_candle_range <= 0.2:
             return None
-        # ----------------------------------------------------
             
         today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
         today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
@@ -443,7 +497,6 @@ def analyze_stock_5m(symbol):
         day_change_pct = ((curr_price - prev_close) / prev_close) * 100
         change_pts = curr_price - prev_close
 
-        clean_symbol = symbol.replace(".NS", "")
         tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
 
         signal_bullish = False
@@ -451,7 +504,7 @@ def analyze_stock_5m(symbol):
         signal_time = ""
         vol_multiple = 1.0
 
-        # BULLISH CHECK (WITH VWAP)
+        # BULLISH CHECK
         if c1_green and (c1_range_pct <= 2.0) and c2_inside:
             for i in range(2, len(today_df)):
                 c_curr = today_df.iloc[i]
@@ -466,7 +519,7 @@ def analyze_stock_5m(symbol):
                     vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
                     break
 
-        # BEARISH CHECK (WITH VWAP)
+        # BEARISH CHECK
         is_near_pdl = c1['Open'] <= (pdl * 1.015)
         if c1_red and (c1_range_pct <= 2.0) and c2_inside and is_near_pdl:
             for i in range(2, len(today_df)):
@@ -636,7 +689,7 @@ with c4:
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
             <div style="font-size: 16px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
-                {TOTAL_SCANNED_STOCKS} Hira Stocks
+                {TOTAL_SCANNED_STOCKS} Cash Stocks
             </div>
             <div style="font-size: 11px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active Signals: {total_bull_cnt + total_bear_cnt}</div>
         </div>
