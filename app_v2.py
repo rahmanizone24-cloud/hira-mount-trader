@@ -16,35 +16,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- F&O STOCKS BLACKLIST ---
-FNO_STOCKS = {
-    "AARTIIND", "ABB", "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS",
-    "ALKEM", "AMBUJACEMENT", "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "ASTRAL",
-    "ATUL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJFINANCE",
-    "BALKRISIND", "BALRAMCHIN", "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT",
-    "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BSOFT", "BOSCHLTD", "BPCL", "BRITANNIA",
-    "CANBK", "CANFINHOME", "CHAMBLFERT", "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE",
-    "COLPAL", "CONCOR", "COROMANDEL", "CROMPTON", "CUB", "CUMMINSIND", "DABUR", "DALBHARAT",
-    "DEEPAKNTR", "DIVISLAB", "DIXON", "DLF", "DRREDDY", "EICHERMOT", "ESCORTS", "EXIDEIND",
-    "FEDERALBNK", "GAIL", "GLENMARK", "GMMPFAUDLR", "GNFC", "GODREJPROP", "GRANULES",
-    "GRASIM", "GUJGASLTD", "HAL", "HAVELLS", "HCLTECH", "HDFCAMC", "HDFCBANK", "HDFCLIFE",
-    "HEROMOTOCO", "HINDALCO", "HINDCOPPER", "HINDPETRO", "HINDUNILVR", "ICICIBANK",
-    "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IEX", "IGL", "INDHOTEL", "INDIACEM",
-    "INDIAMART", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "IOC", "IPCALAB", "IRCTC",
-    "ITC", "JINDALSTEL", "JKCEMENT", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "LALPATHLAB",
-    "LAURUSLABS", "LICHSGFIN", "LT", "LTIM", "LTTS", "LUPIN", "M&M", "M&MFIN", "MANAPPURAM",
-    "MARICO", "MARUTI", "MCDOWELL-N", "MCX", "METROPOLIS", "MFSL", "MGL", "MOTHERSON",
-    "MPHASIS", "MRF", "MUTHOOTFIN", "NATIONALUM", "NAUKRI", "NAVINFLUOR", "NESTLEIND",
-    "NMDC", "NTPC", "OBEROIRLTY", "OFSS", "ONGC", "PAGEIND", "PERSISTENT", "PETRONET",
-    "PFC", "PIDILITIND", "PIIND", "PNB", "POLYCAB", "POWERGRID", "PVRINOX", "RAMCOCEM",
-    "RBLBANK", "RECLTD", "RELIANCE", "SAIL", "SBICARD", "SBILIFE", "SBIN", "SHREECEM",
-    "SHRIRAMFIN", "SIEMENS", "SRF", "SUNPHARMA", "SUNTV", "SYNGENE", "TATACHEM", "TATACOMM",
-    "TATACONSUM", "TATAMOTORS", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TITAN", "TORNTPHARM",
-    "TRENT", "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL", "ZYDUSLIFE",
-    "CAMS", "PATANJALI", "UTIAMC", "CHOICEIN", "SUNDRMFAST"
-}
-
-# --- THEME STATE MANAGEMENT ---
+# --- THEME STATE MANAGEMENT (PERSISTENT VIA QUERY PARAMS) ---
 query_params = st.query_params
 
 if 'theme' not in st.session_state:
@@ -74,10 +46,12 @@ else:
 
 st.markdown(f"""
     <style>
+        /* Hide Default Streamlit Chrome */
         header {{visibility: hidden;}}
         footer {{visibility: hidden;}}
         #MainMenu {{visibility: hidden;}}
         
+        /* Remove Page Padding */
         .block-container {{
             padding-top: 0.1rem !important;
             padding-bottom: 0.1rem !important;
@@ -86,23 +60,27 @@ st.markdown(f"""
             max-width: 100% !important;
         }}
         
+        /* Dynamic Terminal Background */
         body, .stApp {{
             background-color: {bg_color} !important;
             color: {text_main} !important;
             font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         }}
         
+        /* PREVENT PAGE BLUR / FLICKER ON AUTO REFRESH */
         .stApp > div {{
             opacity: 1 !important;
             transition: none !important;
         }}
 
+        /* HIDE ALL LOADING POPUPS / SPINNERS */
         div[data-testid="stStatusWidget"], div[data-testid="stSpinner"], .stSpinner {{
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;
         }}
 
+        /* Custom Small Button Styling */
         .stButton>button {{
             background-color: {btn_bg} !important;
             color: {accent_blue} !important;
@@ -120,6 +98,7 @@ st.markdown(f"""
             color: {text_main} !important;
         }}
 
+        /* Top Bar Styling */
         .top-nav {{
             display: flex;
             justify-content: space-between;
@@ -131,6 +110,7 @@ st.markdown(f"""
             margin-bottom: 12px;
         }}
         
+        /* CLEAN TITLE TEXT */
         .nav-title-clean {{
             font-size: 18px;
             font-weight: 900;
@@ -162,6 +142,7 @@ st.markdown(f"""
         .idx-up {{ color: #3fb950; font-weight: bold; }}
         .idx-down {{ color: #f85149; font-weight: bold; }}
 
+        /* LIVE BLINKING ANIMATION */
         .live-blink {{
             animation: pulseBlink 1.2s ease-in-out infinite;
             display: inline-block;
@@ -172,6 +153,7 @@ st.markdown(f"""
             100% {{ opacity: 1; transform: scale(1); }}
         }}
 
+        /* MARKET STATUS TAGS */
         .market-status-open {{
             background-color: rgba(63, 185, 80, 0.15);
             color: #3fb950;
@@ -198,6 +180,7 @@ st.markdown(f"""
             gap: 5px;
         }}
 
+        /* Metric Summary Cards */
         .metric-container {{
             background-color: {card_bg};
             border: 1px solid {border_color};
@@ -224,6 +207,7 @@ st.markdown(f"""
             margin-top: 2px;
         }}
 
+        /* Section Title Header */
         .box-container {{
             background-color: {card_bg};
             border: 1px solid {border_color};
@@ -239,6 +223,7 @@ st.markdown(f"""
             letter-spacing: 0.5px;
         }}
         
+        /* MARKET MOVERS STOCK CARDS */
         .stock-card {{
             background-color: {sub_card_bg};
             border: 1px solid {border_color};
@@ -258,6 +243,7 @@ st.markdown(f"""
         .stock-price-down {{ font-size: 16px; font-weight: 900; color: #f85149; margin: 2px 0; }}
         .stock-meta {{ font-size: 10px; color: {text_sub}; font-weight: 600; }}
 
+        /* SETUP CONTAINER BOX */
         .setup-box {{
             background-color: {card_bg};
             border: 1px solid {border_color};
@@ -283,6 +269,7 @@ st.markdown(f"""
             gap: 6px;
         }}
 
+        /* TABLE HEADER BAR */
         .row-header {{
             display: flex;
             justify-content: space-between;
@@ -296,6 +283,7 @@ st.markdown(f"""
             margin-bottom: 6px;
         }}
 
+        /* ROW ITEM WITH ROUNDED BUTTON BOX FOR SYMBOL */
         .stock-row-item {{
             display: flex;
             justify-content: space-between;
@@ -341,47 +329,30 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOAD STOCKS WITH AUTOMATIC NON-FNO FILTER ---
+# --- LOAD SYMBOLS FROM HIRA STOCKS CSV FILE ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
-    raw_symbols = []
-    
-    possible_files = [
-        "Hira_Filtered_Cash_Stocks_100_2500.csv", 
-        "Hira_Non_FNO_Stocks.csv", 
-        "Hira Stocks.csv"
-    ]
-    
-    loaded = False
-    for csv_file in possible_files:
-        if os.path.exists(csv_file):
-            try:
-                df = pd.read_csv(csv_file)
-                syms = df['symbol'].dropna().astype(str).str.strip().unique().tolist()
-                raw_symbols = syms
-                loaded = True
-                break
-            except Exception:
-                pass
+    csv_file = "Hira Stocks.csv"
+    if os.path.exists(csv_file):
+        try:
+            df = pd.read_csv(csv_file)
+            syms = df['symbol'].dropna().astype(str).str.strip().unique().tolist()
+            return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
+        except Exception:
+            pass
             
-    if not loaded:
-        raw_symbols = [
-            "BLUESTARCO", "JSWDULUX", "ABSLAMC", "BAJAJCON", "MMFL", "PGIL", "ABREL",
-            "GANDHITUBE", "TRITURBINE", "PRAJIND", "ASAHIINDIA", "APCOTEXIND", "BBTC",
-            "INDOTECH", "KEC", "SUBROS", "CARBORUNIV", "MASTEK", "DCMSHRIRAM", "MINDACORP",
-            "GMRINFRA", "AARTIDRUGS", "GENUSPOWER", "KPITTECH", "SCHAEFFLER", "FINPIPE",
-            "JBCHEPHARM", "SWANENERGY", "SUPREMEIND", "ZENSARTECH", "CGPOWER", "CDSL",
-            "SWSOLAR", "KFINTECH", "MAPMYINDIA", "KAYNES", "TRIDENT", "CEINFO", "NETWEB",
-            "DOMS", "HAPPYFORGE", "DATAPATTNS", "PREMIERENE", "TATAINVEST", "OLECTRA", "RAYMOND", "RITES"
-        ]
-
-    clean_cash_symbols = []
-    for s in raw_symbols:
-        clean_name = s.replace(".NS", "").strip().upper()
-        if clean_name not in FNO_STOCKS:
-            clean_cash_symbols.append(f"{clean_name}.NS")
-
-    return clean_cash_symbols
+    return [
+        "BLUESTARCO.NS", "JSWDULUX.NS", "ABSLAMC.NS", "BAJAJCON.NS", "MMFL.NS", "PGIL.NS", "ABREL.NS",
+        "GANDHITUBE.NS", "TRITURBINE.NS", "PRAJIND.NS", "MPHASIS.NS", "ASAHIINDIA.NS", "APCOTEXIND.NS",
+        "HEROMOTOCO.NS", "BBTC.NS", "TIPSINDUST.NS", "EQUITASBNK.NS", "EASEMYTRIP.NS",
+        "INDRAMEDCO.NS", "GRAVITA.NS", "PRECAM.NS", "PRICOLLTD.NS", "BHARATWIRE.NS", "SUNDRMFAST.NS",
+        "RADICO.NS", "INDOTECH.NS", "KEC.NS", "SUBROS.NS", "CARBORUNIV.NS", "UBL.NS", "MASTEK.NS",
+        "DCMSHRIRAM.NS", "MINDACORP.NS", "GMRINFRA.NS", "GRANULES.NS", "AARTIDRUGS.NS", "GENUSPOWER.NS",
+        "KPITTECH.NS", "SCHAEFFLER.NS", "FINPIPE.NS", "JBCHEPHARM.NS", "SWANENERGY.NS", "SUPREMEIND.NS",
+        "ZENSARTECH.NS", "NIVALLI.NS", "CGPOWER.NS", "CDSL.NS", "SWSOLAR.NS", "KFINTECH.NS", "CAMS.NS",
+        "MAPMYINDIA.NS", "KAYNES.NS", "TRIDENT.NS", "CEINFO.NS", "NETWEB.NS", "DOMS.NS", "HAPPYFORGE.NS",
+        "DATAPATTNS.NS", "PREMIERENE.NS", "TATAINVEST.NS", "OLECTRA.NS", "RAYMOND.NS", "RITES.NS"
+    ]
 
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
@@ -419,12 +390,6 @@ def calculate_vwap(df):
 
 def analyze_stock_5m(symbol):
     try:
-        clean_symbol = symbol.replace(".NS", "").strip().upper()
-        
-        # DOUBLE CHECK: BLOCK FNO STOCKS
-        if clean_symbol in FNO_STOCKS:
-            return None
-
         ticker = yf.Ticker(symbol)
         df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
@@ -432,15 +397,13 @@ def analyze_stock_5m(symbol):
         if len(df_5m) < 25 or len(df_daily) < 2:
             return None
 
-        # PRICE RANGE FILTER: 100 TO 2500 ONLY
-        latest_price_check = df_5m['Close'].iloc[-1]
-        if not (100 <= latest_price_check <= 2500):
-            return None
-
-        # LIQUIDITY FILTER: DAILY AVG VOLUME MINIMUM 1,000,000 (10 Lakhs)
+        # ----------------------------------------------------
+        # 🟢 LIQUIDITY & SMOOTHNESS CHECK (لیکویڈیٹی کا نیا سٹرکٹ فلٹر)
+        # ----------------------------------------------------
+        # 1. Minimum Daily Volume Filter: روزانہ کم از کم 5 لاکھ والیوم ہونا ضروری ہے
         avg_daily_vol = df_daily['Volume'].iloc[-2] if len(df_daily) >= 2 else 0
-        if avg_daily_vol < 1000000:
-            return None
+        if avg_daily_vol < 500000:
+            return None  # Illiquid Stock Cut (Wealth First جیسے اسٹاک بلاک)
 
         today = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == today].copy()
@@ -448,77 +411,39 @@ def analyze_stock_5m(symbol):
         if len(today_df) < 3:
             return None
 
-        prev_close = df_daily['Close'].iloc[-2]
+        # 2. Minimum 5m Candle Volume Filter: 5 منٹ کی ہر کینڈل میں والیوم ہونی چاہیے (ڈوٹ یا خالی کینڈلز بلاک)
+        avg_5m_vol = today_df['Volume'].mean()
+        if avg_5m_vol < 1000:
+            return None
 
+        # 3. Minimum Candle Body Size Check (وکنگ اور ڈاٹ کینڈل بلاک کرنے کا لاجک)
+        avg_candle_range = (today_df['High'] - today_df['Low']).mean()
+        if avg_candle_range <= 0.2:  # اگر پرائس موومنٹ نکے برابر ہو
+            return None
+        # ----------------------------------------------------
+            
         today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
         today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
         today_df['VWAP'] = calculate_vwap(today_df)
 
         c1 = today_df.iloc[0]
-        c1_open = c1['Open']
-        c1_high = c1['High']
-        c1_low = c1['Low']
-        c1_close = c1['Close']
-        c1_range = c1_high - c1_low
-
-        # -----------------------------------------------------------
-        # CONDITION 1: C1 CANDLE HEIGHT <= 1.0% OF OPEN PRICE
-        # -----------------------------------------------------------
-        c1_height_pct = (c1_range / c1_open) * 100
-        if c1_height_pct > 1.0:
-            return None
-
-        # -----------------------------------------------------------
-        # CONDITION 2: NO BIG GAP UP / GAP DOWN (OPEN NEAR PREV CLOSE)
-        # Gap within +-0.5% of Previous Day Close
-        # -----------------------------------------------------------
-        gap_pct = abs((c1_open - prev_close) / prev_close) * 100
-        if gap_pct > 0.5:
-            return None
-
-        # -----------------------------------------------------------
-        # CONDITION 3: C1 WICK SIZE CHECK (NO LARGE WICKS)
-        # Upper and Lower wicks must be <= 35% of total candle range
-        # -----------------------------------------------------------
-        if c1_range > 0:
-            c1_upper_wick = c1_high - max(c1_open, c1_close)
-            c1_lower_wick = min(c1_open, c1_close) - c1_low
-            if (c1_upper_wick / c1_range > 0.35) or (c1_lower_wick / c1_range > 0.35):
-                return None
-
-        # -----------------------------------------------------------
-        # CONDITION 4: C2 (9:20 CANDLE) SMALL PROFIT BOOKING PAUSE
-        # Must be inside C1 range and height <= 60% of C1 range
-        # -----------------------------------------------------------
-        c2 = today_df.iloc[1]
-        c2_inside = (c2['High'] <= c1_high) and (c2['Low'] >= c1_low)
-        c2_small = (c2['High'] - c2['Low']) <= (0.6 * c1_range)
-        if not (c2_inside and c2_small):
-            return None
-
-        # -----------------------------------------------------------
-        # CONDITION 5: PRICE PROXIMITY TO 20 EMA & 200 EMA
-        # C1 Close must be within 0.8% distance from 20 EMA & 200 EMA
-        # -----------------------------------------------------------
-        c1_ema20 = c1['EMA20']
-        c1_ema200 = c1['EMA200']
+        c1_green = c1['Close'] > c1['Open']
+        c1_red = c1['Close'] < c1['Open']
+        c1_range_pct = ((c1['High'] - c1['Low']) / c1['Open']) * 100
         
-        dist_ema20 = abs(c1_close - c1_ema20) / c1_ema20 * 100
-        dist_ema200 = abs(c1_close - c1_ema200) / c1_ema200 * 100
-
-        # Max 0.8% distance allowed from both EMAs
-        if dist_ema20 > 0.8 or dist_ema200 > 1.2:
-            return None
-
-        c1_green = c1_close > c1_open
-        c1_red = c1_close < c1_open
+        c2 = today_df.iloc[1]
+        
+        # STRICT PROFIT BOOKING PAUSE CANDLE: C2 inside C1 range
+        c2_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
         latest = today_df.iloc[-1]
         curr_price = latest['Close']
+        prev_close = df_daily['Close'].iloc[-2]
         pdl = df_daily['Low'].iloc[-2]
         day_change_pct = ((curr_price - prev_close) / prev_close) * 100
         change_pts = curr_price - prev_close
 
+        clean_symbol = symbol.replace(".NS", "")
         tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
 
         signal_bullish = False
@@ -526,11 +451,11 @@ def analyze_stock_5m(symbol):
         signal_time = ""
         vol_multiple = 1.0
 
-        # BULLISH CHECK: C1 Close >= EMA20 and EMA200
-        if c1_green and (c1_close >= c1_ema20) and (c1_close >= c1_ema200):
+        # BULLISH CHECK (WITH VWAP)
+        if c1_green and (c1_range_pct <= 2.0) and c2_inside:
             for i in range(2, len(today_df)):
                 c_curr = today_df.iloc[i]
-                if (c_curr['Close'] > c1_high and 
+                if (c_curr['Close'] > c1['High'] and 
                     c_curr['Volume'] > c2['Volume'] and 
                     c_curr['Close'] > c_curr['EMA200'] and 
                     c_curr['Close'] > c_curr['EMA20'] and
@@ -541,12 +466,12 @@ def analyze_stock_5m(symbol):
                     vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
                     break
 
-        # BEARISH CHECK: C1 Close <= EMA20 and EMA200
-        is_near_pdl = c1_open <= (pdl * 1.015)
-        if c1_red and (c1_close <= c1_ema20) and (c1_close <= c1_ema200) and is_near_pdl:
+        # BEARISH CHECK (WITH VWAP)
+        is_near_pdl = c1['Open'] <= (pdl * 1.015)
+        if c1_red and (c1_range_pct <= 2.0) and c2_inside and is_near_pdl:
             for i in range(2, len(today_df)):
                 c_curr = today_df.iloc[i]
-                if (c_curr['Close'] < c1_low and 
+                if (c_curr['Close'] < c1['Low'] and 
                     c_curr['Volume'] > c2['Volume'] and 
                     c_curr['Close'] < c_curr['EMA200'] and 
                     c_curr['Close'] < c_curr['EMA20'] and
@@ -557,7 +482,7 @@ def analyze_stock_5m(symbol):
                     vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
                     break
 
-        # CALCULATION: Capital 10,000 with 5x Intraday Margin
+        # CALCULATION: ₹10,000 Capital with 5x Intraday Margin (₹50,000 buying power)
         calc_qty = int((10000 * 5) / curr_price) if curr_price > 0 else 0
 
         if signal_bullish or signal_bearish:
@@ -606,14 +531,14 @@ def run_market_scanner():
 
     return bullish_top10, bearish_top10, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
-# --- AUTOMATIC MARKET OPEN / CLOSE LOGIC ---
+# --- AUTOMATIC MARKET OPEN / CLOSE LOGIC (INDIAN TIME IST FIXED) ---
 ist_tz = pytz.timezone('Asia/Kolkata')
 now_dt = datetime.datetime.now(ist_tz)
 
 market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
 market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
 
-is_weekday = now_dt.weekday() < 5
+is_weekday = now_dt.weekday() < 5  # Monday = 0, Friday = 4
 is_market_open = is_weekday and (market_open_time <= now_dt <= market_close_time)
 
 if is_market_open:
@@ -711,7 +636,7 @@ with c4:
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
             <div style="font-size: 16px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
-                {TOTAL_SCANNED_STOCKS} Cash Stocks
+                {TOTAL_SCANNED_STOCKS} Hira Stocks
             </div>
             <div style="font-size: 11px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active Signals: {total_bull_cnt + total_bear_cnt}</div>
         </div>
@@ -745,7 +670,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- SETUP TABLES ---
+# --- ROW LIST (TOP 10 VOL SURGE FILTERED WITH QTY) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -810,7 +735,7 @@ with tb_col2:
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- AUTO REFRESH ---
+# --- AUTOMATIC SILENT AUTO-REFRESH (EVERY 30 SECONDS - ONLY WHEN MARKET IS OPEN) ---
 if is_market_open:
     time.sleep(30)
     st.rerun()
