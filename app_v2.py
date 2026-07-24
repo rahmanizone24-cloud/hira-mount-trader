@@ -110,7 +110,7 @@ st.markdown(f"""
             margin-bottom: 12px;
         }}
         
-        /* CLEAN TITLE TEXT (BLUE BADGE STRIP REMOVED) */
+        /* CLEAN TITLE TEXT */
         .nav-title-clean {{
             font-size: 18px;
             font-weight: 900;
@@ -397,11 +397,30 @@ def analyze_stock_5m(symbol):
         if len(df_5m) < 25 or len(df_daily) < 2:
             return None
 
+        # ----------------------------------------------------
+        # 🟢 LIQUIDITY & SMOOTHNESS CHECK (لیکویڈیٹی کا نیا سٹرکٹ فلٹر)
+        # ----------------------------------------------------
+        # 1. Minimum Daily Volume Filter: روزانہ کم از کم 5 لاکھ والیوم ہونا ضروری ہے
+        avg_daily_vol = df_daily['Volume'].iloc[-2] if len(df_daily) >= 2 else 0
+        if avg_daily_vol < 500000:
+            return None  # Illiquid Stock Cut (Wealth First جیسے اسٹاک بلاک)
+
         today = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == today].copy()
         
         if len(today_df) < 3:
             return None
+
+        # 2. Minimum 5m Candle Volume Filter: 5 منٹ کی ہر کینڈل میں والیوم ہونی چاہیے (ڈوٹ یا خالی کینڈلز بلاک)
+        avg_5m_vol = today_df['Volume'].mean()
+        if avg_5m_vol < 1000:
+            return None
+
+        # 3. Minimum Candle Body Size Check (وکنگ اور ڈاٹ کینڈل بلاک کرنے کا لاجک)
+        avg_candle_range = (today_df['High'] - today_df['Low']).mean()
+        if avg_candle_range <= 0.2:  # اگر پرائس موومنٹ نکے برابر ہو
+            return None
+        # ----------------------------------------------------
             
         today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
         today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
