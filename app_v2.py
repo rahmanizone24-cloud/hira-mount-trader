@@ -100,19 +100,30 @@ st.divider()
 # --- DATA LOADING & PROCESSING ---
 @st.cache_data(ttl=60)
 def load_stock_list():
-    if os.path.exists("Hira Stocks.csv"):
-        df = pd.read_csv("Hira Stocks.csv")
-        if "Symbol" in df.columns:
-            return df["Symbol"].dropna().unique().tolist()
+    # Check multiple possible paths for Hira Stocks.csv
+    possible_paths = ["Hira Stocks.csv", "./Hira Stocks.csv", "../Hira Stocks.csv"]
+    csv_file = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            csv_file = path
+            break
+
+    if csv_file:
+        try:
+            df = pd.read_csv(csv_file)
+            # Find symbol column regardless of case
+            col_match = [c for c in df.columns if c.strip().lower() in ["symbol", "ticker", "stock", "stocks"]]
+            if col_match:
+                symbols = df[col_match[0]].dropna().astype(str).str.strip().tolist()
+                # Ensure .NS suffix for yfinance
+                formatted_symbols = [s if s.endswith(".NS") or s.endswith(".BO") else f"{s}.NS" for s in symbols]
+                return list(set(formatted_symbols))
+        except Exception:
+            pass
+
     return [
-        "RELIANCE.NS",
-        "TCS.NS",
-        "INFY.NS",
-        "HDFCBANK.NS",
-        "ICICIBANK.NS",
-        "TATAMOTORS.NS",
-        "SBIN.NS",
-        "BHARTIARTL.NS",
+        "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", 
+        "ICICIBANK.NS", "TATAMOTORS.NS", "SBIN.NS", "BHARTIARTL.NS"
     ]
 
 
@@ -120,7 +131,7 @@ def fetch_stock_data(symbol):
     try:
         ticker = yf.Ticker(symbol)
         df = ticker.history(period="5d", interval="5m")
-        if df.empty or len(df) < 20:
+        if df.empty or len(df) < 2:
             return None
 
         # EMA calculations
@@ -134,7 +145,7 @@ def fetch_stock_data(symbol):
         prev_row = df.iloc[-2]
 
         return {
-            "Symbol": symbol.replace(".NS", ""),
+            "Symbol": symbol.replace(".NS", "").replace(".BO", ""),
             "LTP": round(last_row["Close"], 2),
             "Change %": round(
                 ((last_row["Close"] - prev_row["Close"]) / prev_row["Close"]) * 100,
@@ -166,7 +177,7 @@ with col_scan:
 # Fetch data using multithreading for speed
 results = []
 with st.spinner("Fetching market data..."):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
         futures = [executor.submit(fetch_stock_data, sym) for sym in symbols]
         for future in concurrent.futures.as_completed(futures):
             res = future.result()
