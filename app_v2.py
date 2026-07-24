@@ -1,44 +1,46 @@
+import concurrent.futures
+import datetime
+import os
+from zoneinfo import ZoneInfo
+import numpy as np
+import pandas as pd
 import streamlit as st
 import yfinance as yf
-import pandas as pd
-import numpy as np
-import datetime
-import concurrent.futures
-import os
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="Hira Mount Trader Terminal",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
 )
 
 # --- THEME STATE MANAGEMENT ---
-if 'theme' not in st.session_state:
-    st.session_state.theme = 'dark'
+if "theme" not in st.session_state:
+  st.session_state.theme = "dark"
 
 # --- THEME CSS DEFINITIONS ---
-if st.session_state.theme == 'dark':
-    bg_color = "#0b0e14"
-    card_bg = "#161b22"
-    sub_card_bg = "#0d1117"
-    border_color = "#30363d"
-    text_main = "#f0f6fc"
-    text_sub = "#8b949e"
-    accent_blue = "#58a6ff"
-    btn_bg = "#21262d"
+if st.session_state.theme == "dark":
+  bg_color = "#0b0e14"
+  card_bg = "#161b22"
+  sub_card_bg = "#0d1117"
+  border_color = "#30363d"
+  text_main = "#f0f6fc"
+  text_sub = "#8b949e"
+  accent_blue = "#58a6ff"
+  btn_bg = "#21262d"
 else:
-    bg_color = "#f6f8fa"
-    card_bg = "#ffffff"
-    sub_card_bg = "#f3f4f6"
-    border_color = "#d0d7de"
-    text_main = "#1f2328"
-    text_sub = "#656d76"
-    accent_blue = "#0969da"
-    btn_bg = "#eaeef2"
+  bg_color = "#f6f8fa"
+  card_bg = "#ffffff"
+  sub_card_bg = "#f3f4f6"
+  border_color = "#d0d7de"
+  text_main = "#1f2328"
+  text_sub = "#656d76"
+  accent_blue = "#0969da"
+  btn_bg = "#eaeef2"
 
-st.markdown(f"""
+st.markdown(
+    f"""
     <style>
         /* Hide Default Streamlit Chrome */
         header {{visibility: hidden;}}
@@ -316,195 +318,324 @@ st.markdown(f"""
             font-size: 12px;
         }}
     </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
+
 
 # --- LOAD SYMBOLS FROM HIRA STOCKS CSV FILE ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
-    csv_file = "Hira Stocks.csv"
-    if os.path.exists(csv_file):
-        try:
-            df = pd.read_csv(csv_file)
-            syms = df['symbol'].dropna().astype(str).str.strip().unique().tolist()
-            return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
-        except Exception:
-            pass
-    return [
-        "BLUESTARCO.NS", "JSWDULUX.NS", "ABSLAMC.NS", "BAJAJCON.NS", "MMFL.NS", "PGIL.NS", "ABREL.NS",
-        "GANDHITUBE.NS", "TRITURBINE.NS", "PRAJIND.NS", "MPHASIS.NS", "ASAHIINDIA.NS", "APCOTEXIND.NS",
-        "HEROMOTOCO.NS", "BBTC.NS", "TIPSINDUST.NS", "EQUITASBNK.NS", "EASEMYTRIP.NS",
-        "INDRAMEDCO.NS", "GRAVITA.NS", "PRECAM.NS", "PRICOLLTD.NS", "BHARATWIRE.NS", "SUNDRMFAST.NS",
-        "RADICO.NS", "INDOTECH.NS", "KEC.NS", "SUBROS.NS", "CARBORUNIV.NS", "UBL.NS", "MASTEK.NS",
-        "DCMSHRIRAM.NS", "MINDACORP.NS", "GMRINFRA.NS", "GRANULES.NS", "AARTIDRUGS.NS", "GENUSPOWER.NS",
-        "KPITTECH.NS", "SCHAEFFLER.NS", "FINPIPE.NS", "JBCHEPHARM.NS", "SWANENERGY.NS", "SUPREMEIND.NS",
-        "ZENSARTECH.NS", "NIVALLI.NS", "CGPOWER.NS", "CDSL.NS", "SWSOLAR.NS", "KFINTECH.NS", "CAMS.NS",
-        "MAPMYINDIA.NS", "KAYNES.NS", "TRIDENT.NS", "CEINFO.NS", "NETWEB.NS", "DOMS.NS", "HAPPYFORGE.NS",
-        "DATAPATTNS.NS", "PREMIERENE.NS", "TATAINVEST.NS", "OLECTRA.NS", "RAYMOND.NS", "RITES.NS",
-        "HFCL.NS", "EMUDHRA.NS", "NEWGEN.NS", "RATEGAIN.NS", "CLEAN.NS", "ANANDRATHI.NS", "JUBLPHARMA.NS",
-        "ECLERX.NS", "STARHEALTH.NS", "HAPPSTMNDS.NS", "LATENTVIEW.NS", "CAMPUS.NS", "HOMAFIRST.NS",
-        "AAVAS.NS", "MEDPLUS.NS", "KIMS.NS", "VIJAYA.NS", "SJS.NS", "MTARTECH.NS", "PARAS.NS", "PRINCEPIPE.NS"
-    ]
+  csv_file = "Hira Stocks.csv"
+  if os.path.exists(csv_file):
+    try:
+      df = pd.read_csv(csv_file)
+      syms = df["symbol"].dropna().astype(str).str.strip().unique().tolist()
+      return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
+    except Exception:
+      pass
+  return [
+      "BLUESTARCO.NS",
+      "JSWDULUX.NS",
+      "ABSLAMC.NS",
+      "BAJAJCON.NS",
+      "MMFL.NS",
+      "PGIL.NS",
+      "ABREL.NS",
+      "GANDHITUBE.NS",
+      "TRITURBINE.NS",
+      "PRAJIND.NS",
+      "MPHASIS.NS",
+      "ASAHIINDIA.NS",
+      "APCOTEXIND.NS",
+      "HEROMOTOCO.NS",
+      "BBTC.NS",
+      "TIPSINDUST.NS",
+      "EQUITASBNK.NS",
+      "EASEMYTRIP.NS",
+      "INDRAMEDCO.NS",
+      "GRAVITA.NS",
+      "PRECAM.NS",
+      "PRICOLLTD.NS",
+      "BHARATWIRE.NS",
+      "SUNDRMFAST.NS",
+      "RADICO.NS",
+      "INDOTECH.NS",
+      "KEC.NS",
+      "SUBROS.NS",
+      "CARBORUNIV.NS",
+      "UBL.NS",
+      "MASTEK.NS",
+      "DCMSHRIRAM.NS",
+      "MINDACORP.NS",
+      "GMRINFRA.NS",
+      "GRANULES.NS",
+      "AARTIDRUGS.NS",
+      "GENUSPOWER.NS",
+      "KPITTECH.NS",
+      "SCHAEFFLER.NS",
+      "FINPIPE.NS",
+      "JBCHEPHARM.NS",
+      "SWANENERGY.NS",
+      "SUPREMEIND.NS",
+      "ZENSARTECH.NS",
+      "NIVALLI.NS",
+      "CGPOWER.NS",
+      "CDSL.NS",
+      "SWSOLAR.NS",
+      "KFINTECH.NS",
+      "CAMS.NS",
+      "MAPMYINDIA.NS",
+      "KAYNES.NS",
+      "TRIDENT.NS",
+      "CEINFO.NS",
+      "NETWEB.NS",
+      "DOMS.NS",
+      "HAPPYFORGE.NS",
+      "DATAPATTNS.NS",
+      "PREMIERENE.NS",
+      "TATAINVEST.NS",
+      "OLECTRA.NS",
+      "RAYMOND.NS",
+      "RITES.NS",
+      "HFCL.NS",
+      "EMUDHRA.NS",
+      "NEWGEN.NS",
+      "RATEGAIN.NS",
+      "CLEAN.NS",
+      "ANANDRATHI.NS",
+      "JUBLPHARMA.NS",
+      "ECLERX.NS",
+      "STARHEALTH.NS",
+      "HAPPSTMNDS.NS",
+      "LATENTVIEW.NS",
+      "CAMPUS.NS",
+      "HOMAFIRST.NS",
+      "AAVAS.NS",
+      "MEDPLUS.NS",
+      "KIMS.NS",
+      "VIJAYA.NS",
+      "SJS.NS",
+      "MTARTECH.NS",
+      "PARAS.NS",
+      "PRINCEPIPE.NS",
+  ]
+
 
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
 
+
 # --- FETCH INDEX DATA ---
 @st.cache_data(ttl=30)
 def fetch_indices():
-    indices = {
-        "BANK NIFTY": ("^NSEBANK", "NSE:BANKNIFTY"),
-        "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
-        "SENSEX": ("^BSESN", "BSE:SENSEX"),
-        "NIFTY MIDCAP": ("NIFTY_MID_SELECT.NS", "NSE:NIFTY_MID_SELECT")
-    }
-    res = {}
-    for name, (sym, tv_sym) in indices.items():
-        try:
-            df = yf.Ticker(sym).history(period="2d")
-            if len(df) >= 2:
-                curr = df['Close'].iloc[-1]
-                prev = df['Close'].iloc[-2]
-                change = curr - prev
-                pct = (change / prev) * 100
-                tv_url = f"https://www.tradingview.com/chart/?symbol={tv_sym}"
-                res[name] = {"val": round(curr, 2), "change": round(change, 2), "pct": round(pct, 2), "url": tv_url}
-        except:
-            res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": "#"}
-    return res
+  indices = {
+      "BANK NIFTY": ("^NSEBANK", "NSE:BANKNIFTY"),
+      "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
+      "SENSEX": ("^BSESN", "BSE:SENSEX"),
+      "NIFTY MIDCAP": ("NIFTY_MID_SELECT.NS", "NSE:NIFTY_MID_SELECT"),
+  }
+  res = {}
+  for name, (sym, tv_sym) in indices.items():
+    try:
+      df = yf.Ticker(sym).history(period="2d")
+      if len(df) >= 2:
+        curr = df["Close"].iloc[-1]
+        prev = df["Close"].iloc[-2]
+        change = curr - prev
+        pct = (change / prev) * 100
+        tv_url = f"https://www.tradingview.com/chart/?symbol={tv_sym}"
+        res[name] = {
+            "val": round(curr, 2),
+            "change": round(change, 2),
+            "pct": round(pct, 2),
+            "url": tv_url,
+        }
+    except:
+      res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": "#"}
+  return res
+
 
 def calculate_ema(series, length):
-    return series.ewm(span=length, adjust=False).mean()
+  return series.ewm(span=length, adjust=False).mean()
+
 
 def analyze_stock_5m(symbol):
-    try:
-        ticker = yf.Ticker(symbol)
-        df_5m = ticker.history(period="5d", interval="5m")
-        df_daily = ticker.history(period="5d", interval="1d")
-        
-        if len(df_5m) < 25 or len(df_daily) < 2:
-            return None
+  try:
+    ticker = yf.Ticker(symbol)
+    df_5m = ticker.history(period="5d", interval="5m")
+    df_daily = ticker.history(period="5d", interval="1d")
 
-        today = df_5m.index[-1].date()
-        today_df = df_5m[df_5m.index.date == today].copy()
-        
-        if len(today_df) < 3:
-            return None
-            
-        today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
-        today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
+    if len(df_5m) < 25 or len(df_daily) < 2:
+      return None
 
-        c1 = today_df.iloc[0]
-        c1_green = c1['Close'] > c1['Open']
-        c1_red = c1['Close'] < c1['Open']
-        c1_range_pct = ((c1['High'] - c1['Low']) / c1['Open']) * 100
-        
-        c2 = today_df.iloc[1]
-        
-        # STRICT PROFIT BOOKING PAUSE CANDLE: C2 inside C1 range
-        c2_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
+    today = df_5m.index[-1].date()
+    today_df = df_5m[df_5m.index.date == today].copy()
 
-        latest = today_df.iloc[-1]
-        curr_price = latest['Close']
-        prev_close = df_daily['Close'].iloc[-2]
-        pdl = df_daily['Low'].iloc[-2]
-        day_change_pct = ((curr_price - prev_close) / prev_close) * 100
-        change_pts = curr_price - prev_close
+    if len(today_df) < 3:
+      return None
 
-        clean_symbol = symbol.replace(".NS", "")
-        tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
+    today_df["EMA20"] = calculate_ema(today_df["Close"], 20)
+    today_df["EMA200"] = calculate_ema(today_df["Close"], 200)
 
-        signal_bullish = False
-        signal_bearish = False
-        signal_time = ""
-        vol_multiple = 1.0
+    c1 = today_df.iloc[0]
+    c1_green = c1["Close"] > c1["Open"]
+    c1_red = c1["Close"] < c1["Open"]
+    c1_range_pct = ((c1["High"] - c1["Low"]) / c1["Open"]) * 100
 
-        # BULLISH CHECK (Strong C1 Green, C2 Profit Booking Inside Pause, High Volume Breakout)
-        if c1_green and (c1_range_pct <= 2.0) and c2_inside:
-            for i in range(2, len(today_df)):
-                c_curr = today_df.iloc[i]
-                if (c_curr['Close'] > c1['High'] and 
-                    c_curr['Volume'] > c2['Volume'] and 
-                    c_curr['Close'] > c_curr['EMA200'] and 
-                    c_curr['Close'] > c_curr['EMA20']):
-                    
-                    signal_bullish = True
-                    signal_time = c_curr.name.strftime("%H:%M")
-                    vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
-                    break
+    c2 = today_df.iloc[1]
 
-        # BEARISH CHECK (C1 Red near PDL, C2 Profit Booking Inside Pause, High Volume Breakdown)
-        is_near_pdl = c1['Open'] <= (pdl * 1.015)
-        if c1_red and (c1_range_pct <= 2.0) and c2_inside and is_near_pdl:
-            for i in range(2, len(today_df)):
-                c_curr = today_df.iloc[i]
-                if (c_curr['Close'] < c1['Low'] and 
-                    c_curr['Volume'] > c2['Volume'] and 
-                    c_curr['Close'] < c_curr['EMA200'] and 
-                    c_curr['Close'] < c_curr['EMA20']):
-                    
-                    signal_bearish = True
-                    signal_time = c_curr.name.strftime("%H:%M")
-                    vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
-                    break
+    # STRICT PROFIT BOOKING PAUSE CANDLE: C2 inside C1 range
+    c2_inside = (c2["High"] <= c1["High"]) and (c2["Low"] >= c1["Low"])
 
-        if signal_bullish or signal_bearish:
-            return {
-                "Symbol": clean_symbol,
-                "Price": curr_price,
-                "ChangePct": day_change_pct,
-                "ChangePts": round(change_pts, 2),
-                "SignalTime": signal_time if signal_time else "10:15",
-                "VolMultiple": vol_multiple if vol_multiple > 1.0 else 1.50,
-                "IsBullish": signal_bullish,
-                "IsBearish": signal_bearish,
-                "TVUrl": tv_url
-            }
-        return None
-    except:
-        return None
+    latest = today_df.iloc[-1]
+    curr_price = latest["Close"]
+    prev_close = df_daily["Close"].iloc[-2]
+    pdl = df_daily["Low"].iloc[-2]
+    day_change_pct = ((curr_price - prev_close) / prev_close) * 100
+    change_pts = curr_price - prev_close
+
+    clean_symbol = symbol.replace(".NS", "")
+    tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
+
+    signal_bullish = False
+    signal_bearish = False
+    signal_time = ""
+    vol_multiple = 1.0
+
+    # BULLISH CHECK (Strong C1 Green, C2 Profit Booking Inside Pause, High Volume Breakout)
+    if c1_green and (c1_range_pct <= 2.0) and c2_inside:
+      for i in range(2, len(today_df)):
+        c_curr = today_df.iloc[i]
+        if (
+            c_curr["Close"] > c1["High"]
+            and c_curr["Volume"] > c2["Volume"]
+            and c_curr["Close"] > c_curr["EMA200"]
+            and c_curr["Close"] > c_curr["EMA20"]
+        ):
+
+          signal_bullish = True
+          signal_time = c_curr.name.strftime("%H:%M")
+          vol_multiple = round(
+              c_curr["Volume"] / (c2["Volume"] if c2["Volume"] > 0 else 1), 2
+          )
+          break
+
+    # BEARISH CHECK (C1 Red near PDL, C2 Profit Booking Inside Pause, High Volume Breakdown)
+    is_near_pdl = c1["Open"] <= (pdl * 1.015)
+    if c1_red and (c1_range_pct <= 2.0) and c2_inside and is_near_pdl:
+      for i in range(2, len(today_df)):
+        c_curr = today_df.iloc[i]
+        if (
+            c_curr["Close"] < c1["Low"]
+            and c_curr["Volume"] > c2["Volume"]
+            and c_curr["Close"] < c_curr["EMA200"]
+            and c_curr["Close"] < c_curr["EMA20"]
+        ):
+
+          signal_bearish = True
+          signal_time = c_curr.name.strftime("%H:%M")
+          vol_multiple = round(
+              c_curr["Volume"] / (c2["Volume"] if c2["Volume"] > 0 else 1), 2
+          )
+          break
+
+    if signal_bullish or signal_bearish:
+      return {
+          "Symbol": clean_symbol,
+          "Price": curr_price,
+          "ChangePct": day_change_pct,
+          "ChangePts": round(change_pts, 2),
+          "SignalTime": signal_time if signal_time else "10:15",
+          "VolMultiple": vol_multiple if vol_multiple > 1.0 else 1.50,
+          "IsBullish": signal_bullish,
+          "IsBearish": signal_bearish,
+          "TVUrl": tv_url,
+      }
+    return None
+  except:
+    return None
+
 
 @st.cache_data(ttl=30)
 def run_market_scanner():
-    bullish_list = []
-    bearish_list = []
-    all_stocks = []
+  bullish_list = []
+  bearish_list = []
+  all_stocks = []
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
-        results = executor.map(analyze_stock_5m, NIFTY_CASH_ONLY_SYMBOLS)
-        for res in results:
-            if res:
-                all_stocks.append(res)
-                if res['IsBullish']:
-                    bullish_list.append(res)
-                if res['IsBearish']:
-                    bearish_list.append(res)
+  with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
+    results = executor.map(analyze_stock_5m, NIFTY_CASH_ONLY_SYMBOLS)
+    for res in results:
+      if res:
+        all_stocks.append(res)
+        if res["IsBullish"]:
+          bullish_list.append(res)
+        if res["IsBearish"]:
+          bearish_list.append(res)
 
-    all_df = pd.DataFrame(all_stocks)
-    top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
-    top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
-    
-    # Sort setup lists strictly by Highest Volume Surge Multiple and slice TOP 10
-    bullish_top10 = sorted(bullish_list, key=lambda x: x['VolMultiple'], reverse=True)[:10]
-    bearish_top10 = sorted(bearish_list, key=lambda x: x['VolMultiple'], reverse=True)[:10]
+  all_df = pd.DataFrame(all_stocks)
+  top_gainer = (
+      all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
+      if not all_df.empty
+      else None
+  )
+  top_loser = (
+      all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
+      if not all_df.empty
+      else None
+  )
 
-    gainers_4 = all_df.sort_values(by="ChangePct", ascending=False).head(4).to_dict('records') if not all_df.empty else []
-    losers_4 = all_df.sort_values(by="ChangePct", ascending=True).head(4).to_dict('records') if not all_df.empty else []
-    balanced_movers = gainers_4 + losers_4
+  # Sort setup lists strictly by Highest Volume Surge Multiple and slice TOP 10
+  bullish_top10 = sorted(
+      bullish_list, key=lambda x: x["VolMultiple"], reverse=True
+  )[:10]
+  bearish_top10 = sorted(
+      bearish_list, key=lambda x: x["VolMultiple"], reverse=True
+  )[:10]
 
-    return bullish_top10, bearish_top10, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
+  gainers_4 = (
+      all_df.sort_values(by="ChangePct", ascending=False)
+      .head(4)
+      .to_dict("records")
+      if not all_df.empty
+      else []
+  )
+  losers_4 = (
+      all_df.sort_values(by="ChangePct", ascending=True)
+      .head(4)
+      .to_dict("records")
+      if not all_df.empty
+      else []
+  )
+  balanced_movers = gainers_4 + losers_4
 
-# --- AUTOMATIC MARKET OPEN / CLOSE LOGIC ---
-now_dt = datetime.datetime.now()
+  return (
+      bullish_top10,
+      bearish_top10,
+      top_gainer,
+      top_loser,
+      balanced_movers,
+      len(bullish_list),
+      len(bearish_list),
+  )
+
+
+# --- AUTOMATIC MARKET OPEN / CLOSE LOGIC (FIXED FOR IST TIMEZONE) ---
+ist_tz = ZoneInfo("Asia/Kolkata")
+now_dt = datetime.datetime.now(ist_tz)
+
 market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
 market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
 
 is_weekday = now_dt.weekday() < 5
-is_market_open = is_weekday and (market_open_time <= now_dt <= market_close_time)
+is_market_open = is_weekday and (
+    market_open_time <= now_dt <= market_close_time
+)
 
 if is_market_open:
-    status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> MARKET OPEN</span>'
+  status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> MARKET OPEN</span>'
 else:
-    status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
+  status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
 # --- TOP BAR ---
 top_idx = fetch_indices()
@@ -513,16 +644,17 @@ now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 head_col1, head_col2 = st.columns([0.80, 0.20])
 
 with head_col1:
-    idx_items_html = ""
-    for name, data in top_idx.items():
-        cls = "idx-up" if data.get('pct', 0) >= 0 else "idx-down"
-        arrow = "▲" if data.get('pct', 0) >= 0 else "▼"
-        url = data.get("url", "#")
-        val = data.get("val", 0)
-        pct = data.get("pct", 0)
-        idx_items_html += f'<a class="idx-item" href="{url}" target="_blank"><span class="idx-name">{name}:</span> <span class="idx-val">{val:,}</span> <span class="{cls}">{arrow} {pct}%</span></a>'
+  idx_items_html = ""
+  for name, data in top_idx.items():
+    cls = "idx-up" if data.get("pct", 0) >= 0 else "idx-down"
+    arrow = "▲" if data.get("pct", 0) >= 0 else "▼"
+    url = data.get("url", "#")
+    val = data.get("val", 0)
+    pct = data.get("pct", 0)
+    idx_items_html += f'<a class="idx-item" href="{url}" target="_blank"><span class="idx-name">{name}:</span> <span class="idx-val">{val:,}</span> <span class="{cls}">{arrow} {pct}%</span></a>'
 
-    st.markdown(f"""
+  st.markdown(
+      f"""
         <div class="top-nav">
             <div class="nav-title-badge">HIRA MOUNT TRADER</div>
             <div class="nav-indices">
@@ -533,31 +665,44 @@ with head_col1:
                 <div style="font-size: 11px; color: {text_sub}; font-weight: 700;">🕒 {now_time}</div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
 with head_col2:
-    st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
-    btn_c1, btn_c2 = st.columns(2)
-    # SWAPPED BUTTONS: Theme Toggle on Left, Refresh on Right
-    with btn_c1:
-        theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
-        if st.button(theme_icon, use_container_width=True):
-            st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
-            st.rerun()
-    with btn_c2:
-        if st.button("🔄 Refresh", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
+  st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
+  btn_c1, btn_c2 = st.columns(2)
+  # SWAPPED BUTTONS: Theme Toggle on Left, Refresh on Right
+  with btn_c1:
+    theme_icon = "🌙 Dark" if st.session_state.theme == "light" else "☀️ Light"
+    if st.button(theme_icon, use_container_width=True):
+      st.session_state.theme = (
+          "light" if st.session_state.theme == "dark" else "dark"
+      )
+      st.rerun()
+  with btn_c2:
+    if st.button("🔄 Refresh", use_container_width=True):
+      st.cache_data.clear()
+      st.rerun()
 
 # --- EXECUTE SCANNER ---
-bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
+(
+    bullish_signals,
+    bearish_signals,
+    top_gainer,
+    top_loser,
+    market_movers,
+    total_bull_cnt,
+    total_bear_cnt,
+) = run_market_scanner()
 
 # --- METRIC CARDS ROW ---
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
-    if top_gainer:
-        st.markdown(f"""
+  if top_gainer:
+    st.markdown(
+        f"""
             <div class="metric-container">
                 <div class="card-label">TOP GAINER</div>
                 <a href="{top_gainer['TVUrl']}" target="_blank" style="text-decoration:none;">
@@ -565,11 +710,14 @@ with c1:
                     <div class="card-value-green">+{top_gainer['ChangePct']:.2f}% <span style="font-size:12px; font-weight:normal;">(+₹{top_gainer['ChangePts']})</span></div>
                 </a>
             </div>
-        """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
 with c2:
-    if top_loser:
-        st.markdown(f"""
+  if top_loser:
+    st.markdown(
+        f"""
             <div class="metric-container">
                 <div class="card-label">TOP LOSER</div>
                 <a href="{top_loser['TVUrl']}" target="_blank" style="text-decoration:none;">
@@ -577,10 +725,13 @@ with c2:
                     <div class="card-value-red">{top_loser['ChangePct']:.2f}% <span style="font-size:12px; font-weight:normal;">(₹{top_loser['ChangePts']})</span></div>
                 </a>
             </div>
-        """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
 with c3:
-    st.markdown(f"""
+  st.markdown(
+      f"""
         <div class="metric-container">
             <div class="card-label">MARKET SENTIMENT</div>
             <div style="font-size: 16px; font-weight: 900; color: {text_main}; margin-top:2px;">
@@ -588,10 +739,13 @@ with c3:
             </div>
             <div style="font-size: 11px; color: {text_sub}; margin-top: 2px;">Bullish: {total_bull_cnt} | Bearish: {total_bear_cnt}</div>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
 with c4:
-    st.markdown(f"""
+  st.markdown(
+      f"""
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
             <div style="font-size: 16px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
@@ -599,22 +753,30 @@ with c4:
             </div>
             <div style="font-size: 11px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active Signals: {total_bull_cnt + total_bear_cnt}</div>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
 # --- MARKET MOVERS ---
-st.markdown("""
+st.markdown(
+    """
     <div class="box-container">
         <div class="box-title">🔥 MARKET MOVERS</div>
     </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 if market_movers:
-    m_cols = st.columns(len(market_movers))
-    for i, m in enumerate(market_movers):
-        with m_cols[i]:
-            p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
-            sign = "+" if m['ChangePct'] >= 0 else ""
-            st.markdown(f"""
+  m_cols = st.columns(len(market_movers))
+  for i, m in enumerate(market_movers):
+    with m_cols[i]:
+      p_class = (
+          "stock-price-up" if m["ChangePct"] >= 0 else "stock-price-down"
+      )
+      sign = "+" if m["ChangePct"] >= 0 else ""
+      st.markdown(
+          f"""
                 <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
                     <div class="stock-card">
                         <div class="stock-symbol">{m['Symbol']}</div>
@@ -625,7 +787,9 @@ if market_movers:
                         <div class="stock-meta">🕒 Trigger: {m['SignalTime']}</div>
                     </div>
                 </a>
-            """, unsafe_allow_html=True)
+            """,
+          unsafe_allow_html=True,
+      )
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
@@ -633,7 +797,8 @@ st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
-    st.markdown("""
+  st.markdown(
+      """
         <div class="setup-box">
             <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS (TOP 10 VOL SURGE)</div>
             <div class="row-header">
@@ -643,11 +808,14 @@ with tb_col1:
                 <span style="width: 15%; text-align:right;">PRICE</span>
                 <span style="width: 15%; text-align:right;">CHANGE</span>
             </div>
-    """, unsafe_allow_html=True)
-    
-    if bullish_signals:
-        for s in bullish_signals:
-            st.markdown(f"""
+    """,
+      unsafe_allow_html=True,
+  )
+
+  if bullish_signals:
+    for s in bullish_signals:
+      st.markdown(
+          f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
                     <div style="width: 28%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
                     <div style="width: 22%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
@@ -655,14 +823,22 @@ with tb_col1:
                     <div style="width: 15%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
                     <div style="width: 15%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
                 </a>
-            """, unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakouts in Hira Stocks...</div>', unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+            """,
+          unsafe_allow_html=True,
+      )
+  else:
+    st.markdown(
+        f'<div style="text-align:center; color:{text_sub}; padding:25px;'
+        ' font-weight:600;">Searching for Pure Pause Candle breakouts in Hira'
+        " Stocks...</div>",
+        unsafe_allow_html=True,
+    )
+
+  st.markdown("</div>", unsafe_allow_html=True)
 
 with tb_col2:
-    st.markdown("""
+  st.markdown(
+      """
         <div class="setup-box">
             <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS (TOP 10 VOL SURGE)</div>
             <div class="row-header">
@@ -672,11 +848,14 @@ with tb_col2:
                 <span style="width: 15%; text-align:right;">PRICE</span>
                 <span style="width: 15%; text-align:right;">CHANGE</span>
             </div>
-    """, unsafe_allow_html=True)
-    
-    if bearish_signals:
-        for s in bearish_signals:
-            st.markdown(f"""
+    """,
+      unsafe_allow_html=True,
+  )
+
+  if bearish_signals:
+    for s in bearish_signals:
+      st.markdown(
+          f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
                     <div style="width: 28%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
                     <div style="width: 22%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
@@ -684,8 +863,15 @@ with tb_col2:
                     <div style="width: 15%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
                     <div style="width: 15%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
                 </a>
-            """, unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira Stocks...</div>', unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+            """,
+          unsafe_allow_html=True,
+      )
+  else:
+    st.markdown(
+        f'<div style="text-align:center; color:{text_sub}; padding:25px;'
+        ' font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira'
+        " Stocks...</div>",
+        unsafe_allow_html=True,
+    )
+
+  st.markdown("</div>", unsafe_allow_html=True)
