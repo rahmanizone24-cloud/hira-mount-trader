@@ -17,7 +17,7 @@ st.set_page_config(
 
 # --- THEME STATE MANAGEMENT (PERSISTENT FIX) ---
 if "theme" not in st.session_state:
-  st.session_state.theme = "dark"
+    st.session_state.theme = "dark"
 
 # --- THEME CSS DEFINITIONS ---
 DARK_THEME_CSS = """
@@ -48,9 +48,9 @@ LIGHT_THEME_CSS = """
 
 # Apply Theme
 if st.session_state.theme == "dark":
-  st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
+    st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 else:
-  st.markdown(LIGHT_THEME_CSS, unsafe_allow_html=True)
+    st.markdown(LIGHT_THEME_CSS, unsafe_allow_html=True)
 
 # --- MARKET STATUS LOGIC (IST TIMEZONE) ---
 now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
@@ -69,84 +69,84 @@ is_market_open = (
 col_title, col_status, col_theme = st.columns([3, 2, 1])
 
 with col_title:
-  st.title("🦅 HIRA MOUNT TRADER")
+    st.title("🦅 HIRA MOUNT TRADER")
 
 with col_status:
-  if is_market_open:
-    st.markdown(
-        "### Status: <span style='color:#2ea44f;'>🟢 MARKET OPEN</span>",
-        unsafe_allow_html=True,
-    )
-  else:
-    st.markdown(
-        "### Status: <span style='color:#cb2431;'>🔴 MARKET CLOSED</span>",
-        unsafe_allow_html=True,
-    )
+    if is_market_open:
+        st.markdown(
+            "### Status: <span style='color:#2ea44f;'>🟢 MARKET OPEN</span>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            "### Status: <span style='color:#cb2431;'>🔴 MARKET CLOSED</span>",
+            unsafe_allow_html=True,
+        )
 
 with col_theme:
-  theme_btn_label = (
-      "☀️ Light Mode"
-      if st.session_state.theme == "dark"
-      else "🌙 Dark Mode"
-  )
-  if st.button(theme_btn_label, key="theme_toggle_btn"):
-    st.session_state.theme = (
-        "light" if st.session_state.theme == "dark" else "dark"
+    theme_btn_label = (
+        "☀️ Light Mode"
+        if st.session_state.theme == "dark"
+        else "🌙 Dark Mode"
     )
-    st.rerun()
+    if st.button(theme_btn_label, key="theme_toggle_btn"):
+        st.session_state.theme = (
+            "light" if st.session_state.theme == "dark" else "dark"
+        )
+        st.rerun()
 
 st.divider()
 
 # --- DATA LOADING & PROCESSING ---
 @st.cache_data(ttl=60)
 def load_stock_list():
-  if os.path.exists("Hira Stocks.csv"):
-    df = pd.read_csv("Hira Stocks.csv")
-    if "Symbol" in df.columns:
-      return df["Symbol"].dropna().unique().tolist()
-  return [
-      "RELIANCE.NS",
-      "TCS.NS",
-      "INFY.NS",
-      "HDFCBANK.NS",
-      "ICICIBANK.NS",
-      "TATAMOTORS.NS",
-      "SBIN.NS",
-      "BHARTIARTL.NS",
-  ]
+    if os.path.exists("Hira Stocks.csv"):
+        df = pd.read_csv("Hira Stocks.csv")
+        if "Symbol" in df.columns:
+            return df["Symbol"].dropna().unique().tolist()
+    return [
+        "RELIANCE.NS",
+        "TCS.NS",
+        "INFY.NS",
+        "HDFCBANK.NS",
+        "ICICIBANK.NS",
+        "TATAMOTORS.NS",
+        "SBIN.NS",
+        "BHARTIARTL.NS",
+    ]
 
 
 def fetch_stock_data(symbol):
-  try:
-    ticker = yf.Ticker(symbol)
-    df = ticker.history(period="5d", interval="5m")
-    if df.empty or len(df) < 20:
-      return None
+    try:
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period="5d", interval="5m")
+        if df.empty or len(df) < 20:
+            return None
 
-    # EMA calculations
-    df["EMA20"] = df["Close"].ewm(span=20, adjust=False).mean()
-    df["EMA200"] = df["Close"].ewm(span=200, adjust=False).mean()
+        # EMA calculations
+        df["EMA20"] = df["Close"].ewm(span=20, adjust=False).mean()
+        df["EMA200"] = df["Close"].ewm(span=200, adjust=False).mean()
 
-    # VWAP calculation
-    df["VWAP"] = (df["Volume"] * (df["High"] + df["Low"] + df["Close"]) / 3).cumsum() / df["Volume"].cumsum()
+        # VWAP calculation
+        df["VWAP"] = (df["Volume"] * (df["High"] + df["Low"] + df["Close"]) / 3).cumsum() / df["Volume"].cumsum()
 
-    last_row = df.iloc[-1]
-    prev_row = df.iloc[-2]
+        last_row = df.iloc[-1]
+        prev_row = df.iloc[-2]
 
-    return {
-        "Symbol": symbol.replace(".NS", ""),
-        "LTP": round(last_row["Close"], 2),
-        "Change %": round(
-            ((last_row["Close"] - prev_row["Close"]) / prev_row["Close"]) * 100,
-            2,
-        ),
-        "Volume": int(last_row["Volume"]),
-        "EMA 20": round(last_row["EMA20"], 2),
-        "EMA 200": round(last_row["EMA200"], 2),
-        "VWAP": round(last_row["VWAP"], 2),
-    }
-except Exception:
-  return None
+        return {
+            "Symbol": symbol.replace(".NS", ""),
+            "LTP": round(last_row["Close"], 2),
+            "Change %": round(
+                ((last_row["Close"] - prev_row["Close"]) / prev_row["Close"]) * 100,
+                2,
+            ),
+            "Volume": int(last_row["Volume"]),
+            "EMA 20": round(last_row["EMA20"], 2),
+            "EMA 200": round(last_row["EMA200"], 2),
+            "VWAP": round(last_row["VWAP"], 2),
+        }
+    except Exception:
+        return None
 
 
 # --- MAIN INTERFACE ---
@@ -154,38 +154,38 @@ symbols = load_stock_list()
 
 col_search, col_scan = st.columns([3, 1])
 with col_search:
-  search_query = st.text_input(
-      "🔍 Search Stock Symbol", "", placeholder="Type stock name..."
-  )
+    search_query = st.text_input(
+        "🔍 Search Stock Symbol", "", placeholder="Type stock name..."
+    )
 
 with col_scan:
-  st.write("")
-  st.write("")
-  scan_btn = st.button("🔄 Refresh Data", use_container_width=True)
+    st.write("")
+    st.write("")
+    scan_btn = st.button("🔄 Refresh Data", use_container_width=True)
 
 # Fetch data using multithreading for speed
 results = []
 with st.spinner("Fetching market data..."):
-  with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-    futures = [executor.submit(fetch_stock_data, sym) for sym in symbols]
-    for future in concurrent.futures.as_completed(futures):
-      res = future.result()
-      if res:
-        results.append(res)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(fetch_stock_data, sym) for sym in symbols]
+        for future in concurrent.futures.as_completed(futures):
+            res = future.result()
+            if res:
+                results.append(res)
 
 if results:
-  df_results = pd.DataFrame(results)
+    df_results = pd.DataFrame(results)
 
-  # Filter by search
-  if search_query:
-    df_results = df_results[
-        df_results["Symbol"].str.contains(search_query.upper(), case=False)
-    ]
+    # Filter by search
+    if search_query:
+        df_results = df_results[
+            df_results["Symbol"].str.contains(search_query.upper(), case=False)
+        ]
 
-  st.dataframe(
-      df_results,
-      use_container_width=True,
-      hide_index=True,
-  )
+    st.dataframe(
+        df_results,
+        use_container_width=True,
+        hide_index=True,
+    )
 else:
-  st.info("No data available at the moment. Please try refreshing.")
+    st.info("No data available at the moment. Please try refreshing.")
