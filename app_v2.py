@@ -438,9 +438,9 @@ def analyze_stock_5m(symbol):
         if not (100 <= latest_price_check <= 2500):
             return None
 
-        # 3. HIGH LIQUIDITY FILTER: DAILY VOLUME MINIMUM 1,000,000 (10 Lakhs)
+        # 3. BALANCED LIQUIDITY FILTER (REVERTED TO WORKING 100,000 LIMIT)
         avg_daily_vol = df_daily['Volume'].iloc[-2] if len(df_daily) >= 2 else 0
-        if avg_daily_vol < 1000000:
+        if avg_daily_vol < 100000:
             return None
 
         today = df_5m.index[-1].date()
@@ -465,38 +465,36 @@ def analyze_stock_5m(symbol):
         if c1_range <= 0:
             return None
 
-        # 4. GAP CONDITION: OPEN NEAR PREVIOUS DAY CLOSE (GAP <= 0.5%)
+        # 4. GAP CONDITION: OPEN NEAR PREVIOUS DAY CLOSE (GAP <= 0.8%)
         gap_pct = abs((c1_open - prev_close) / prev_close) * 100
-        if gap_pct > 0.5:
+        if gap_pct > 0.8:
             return None
 
-        # 5. C1 HEIGHT FILTER: <= 1.0%
+        # 5. C1 HEIGHT FILTER: <= 1.2%
         c1_height_pct = (c1_range / c1_open) * 100
-        if c1_height_pct > 1.0:
+        if c1_height_pct > 1.2:
             return None
 
-        # 6. NO WICK / MINIMAL WICK CONDITION (SOLID BODY CANDLE)
-        # Upper and lower wicks must not exceed 20% of the total candle range
+        # 6. WICK CONDITION (BALANCED 30% LIMIT FOR SOLID BODY)
         c1_upper_wick = c1_high - max(c1_open, c1_close)
         c1_lower_wick = min(c1_open, c1_close) - c1_low
-        if (c1_upper_wick / c1_range > 0.20) or (c1_lower_wick / c1_range > 0.20):
+        if (c1_upper_wick / c1_range > 0.30) or (c1_lower_wick / c1_range > 0.30):
             return None
 
-        # 7. C2 (9:20) VERY SMALL PAUSE CANDLE
+        # 7. C2 (9:20) PAUSE CANDLE (INSIDE BAR)
         c2 = today_df.iloc[1]
         c2_inside = (c2['High'] <= c1_high) and (c2['Low'] >= c1_low)
-        c2_small = (c2['High'] - c2['Low']) <= (0.5 * c1_range)
-        if not (c2_inside and c2_small):
+        if not c2_inside:
             return None
 
-        # 8. EMA PROXIMITY CHECK (CLOSE TO 20 AND 200 EMA)
+        # 8. BALANCED EMA PROXIMITY CHECK
         c1_ema20 = c1['EMA20']
         c1_ema200 = c1['EMA200']
         
         dist_ema20 = abs(c1_close - c1_ema20) / c1_ema20 * 100
         dist_ema200 = abs(c1_close - c1_ema200) / c1_ema200 * 100
 
-        if dist_ema20 > 0.8 or dist_ema200 > 1.2:
+        if dist_ema20 > 1.5 or dist_ema200 > 2.0:
             return None
 
         c1_green = c1_close > c1_open
@@ -515,7 +513,7 @@ def analyze_stock_5m(symbol):
         signal_time = ""
         vol_multiple = 1.0
 
-        # 9. POWERFUL BREAKOUT CHECK WITH 20 & 200 EMA CROSSOVER
+        # 9. BREAKOUT LOGIC (100% MATCHING WORKING BASE)
         # BULLISH CHECK
         if c1_green and (c1_close >= c1_ema20) and (c1_close >= c1_ema200):
             for i in range(2, len(today_df)):
