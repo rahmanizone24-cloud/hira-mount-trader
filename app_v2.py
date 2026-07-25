@@ -46,17 +46,29 @@ else:
 
 st.markdown(f"""
     <style>
-        /* Hide Default Streamlit Chrome */
-        header {{visibility: hidden;}}
-        footer {{visibility: hidden;}}
-        #MainMenu {{visibility: hidden;}}
+        /* HIDE STREAMLIT CHROME AND MANAGE APP FOOTER TOTALLY */
+        header {{visibility: hidden !important; height: 0px !important;}}
+        footer {{visibility: hidden !important; display: none !important;}}
+        #MainMenu {{visibility: hidden !important;}}
         
         div[data-testid="stStatusWidget"] {{
             display: none !important;
         }}
 
-        .stApp > footer, div[data-testid="stToolbar"], [data-testid="stDecoration"] {{
+        /* AGGRESSIVE CSS TO HIDE MANAGE APP BAR & STREAMLIT CLOUD BADGE */
+        .stApp > footer, 
+        div[data-testid="stToolbar"], 
+        [data-testid="stDecoration"],
+        [data-testid="stAppToolbar"],
+        div[class*="viewerBadge"],
+        div[class*="stManageAppButton"],
+        iframe[title="manage-app"] {{
             display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0px !important;
+            width: 0px !important;
+            pointer-events: none !important;
         }}
 
         /* Remove Page Padding */
@@ -75,14 +87,14 @@ st.markdown(f"""
             font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         }}
 
-        /* HIDE ALL LOADING POPUPS / SPINNERS */
+        /* HIDE ALL LOADING SPINNERS */
         div[data-testid="stSpinner"], .stSpinner {{
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;
         }}
 
-        /* Custom Larger Button Styling */
+        /* Custom Button Styling */
         .stButton>button {{
             background-color: {btn_bg} !important;
             color: {accent_blue} !important;
@@ -375,56 +387,57 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* GLOWING KRRISH STYLE AVATAR */
-        .hero-avatar-container {{
-            width: 55px;
-            height: 55px;
-            background: radial-gradient(circle, rgba(0,212,255,0.4) 0%, rgba(9,9,121,0.9) 100%);
-            border: 2px solid #00d2ff;
+        /* HIGH QUALITY GLOWING KRRISH AVATAR */
+        .krrish-hero-avatar {{
+            width: 62px;
+            height: 62px;
+            background: radial-gradient(circle, #00d2ff 0%, #031528 85%);
+            border: 2.5px solid #00d2ff;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 15px #00d2ff;
+            box-shadow: 0 0 20px #00d2ff;
             cursor: pointer;
-            animation: pulseGlow 2s infinite alternate;
+            animation: pulseGlow 1.8s infinite alternate;
             user-select: none;
+            position: relative;
         }}
 
         @keyframes pulseGlow {{
-            0% {{ box-shadow: 0 0 8px rgba(0, 210, 255, 0.5); transform: scale(0.96); }}
-            100% {{ box-shadow: 0 0 22px rgba(0, 210, 255, 1); transform: scale(1.05); }}
+            0% {{ box-shadow: 0 0 10px rgba(0, 210, 255, 0.6); transform: scale(0.95); }}
+            100% {{ box-shadow: 0 0 28px rgba(0, 210, 255, 1); transform: scale(1.05); }}
         }}
 
         /* ALERT HISTORY PANEL DRAWER */
         .alerts-history-panel {{
             display: none;
             position: fixed;
-            bottom: 85px;
+            bottom: 95px;
             right: 20px;
-            width: 280px;
-            max-height: 380px;
+            width: 290px;
+            max-height: 400px;
             background-color: {card_bg};
             border: 2px solid #00d2ff;
             border-radius: 12px;
             padding: 12px;
-            box-shadow: 0px 10px 30px rgba(0,0,0,0.8);
-            z-index: 99999;
+            box-shadow: 0px 12px 35px rgba(0,0,0,0.9);
+            z-index: 999999;
             overflow-y: auto;
         }}
 
         /* AUTO-DISMISS TOAST BUBBLE */
         .toast-bubble {{
             position: fixed;
-            bottom: 85px;
+            bottom: 95px;
             right: 20px;
             background-color: {card_bg};
             border: 2px solid #00d2ff;
             border-radius: 10px;
             padding: 10px 14px;
-            max-width: 270px;
-            box-shadow: 0px 8px 24px rgba(0,0,0,0.6);
-            z-index: 99998;
+            max-width: 280px;
+            box-shadow: 0px 8px 24px rgba(0,0,0,0.7);
+            z-index: 999998;
         }}
 
         .clear-btn {{
@@ -892,7 +905,7 @@ for stock in all_ready_stocks:
 if not alert_items_html:
     alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">No active breakouts yet</div>'
 
-# --- CLEAN INTERACTIVE HERO ASSISTANT ---
+# --- CLEAN INTERACTIVE HERO ASSISTANT WITH HIGH QUALITY VECTOR AVATAR ---
 latest_sym = latest_ready_stock['Symbol'] if latest_ready_stock else ''
 latest_type = ('Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown') if latest_ready_stock else ''
 latest_time = latest_ready_stock['SignalTime'] if latest_ready_stock else ''
@@ -901,11 +914,14 @@ latest_change = f"{latest_ready_stock['ChangePct']:+.2f}%" if latest_ready_stock
 latest_color = ("#3fb950" if latest_ready_stock and latest_ready_stock['IsBullish'] else "#f85149") if latest_ready_stock else "#58a6ff"
 toast_display = 'block' if latest_ready_stock else 'none'
 
+# HD MASKED SUPERHERO SVG AVATAR
+HERO_AVATAR_SVG = '''<svg viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#0b1329"/><path d="M50 15 C35 15 25 30 25 45 C25 65 38 80 50 85 C62 80 75 65 75 45 C75 30 65 15 50 15 Z" fill="#162b4d"/><path d="M30 38 Q50 25 70 38 Q78 50 70 58 Q50 48 30 58 Q22 50 30 38 Z" fill="#00d2ff"/><circle cx="41" cy="46" r="4" fill="#ffffff"/><circle cx="59" cy="46" r="4" fill="#ffffff"/><path d="M42 68 Q50 74 58 68" stroke="#00d2ff" stroke-width="3" fill="none"/></svg>'''
+
 robot_html = f"""
-    <!-- KRRISH AVATAR ICON -->
-    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 99999;" onclick="toggleAlertPanel()">
-        <div class="hero-avatar-container" title="Click to view Alert History">
-            <span style="font-size:28px;">🦸‍♂️</span>
+    <!-- KRRISH HD AVATAR BUTTON -->
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 999999;" onclick="toggleAlertPanel()">
+        <div class="krrish-hero-avatar" title="Click to view Alert History">
+            {HERO_AVATAR_SVG}
         </div>
     </div>
 
