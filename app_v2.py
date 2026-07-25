@@ -348,8 +348,8 @@ def load_hira_stocks():
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
 
-# --- FAST FETCH EXACT 4 INDICES (OPTIMIZED CACHE & FAST DATA) ---
-@st.cache_data(ttl=60)
+# --- ACCURATE FETCH FOR TOP INDICES (REAL-TIME CLOSE & PREVIOUS CLOSE) ---
+@st.cache_data(ttl=30)
 def fetch_indices():
     indices = {
         "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
@@ -358,20 +358,28 @@ def fetch_indices():
         "NIFTY MIDCAP": ("NIFTY_MID_SELECT.NS", "NSE:NIFTY_MID_SELECT")
     }
     res = {}
-    tickers = yf.Tickers(" ".join([sym for sym, _ in indices.values()]))
-    
     for name, (sym, tv_sym) in indices.items():
         try:
-            df = tickers.tickers[sym].history(period="2d")
+            ticker = yf.Ticker(sym)
+            df = ticker.history(period="5d")
+            tv_url = f"https://www.tradingview.com/chart/?symbol={tv_sym}"
+            
             if len(df) >= 2:
                 curr = df['Close'].iloc[-1]
                 prev = df['Close'].iloc[-2]
                 change = curr - prev
                 pct = (change / prev) * 100
-                tv_url = f"https://www.tradingview.com/chart/?symbol={tv_sym}"
                 res[name] = {"val": round(curr, 2), "change": round(change, 2), "pct": round(pct, 2), "url": tv_url}
             else:
-                res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": f"https://www.tradingview.com/chart/?symbol={tv_sym}"}
+                # Fallback to fast_info
+                curr = ticker.fast_info.last_price
+                prev = ticker.fast_info.previous_close
+                if curr and prev:
+                    change = curr - prev
+                    pct = (change / prev) * 100
+                    res[name] = {"val": round(curr, 2), "change": round(change, 2), "pct": round(pct, 2), "url": tv_url}
+                else:
+                    res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": tv_url}
         except:
             res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": f"https://www.tradingview.com/chart/?symbol={tv_sym}"}
     return res
@@ -530,11 +538,11 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP SINGLE ROW NAVIGATION HEADER (ENLARGED & BALANCED) ---
+# --- TOP SINGLE ROW NAVIGATION HEADER ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-# Construct larger, bold index HTML Pills
+# Construct accurate & live index HTML Pills
 idx_pills_html = '<div class="header-indices-wrapper">'
 for name, data in top_idx.items():
     pct = data.get('pct', 0)
