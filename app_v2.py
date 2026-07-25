@@ -162,7 +162,7 @@ st.markdown(f"""
             border-radius: 5px;
             font-size: 11px;
             font-weight: 800;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 5px;
         }}
@@ -175,7 +175,7 @@ st.markdown(f"""
             border-radius: 5px;
             font-size: 11px;
             font-weight: 800;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 5px;
         }}
@@ -528,20 +528,20 @@ def run_market_scanner():
 
     return bullish_top10, bearish_top10, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
-# --- AUTOMATIC MARKET OPEN / CLOSE LOGIC (INDIAN TIME IST FIXED) ---
+# --- AUTOMATIC MARKET OPEN / CLOSE LOGIC ---
 ist_tz = pytz.timezone('Asia/Kolkata')
 now_dt = datetime.datetime.now(ist_tz)
 
 market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
 market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
 
-is_weekday = now_dt.weekday() < 5  # Monday = 0, Friday = 4
+is_weekday = now_dt.weekday() < 5
 is_market_open = is_weekday and (market_open_time <= now_dt <= market_close_time)
 
 if is_market_open:
-    status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> MARKET OPEN</span>'
+    status_text = '<span class="market-status-open"><span class="live-blink">🟢</span> MARKET OPEN</span>'
 else:
-    status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
+    status_text = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
 # --- TOP BAR ---
 top_idx = fetch_indices()
@@ -559,19 +559,20 @@ with head_col1:
         pct = data.get("pct", 0)
         idx_items_html += f'<a class="idx-item" href="{url}" target="_blank"><span class="idx-name">{name}:</span> <span class="idx-val">{val:,}</span> <span class="{cls}">{arrow} {pct}%</span></a>'
 
-    # ✅ Fix: Properly structured HTML string with closed top-nav div
-    st.markdown(f"""
-        <div class="top-nav">
-            <div class="nav-title-clean">HIRA MOUNT TRADER</div>
-            <div class="nav-indices">
-                {idx_items_html}
-            </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-                {status_html}
-                <div style="font-size: 11px; color: {text_sub}; font-weight: 700;">🕒 {now_time}</div>
-            </div>
+    # ✅ FIXED HTML BLOCK - NO STRING BREAKING ISSUE
+    top_nav_html = f'''
+    <div class="top-nav">
+        <div class="nav-title-clean">HIRA MOUNT TRADER</div>
+        <div class="nav-indices">
+            {idx_items_html}
         </div>
-    """, unsafe_allow_html=True)
+        <div style="display:flex; align-items:center; gap:8px;">
+            {status_text}
+            <div style="font-size: 11px; color: {text_sub}; font-weight: 700;">🕒 {now_time}</div>
+        </div>
+    </div>
+    '''
+    st.markdown(top_nav_html, unsafe_allow_html=True)
 
 with head_col2:
     st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
@@ -672,7 +673,7 @@ st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
-    st.markdown("""
+    bull_header = f"""
         <div class="setup-box">
             <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
             <div class="row-header">
@@ -683,7 +684,8 @@ with tb_col1:
                 <span style="width: 12%; text-align:right;">PRICE</span>
                 <span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(bull_header, unsafe_allow_html=True)
     
     if bullish_signals:
         for s in bullish_signals:
@@ -700,11 +702,10 @@ with tb_col1:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakouts in Hira Stocks...</div>', unsafe_allow_html=True)
     
-    # ✅ Fix: Added unsafe_allow_html=True
     st.markdown('</div>', unsafe_allow_html=True)
 
 with tb_col2:
-    st.markdown("""
+    bear_header = f"""
         <div class="setup-box">
             <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
             <div class="row-header">
@@ -715,7 +716,8 @@ with tb_col2:
                 <span style="width: 12%; text-align:right;">PRICE</span>
                 <span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(bear_header, unsafe_allow_html=True)
     
     if bearish_signals:
         for s in bearish_signals:
@@ -732,7 +734,6 @@ with tb_col2:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira Stocks...</div>', unsafe_allow_html=True)
     
-    # ✅ Fix: Added unsafe_allow_html=True
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- AUTOMATIC SILENT AUTO-REFRESH (EVERY 30 SECONDS - ONLY WHEN MARKET IS OPEN) ---
