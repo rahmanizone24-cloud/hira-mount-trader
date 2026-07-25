@@ -445,7 +445,7 @@ def analyze_stock_5m(symbol):
         latest_trading_date = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
         
-        if len(today_df) < 1:
+        if len(today_df) < 2:
             return None
 
         latest = today_df.iloc[-1]
@@ -464,77 +464,65 @@ def analyze_stock_5m(symbol):
         signal_time = "-"
         vol_multiple = 1.0
 
-        if len(today_df) >= 2:
-            c1 = today_df.iloc[0] # 09:15 Candle
-            c2 = today_df.iloc[1] # 09:20 Candle (Profit Booking / Inside Bar)
+        c1 = today_df.iloc[0] # 09:15 Candle
+        c2 = today_df.iloc[1] # 09:20 Candle (Inside Bar / Profit Booking)
 
-            # STRICT 1.50% RANGE LIMIT ON CANDLE 1
-            c1_range_pct = ((c1['High'] - c1['Low']) / c1['Low']) * 100
+        # STRICT 1.50% RANGE LIMIT ON CANDLE 1
+        c1_range_pct = ((c1['High'] - c1['Low']) / c1['Low']) * 100
 
-            # --- BULLISH BASE CONDITION ---
-            # Candle 1 Range <= 1.50% & Closed Above 20 EMA
-            c1_bull_cond = (
-                (c1_range_pct <= 1.50) and
-                (c1['Close'] >= c1['EMA20'])
-            )
+        # --- BULLISH BASE STRUCTURE ---
+        # 9:15 Candle Range <= 1.50% & Closed Above 20 EMA
+        c1_bull_cond = (c1_range_pct <= 1.50) and (c1['Close'] >= c1['EMA20'])
 
-            # Candle 2 Inside Bar (Profit Booking)
-            c2_bull_inside = (
-                (c2['High'] <= c1['High']) and
-                (c2['Low'] >= c1['Low'])
-            )
+        # 9:20 Candle Inside Bar (Profit Booking)
+        c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-            # --- BEARISH BASE CONDITION ---
-            # Candle 1 Range <= 1.50% & Closed Below 20 EMA
-            c1_bear_cond = (
-                (c1_range_pct <= 1.50) and
-                (c1['Close'] <= c1['EMA20'])
-            )
+        # --- BEARISH BASE STRUCTURE ---
+        # 9:15 Candle Range <= 1.50% & Closed Below 20 EMA
+        c1_bear_cond = (c1_range_pct <= 1.50) and (c1['Close'] <= c1['EMA20'])
 
-            # Candle 2 Inside Bar (Profit Booking)
-            c2_bear_inside = (
-                (c2['High'] <= c1['High']) and
-                (c2['Low'] >= c1['Low'])
-            )
+        # 9:20 Candle Inside Bar (Profit Booking)
+        c2_bear_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-            max_base_vol = max(c1['Volume'], c2['Volume'])
-            if max_base_vol == 0:
-                max_base_vol = 1
+        max_base_vol = max(c1['Volume'], c2['Volume'])
+        if max_base_vol == 0:
+            max_base_vol = 1
 
-            # --- INTRADAY UPSIDE / DOWNSIDE BREAKOUT CHECK ---
-            if c1_bull_cond and c2_bull_inside:
-                signal_bullish = True
-                status_state = "WATCH"
-                signal_time = "09:20"
-                
-                if len(today_df) >= 3:
-                    for i in range(2, len(today_df)):
-                        c_curr = today_df.iloc[i]
-                        c_time_str = c_curr.name.strftime("%H:%M")
-                        
-                        # Up-side breakout of Candle 1 High
-                        if (c_curr['High'] > c1['High'] and c_curr['Volume'] > (max_base_vol * 1.5)):
-                            status_state = "READY"
-                            signal_time = c_time_str
-                            vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
-                            break
+        # --- CHECK BULLISH SIGNAL (STARTS AT WATCH) ---
+        if c1_bull_cond and c2_bull_inside:
+            signal_bullish = True
+            status_state = "WATCH"
+            signal_time = "09:20"
+            
+            # Check if any subsequent candle (from 09:25 onwards) breaks Candle 1 High
+            if len(today_df) >= 3:
+                for i in range(2, len(today_df)):
+                    c_curr = today_df.iloc[i]
+                    c_time_str = c_curr.name.strftime("%H:%M")
+                    
+                    if (c_curr['High'] > c1['High']):
+                        status_state = "READY"
+                        signal_time = c_time_str
+                        vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
+                        break
 
-            if c1_bear_cond and c2_bear_inside:
-                signal_bearish = True
-                status_state = "WATCH"
-                signal_time = "09:20"
-                
-                if len(today_df) >= 3:
-                    for i in range(2, len(today_df)):
-                        c_curr = today_df.iloc[i]
-                        c_time_str = c_curr.name.strftime("%H:%M")
-                        
-                        # Down-side breakdown of Candle 1 Low
-                        if (c_curr['Low'] < c1['Low'] and c_curr['Volume'] > (max_base_vol * 1.5)):
-                            status_state = "READY"
-                            signal_time = c_time_str
-                            vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
-                            break
+        # --- CHECK BEARISH SIGNAL (STARTS AT WATCH) ---
+        if c1_bear_cond and c2_bear_inside:
+            signal_bearish = True
+            status_state = "WATCH"
+            signal_time = "09:20"
+            
+            # Check if any subsequent candle (from 09:25 onwards) breaks Candle 1 Low
+            if len(today_df) >= 3:
+                for i in range(2, len(today_df)):
+                    c_curr = today_df.iloc[i]
+                    c_time_str = c_curr.name.strftime("%H:%M")
+                    
+                    if (c_curr['Low'] < c1['Low']):
+                        status_state = "READY"
+                        signal_time = c_time_str
+                        vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
+                        break
 
         return {
             "Symbol": clean_symbol,
