@@ -46,7 +46,7 @@ else:
 
 st.markdown(f"""
     <style>
-        /* HIDE STREAMLIT CHROME AND MANAGE APP FOOTER TOTALLY */
+        /* HIDE DEFAULT STREAMLIT ELEMENTS */
         header {{visibility: hidden !important; height: 0px !important;}}
         footer {{visibility: hidden !important; display: none !important;}}
         #MainMenu {{visibility: hidden !important;}}
@@ -55,20 +55,16 @@ st.markdown(f"""
             display: none !important;
         }}
 
-        /* AGGRESSIVE CSS TO HIDE MANAGE APP BAR & STREAMLIT CLOUD BADGE */
-        .stApp > footer, 
-        div[data-testid="stToolbar"], 
-        [data-testid="stDecoration"],
-        [data-testid="stAppToolbar"],
+        /* FORCE MOVE MANAGE APP BAR TO THE FAR LEFT OUT OF THE WAY */
+        div[data-testid="stAppToolbar"],
         div[class*="viewerBadge"],
         div[class*="stManageAppButton"],
-        iframe[title="manage-app"] {{
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            height: 0px !important;
-            width: 0px !important;
-            pointer-events: none !important;
+        .stApp > footer {{
+            left: 0px !important;
+            right: auto !important;
+            opacity: 0.1 !important;
+            transform: scale(0.6) !important;
+            transform-origin: bottom left !important;
         }}
 
         /* Remove Page Padding */
@@ -94,7 +90,7 @@ st.markdown(f"""
             opacity: 0 !important;
         }}
 
-        /* Custom Button Styling */
+        /* Custom Larger Button Styling */
         .stButton>button {{
             background-color: {btn_bg} !important;
             color: {accent_blue} !important;
@@ -387,57 +383,69 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* HIGH QUALITY GLOWING KRRISH AVATAR */
-        .krrish-hero-avatar {{
-            width: 62px;
-            height: 62px;
-            background: radial-gradient(circle, #00d2ff 0%, #031528 85%);
-            border: 2.5px solid #00d2ff;
+        /* HIGH QUALITY PNG SUPERHERO CONTAINER */
+        .hero-btn-container {{
+            position: fixed;
+            bottom: 35px;
+            right: 25px;
+            z-index: 9999999 !important;
+            cursor: pointer;
+            user-select: none;
+        }}
+
+        .hero-avatar-glow {{
+            width: 65px;
+            height: 65px;
+            background: radial-gradient(circle, rgba(0,212,255,0.8) 0%, rgba(9,9,121,0.9) 70%);
+            border: 2px solid #00d2ff;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 20px #00d2ff;
-            cursor: pointer;
+            box-shadow: 0 0 25px #00d2ff;
             animation: pulseGlow 1.8s infinite alternate;
-            user-select: none;
-            position: relative;
+        }}
+
+        .hero-avatar-glow img {{
+            width: 52px;
+            height: 52px;
+            object-fit: contain;
         }}
 
         @keyframes pulseGlow {{
             0% {{ box-shadow: 0 0 10px rgba(0, 210, 255, 0.6); transform: scale(0.95); }}
-            100% {{ box-shadow: 0 0 28px rgba(0, 210, 255, 1); transform: scale(1.05); }}
+            100% {{ box-shadow: 0 0 30px rgba(0, 210, 255, 1); transform: scale(1.08); }}
         }}
 
         /* ALERT HISTORY PANEL DRAWER */
         .alerts-history-panel {{
             display: none;
             position: fixed;
-            bottom: 95px;
-            right: 20px;
+            bottom: 110px;
+            right: 25px;
             width: 290px;
-            max-height: 400px;
+            max-height: 380px;
             background-color: {card_bg};
             border: 2px solid #00d2ff;
             border-radius: 12px;
             padding: 12px;
             box-shadow: 0px 12px 35px rgba(0,0,0,0.9);
-            z-index: 999999;
+            z-index: 9999999 !important;
             overflow-y: auto;
         }}
 
         /* AUTO-DISMISS TOAST BUBBLE */
         .toast-bubble {{
             position: fixed;
-            bottom: 95px;
-            right: 20px;
+            bottom: 110px;
+            right: 25px;
             background-color: {card_bg};
             border: 2px solid #00d2ff;
             border-radius: 10px;
             padding: 10px 14px;
             max-width: 280px;
             box-shadow: 0px 8px 24px rgba(0,0,0,0.7);
-            z-index: 999998;
+            z-index: 9999998 !important;
         }}
 
         .clear-btn {{
@@ -905,7 +913,7 @@ for stock in all_ready_stocks:
 if not alert_items_html:
     alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">No active breakouts yet</div>'
 
-# --- CLEAN INTERACTIVE HERO ASSISTANT WITH HIGH QUALITY VECTOR AVATAR ---
+# --- CLEAN INTERACTIVE HERO ASSISTANT ---
 latest_sym = latest_ready_stock['Symbol'] if latest_ready_stock else ''
 latest_type = ('Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown') if latest_ready_stock else ''
 latest_time = latest_ready_stock['SignalTime'] if latest_ready_stock else ''
@@ -914,14 +922,14 @@ latest_change = f"{latest_ready_stock['ChangePct']:+.2f}%" if latest_ready_stock
 latest_color = ("#3fb950" if latest_ready_stock and latest_ready_stock['IsBullish'] else "#f85149") if latest_ready_stock else "#58a6ff"
 toast_display = 'block' if latest_ready_stock else 'none'
 
-# HD MASKED SUPERHERO SVG AVATAR
-HERO_AVATAR_SVG = '''<svg viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#0b1329"/><path d="M50 15 C35 15 25 30 25 45 C25 65 38 80 50 85 C62 80 75 65 75 45 C75 30 65 15 50 15 Z" fill="#162b4d"/><path d="M30 38 Q50 25 70 38 Q78 50 70 58 Q50 48 30 58 Q22 50 30 38 Z" fill="#00d2ff"/><circle cx="41" cy="46" r="4" fill="#ffffff"/><circle cx="59" cy="46" r="4" fill="#ffffff"/><path d="M42 68 Q50 74 58 68" stroke="#00d2ff" stroke-width="3" fill="none"/></svg>'''
+# HD TRANSPARENT PNG KRRISH MASK HERO AVATAR
+HERO_PNG_URL = "https://cdn-icons-png.flaticon.com/512/1000/1000996.png"
 
 robot_html = f"""
-    <!-- KRRISH HD AVATAR BUTTON -->
-    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 999999;" onclick="toggleAlertPanel()">
-        <div class="krrish-hero-avatar" title="Click to view Alert History">
-            {HERO_AVATAR_SVG}
+    <!-- KRRISH HD PNG AVATAR BUTTON -->
+    <div id="heroAvatarBtn" class="hero-btn-container" title="Click to view Alert History">
+        <div class="hero-avatar-glow">
+            <img src="{HERO_PNG_URL}" alt="Hero" />
         </div>
     </div>
 
@@ -930,8 +938,8 @@ robot_html = f"""
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid {border_color}; padding-bottom:6px; margin-bottom:8px;">
             <span style="font-weight:900; font-size:12px; color:{text_main};">📢 Alert History</span>
             <div>
-                <button class="clear-btn" onclick="clearAlertHistory()">Clear</button>
-                <span style="font-size:12px; color:{accent_blue}; cursor:pointer; margin-left:8px;" onclick="toggleAlertPanel()">✖</span>
+                <button id="clearBtn" class="clear-btn">Clear</button>
+                <span id="closePanelBtn" style="font-size:12px; color:{accent_blue}; cursor:pointer; margin-left:8px;">✖</span>
             </div>
         </div>
         <div id="alertListContainer">
@@ -953,6 +961,7 @@ robot_html = f"""
     </div>
 
     <script>
+        // AUTO DISMISS TOAST IN 5 SECONDS
         setTimeout(function() {{
             var toast = document.getElementById('toastNotification');
             if(toast) {{
@@ -960,22 +969,37 @@ robot_html = f"""
             }}
         }}, 5000);
 
-        function toggleAlertPanel() {{
-            var panel = document.getElementById('alertHistoryPanel');
-            var toast = document.getElementById('toastNotification');
-            if(toast) toast.style.display = 'none';
-            if (panel.style.display === "block") {{
-                panel.style.display = "none";
-            }} else {{
-                panel.style.display = "block";
-            }}
+        // ATTACH CLICK EVENT LISTENER FOR HERO AVATAR
+        var heroBtn = document.getElementById('heroAvatarBtn');
+        var panel = document.getElementById('alertHistoryPanel');
+        var closeBtn = document.getElementById('closePanelBtn');
+        var clearBtn = document.getElementById('clearBtn');
+        var toast = document.getElementById('toastNotification');
+
+        if(heroBtn) {{
+            heroBtn.onclick = function() {{
+                if(toast) toast.style.display = 'none';
+                if (panel.style.display === "block") {{
+                    panel.style.display = "none";
+                }} else {{
+                    panel.style.display = "block";
+                }}
+            }};
         }}
 
-        function clearAlertHistory() {{
-            var container = document.getElementById('alertListContainer');
-            if(container) {{
-                container.innerHTML = '<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">Cleared all active alerts</div>';
-            }}
+        if(closeBtn) {{
+            closeBtn.onclick = function() {{
+                if(panel) panel.style.display = "none";
+            }};
+        }}
+
+        if(clearBtn) {{
+            clearBtn.onclick = function() {{
+                var container = document.getElementById('alertListContainer');
+                if(container) {{
+                    container.innerHTML = '<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">Cleared all active alerts</div>';
+                }}
+            }};
         }}
     </script>
 """
