@@ -400,10 +400,9 @@ def analyze_stock_5m(symbol):
         # ----------------------------------------------------
         # 🟢 LIQUIDITY & SMOOTHNESS CHECK
         # ----------------------------------------------------
-        # 1. Minimum Daily Volume Filter:
         avg_daily_vol = df_daily['Volume'].iloc[-2] if len(df_daily) >= 2 else 0
         if avg_daily_vol < 500000:
-            return None  # Illiquid Stock Cut (Wealth First)
+            return None
 
         today = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == today].copy()
@@ -411,14 +410,12 @@ def analyze_stock_5m(symbol):
         if len(today_df) < 3:
             return None
 
-        # 2. Minimum 5m Candle Volume Filter: 5
         avg_5m_vol = today_df['Volume'].mean()
         if avg_5m_vol < 1000:
             return None
 
-        # 3. Minimum Candle Body Size Check
         avg_candle_range = (today_df['High'] - today_df['Low']).mean()
-        if avg_candle_range <= 0.2:  #
+        if avg_candle_range <= 0.2:
             return None
         # ----------------------------------------------------
             
@@ -562,6 +559,7 @@ with head_col1:
         pct = data.get("pct", 0)
         idx_items_html += f'<a class="idx-item" href="{url}" target="_blank"><span class="idx-name">{name}:</span> <span class="idx-val">{val:,}</span> <span class="{cls}">{arrow} {pct}%</span></a>'
 
+    # ✅ Fix: Properly structured HTML string with closed top-nav div
     st.markdown(f"""
         <div class="top-nav">
             <div class="nav-title-clean">HIRA MOUNT TRADER</div>
@@ -702,6 +700,7 @@ with tb_col1:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakouts in Hira Stocks...</div>', unsafe_allow_html=True)
     
+    # ✅ Fix: Added unsafe_allow_html=True
     st.markdown('</div>', unsafe_allow_html=True)
 
 with tb_col2:
@@ -733,6 +732,7 @@ with tb_col2:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira Stocks...</div>', unsafe_allow_html=True)
     
+    # ✅ Fix: Added unsafe_allow_html=True
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- AUTOMATIC SILENT AUTO-REFRESH (EVERY 30 SECONDS - ONLY WHEN MARKET IS OPEN) ---
