@@ -436,12 +436,11 @@ def analyze_stock_5m(symbol):
         df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
         
-        if len(df_5m) < 10 or len(df_daily) < 2:
+        if len(df_5m) < 5 or len(df_daily) < 2:
             return None
 
-        # CONTINUOUS MULTI-DAY EMA CALCULATION
+        # CONTINUOUS 20 EMA CALCULATION
         df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
-        df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
 
         latest_trading_date = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
@@ -472,13 +471,12 @@ def analyze_stock_5m(symbol):
             # STRICT 1.50% RANGE LIMIT ON CANDLE 1
             c1_range_pct = ((c1['High'] - c1['Low']) / c1['Low']) * 100
 
-            # --- STRICT EMA FILTER CONDITIONS ---
-            # Bullish: STRICTLY ABOVE BOTH EMA20 AND EMA200
+            # --- FOCUS STRICTLY ON 20 EMA ---
+            # Bullish: PRICE STRICTLY ABOVE 20 EMA
             c1_bull_cond = (
                 (c1_range_pct <= 1.50) and
                 (c1['Close'] > c1['Low']) and
-                (c1['Close'] > c1['EMA20']) and
-                (c1['Close'] > c1['EMA200'])
+                (c1['Close'] >= c1['EMA20'])
             )
 
             c2_bull_inside = (
@@ -489,12 +487,11 @@ def analyze_stock_5m(symbol):
                 ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
             )
 
-            # Bearish: STRICTLY BELOW BOTH EMA20 AND EMA200
+            # Bearish: PRICE STRICTLY BELOW 20 EMA
             c1_bear_cond = (
                 (c1_range_pct <= 1.50) and
                 (c1['Close'] < c1['High']) and
-                (c1['Close'] < c1['EMA20']) and
-                (c1['Close'] < c1['EMA200'])
+                (c1['Close'] <= c1['EMA20'])
             )
 
             c2_bear_inside = (
@@ -509,7 +506,7 @@ def analyze_stock_5m(symbol):
             if max_base_vol == 0:
                 max_base_vol = 1
 
-            # --- MORNING BREAKOUT FILTER (ONLY 09:25 AM TO 10:30 AM) ---
+            # --- FULL INTRADAY BREAKOUT DETECTION (ANYTIME DURINg THE DAY) ---
             if c1_bull_cond and c2_bull_inside:
                 signal_bullish = True
                 status_state = "WATCH"
@@ -520,9 +517,6 @@ def analyze_stock_5m(symbol):
                         c_curr = today_df.iloc[i]
                         c_time_str = c_curr.name.strftime("%H:%M")
                         
-                        if c_time_str > "10:30":
-                            break
-                            
                         if (c_curr['High'] > max(c1['High'], c2['High']) and
                             c_curr['Close'] > c_curr['Open'] and
                             c_curr['Volume'] > (max_base_vol * 1.5)):
@@ -542,9 +536,6 @@ def analyze_stock_5m(symbol):
                         c_curr = today_df.iloc[i]
                         c_time_str = c_curr.name.strftime("%H:%M")
                         
-                        if c_time_str > "10:30":
-                            break
-                            
                         if (c_curr['Low'] < min(c1['Low'], c2['Low']) and
                             c_curr['Close'] < c_curr['Open'] and
                             c_curr['Volume'] > (max_base_vol * 1.5)):
@@ -730,7 +721,7 @@ if market_movers:
             p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
             sign = "+" if m['ChangePct'] >= 0 else ""
             
-            # Show actual Trigger/Alert Time for Market Movers
+            # Dynamic Trigger Alert Time Display for Market Movers
             time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
             time_display = f"🕒 Alert Time: {time_str}"
             
