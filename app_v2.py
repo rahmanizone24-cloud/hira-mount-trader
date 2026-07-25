@@ -356,10 +356,9 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- EXACT 100 HIRA STOCKS UNIVERSE (HARDCODED FROM Hira Stocks (1).csv) ---
+# --- EXACT 100 HIRA STOCKS UNIVERSE ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
-    # Priority 1: Check CSV if present locally
     for file_candidate in ["Hira Stocks (1).csv", "Hira Stocks.csv"]:
         if os.path.exists(file_candidate):
             try:
@@ -370,7 +369,6 @@ def load_hira_stocks():
             except Exception:
                 pass
             
-    # Priority 2: Direct 100 Stocks List extracted from your CSV file
     return [
         'SWSOLAR.NS', 'CGPOWER.NS', 'GENUSPOWER.NS', 'OLECTRA.NS', 'PREMIERENE.NS', 'PRAJIND.NS', 
         'CDSL.NS', 'KFINTECH.NS', 'ABSLAMC.NS', 'NETWEB.NS', 'DATAPATTNS.NS', 'MAPMYINDIA.NS', 
@@ -438,107 +436,14 @@ def analyze_stock_5m(symbol):
         df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
         
-        if len(df_5m) < 3 or len(df_daily) < 2:
+        if len(df_5m) < 2 or len(df_daily) < 2:
             return None
 
         today = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == today].copy()
         
-        if len(today_df) < 2:
+        if len(today_df) < 1:
             return None
-            
-        today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
-        today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
-
-        c1 = today_df.iloc[0]
-        c2 = today_df.iloc[1]
-
-        # --- CANDLE 1 CALCULATIONS ---
-        c1_range_pct = ((c1['High'] - c1['Low']) / c1['Close']) * 100
-        c1_ema20_dist = abs(c1['Close'] - c1['EMA20']) / c1['Close'] * 100
-        c1_ema200_dist = abs(c1['Close'] - c1['EMA200']) / c1['Close'] * 100
-
-        # --- CANDLE 1 & 2 BULLISH BASE SETUP ---
-        c1_bull_cond = (
-            (c1['Close'] > c1['Low']) and
-            (c1_range_pct <= 1.5) and
-            (c1['Close'] > c1['EMA20']) and
-            (c1['Close'] > c1['EMA200']) and
-            (c1_ema20_dist <= 0.3) and
-            (c1_ema200_dist <= 0.3)
-        )
-
-        c2_bull_inside = (
-            (c2['High'] <= c1['High']) and
-            (c2['Low'] >= c1['Low']) and
-            (c2['High'] < c1['High']) and
-            (c2['Close'] >= c2['Low'] + ((c2['High'] - c2['Low']) * 0.3)) and
-            ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
-        )
-
-        # --- CANDLE 1 & 2 BEARISH BASE SETUP ---
-        c1_bear_cond = (
-            (c1['Close'] < c1['High']) and
-            (c1_range_pct <= 1.5) and
-            (c1['Close'] < c1['EMA20']) and
-            (c1['Close'] < c1['EMA200']) and
-            (c1_ema20_dist <= 0.3) and
-            (c1_ema200_dist <= 0.3)
-        )
-
-        c2_bear_inside = (
-            (c2['High'] <= c1['High']) and
-            (c2['Low'] >= c1['Low']) and
-            (c2['Low'] > c1['Low']) and
-            (c2['Close'] <= c2['High'] - ((c2['High'] - c2['Low']) * 0.3)) and
-            ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
-        )
-
-        signal_bullish = False
-        signal_bearish = False
-        status_state = "" # "WATCH" or "READY"
-        signal_time = c2.name.strftime("%H:%M")
-        vol_multiple = 1.0
-
-        max_base_vol = max(c1['Volume'], c2['Volume'])
-        if max_base_vol == 0:
-            max_base_vol = 1
-
-        # Check Bullish Setup
-        if c1_bull_cond and c2_bull_inside:
-            signal_bullish = True
-            status_state = "WATCH"
-            
-            # Check Breakout in Candle 3, 4, 5+
-            if len(today_df) >= 3:
-                for i in range(2, len(today_df)):
-                    c_curr = today_df.iloc[i]
-                    if (c_curr['High'] > max(c1['High'], c2['High']) and
-                        c_curr['Close'] > c_curr['Open'] and
-                        c_curr['Volume'] > (max_base_vol * 1.5)):
-                        
-                        status_state = "READY"
-                        signal_time = c_curr.name.strftime("%H:%M")
-                        vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
-                        break
-
-        # Check Bearish Setup
-        if c1_bear_cond and c2_bear_inside:
-            signal_bearish = True
-            status_state = "WATCH"
-            
-            # Check Breakdown in Candle 3, 4, 5+
-            if len(today_df) >= 3:
-                for i in range(2, len(today_df)):
-                    c_curr = today_df.iloc[i]
-                    if (c_curr['Low'] < min(c1['Low'], c2['Low']) and
-                        c_curr['Close'] < c_curr['Open'] and
-                        c_curr['Volume'] > (max_base_vol * 1.5)):
-                        
-                        status_state = "READY"
-                        signal_time = c_curr.name.strftime("%H:%M")
-                        vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
-                        break
 
         latest = today_df.iloc[-1]
         curr_price = latest['Close']
@@ -550,21 +455,111 @@ def analyze_stock_5m(symbol):
         tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
         calc_qty = int((10000 * 5) / curr_price) if curr_price > 0 else 0
 
-        if signal_bullish or signal_bearish:
-            return {
-                "Symbol": clean_symbol,
-                "Price": curr_price,
-                "ChangePct": day_change_pct,
-                "ChangePts": round(change_pts, 2),
-                "SignalTime": signal_time,
-                "VolMultiple": vol_multiple,
-                "IsBullish": signal_bullish,
-                "IsBearish": signal_bearish,
-                "StatusState": status_state,
-                "TVUrl": tv_url,
-                "Qty": calc_qty
-            }
-        return None
+        signal_bullish = False
+        signal_bearish = False
+        status_state = ""
+        signal_time = latest.name.strftime("%H:%M")
+        vol_multiple = 1.0
+
+        if len(today_df) >= 2:
+            today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
+            today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
+
+            c1 = today_df.iloc[0]
+            c2 = today_df.iloc[1]
+
+            c1_range_pct = ((c1['High'] - c1['Low']) / c1['Close']) * 100
+            c1_ema20_dist = abs(c1['Close'] - c1['EMA20']) / c1['Close'] * 100
+            c1_ema200_dist = abs(c1['Close'] - c1['EMA200']) / c1['Close'] * 100
+
+            # Bullish Condition
+            c1_bull_cond = (
+                (c1['Close'] > c1['Low']) and
+                (c1_range_pct <= 1.5) and
+                (c1['Close'] > c1['EMA20']) and
+                (c1['Close'] > c1['EMA200']) and
+                (c1_ema20_dist <= 0.3) and
+                (c1_ema200_dist <= 0.3)
+            )
+
+            c2_bull_inside = (
+                (c2['High'] <= c1['High']) and
+                (c2['Low'] >= c1['Low']) and
+                (c2['High'] < c1['High']) and
+                (c2['Close'] >= c2['Low'] + ((c2['High'] - c2['Low']) * 0.3)) and
+                ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
+            )
+
+            # Bearish Condition
+            c1_bear_cond = (
+                (c1['Close'] < c1['High']) and
+                (c1_range_pct <= 1.5) and
+                (c1['Close'] < c1['EMA20']) and
+                (c1['Close'] < c1['EMA200']) and
+                (c1_ema20_dist <= 0.3) and
+                (c1_ema200_dist <= 0.3)
+            )
+
+            c2_bear_inside = (
+                (c2['High'] <= c1['High']) and
+                (c2['Low'] >= c1['Low']) and
+                (c2['Low'] > c1['Low']) and
+                (c2['Close'] <= c2['High'] - ((c2['High'] - c2['Low']) * 0.3)) and
+                ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
+            )
+
+            max_base_vol = max(c1['Volume'], c2['Volume'])
+            if max_base_vol == 0:
+                max_base_vol = 1
+
+            if c1_bull_cond and c2_bull_inside:
+                signal_bullish = True
+                status_state = "WATCH"
+                signal_time = c2.name.strftime("%H:%M")
+                
+                if len(today_df) >= 3:
+                    for i in range(2, len(today_df)):
+                        c_curr = today_df.iloc[i]
+                        if (c_curr['High'] > max(c1['High'], c2['High']) and
+                            c_curr['Close'] > c_curr['Open'] and
+                            c_curr['Volume'] > (max_base_vol * 1.5)):
+                            
+                            status_state = "READY"
+                            signal_time = c_curr.name.strftime("%H:%M")
+                            vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
+                            break
+
+            if c1_bear_cond and c2_bear_inside:
+                signal_bearish = True
+                status_state = "WATCH"
+                signal_time = c2.name.strftime("%H:%M")
+                
+                if len(today_df) >= 3:
+                    for i in range(2, len(today_df)):
+                        c_curr = today_df.iloc[i]
+                        if (c_curr['Low'] < min(c1['Low'], c2['Low']) and
+                            c_curr['Close'] < c_curr['Open'] and
+                            c_curr['Volume'] > (max_base_vol * 1.5)):
+                            
+                            status_state = "READY"
+                            signal_time = c_curr.name.strftime("%H:%M")
+                            vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
+                            break
+
+        # ALWAYS RETURN STOCK DATA FOR MOVERS & CARDS
+        return {
+            "Symbol": clean_symbol,
+            "Price": curr_price,
+            "ChangePct": day_change_pct,
+            "ChangePts": round(change_pts, 2),
+            "SignalTime": signal_time,
+            "VolMultiple": vol_multiple,
+            "IsBullish": signal_bullish,
+            "IsBearish": signal_bearish,
+            "StatusState": status_state,
+            "TVUrl": tv_url,
+            "Qty": calc_qty
+        }
     except:
         return None
 
@@ -587,15 +582,12 @@ def run_market_scanner():
     all_df = pd.DataFrame(all_stocks)
     top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
     top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
-    
-    bullish_top5 = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple']), reverse=True)[:5]
-    bearish_top5 = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple']), reverse=True)[:5]
 
     gainers_4 = all_df.sort_values(by="ChangePct", ascending=False).head(4).to_dict('records') if not all_df.empty else []
     losers_4 = all_df.sort_values(by="ChangePct", ascending=True).head(4).to_dict('records') if not all_df.empty else []
     balanced_movers = gainers_4 + losers_4
 
-    return bullish_top5, bearish_top5, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
+    return bullish_list, bearish_list, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
 # --- MARKET OPEN / CLOSE LOGIC ---
 ist_tz = pytz.timezone('Asia/Kolkata')
