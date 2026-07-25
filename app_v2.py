@@ -104,21 +104,31 @@ st.markdown(f"""
             line-height: 30px;
         }}
 
-        .idx-item {{
-            display: inline-flex;
-            gap: 4px;
-            align-items: center;
-            text-decoration: none !important;
-            padding: 2px 6px;
-            border-radius: 5px;
-            background-color: {sub_card_bg};
-            border: 1px solid {border_color};
-            font-size: 11px;
+        /* TOP INDEX BAR CARDS STYLING */
+        .top-index-bar {{
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 5px;
+            margin-bottom: 12px;
         }}
-        .idx-name {{ color: {text_sub}; font-weight: 700; font-size: 10px; }}
-        .idx-val {{ color: {text_main}; font-weight: 800; font-size: 11px; }}
-        .idx-up {{ color: #3fb950; font-weight: bold; }}
-        .idx-down {{ color: #f85149; font-weight: bold; }}
+        .idx-box {{
+            background-color: {card_bg};
+            border: 1px solid {border_color};
+            border-radius: 6px;
+            padding: 6px 12px;
+            text-align: center;
+            text-decoration: none !important;
+            transition: transform 0.2s, border-color 0.2s;
+        }}
+        .idx-box:hover {{
+            border-color: {accent_blue};
+            transform: translateY(-1px);
+        }}
+        .idx-title-lbl {{ color: {text_sub}; font-weight: 700; font-size: 11px; text-transform: uppercase; }}
+        .idx-val-lbl {{ color: {text_main}; font-weight: 900; font-size: 13px; margin: 1px 0; }}
+        .idx-up-val {{ color: #3fb950; font-weight: 800; font-size: 11px; }}
+        .idx-down-val {{ color: #f85149; font-weight: 800; font-size: 11px; }}
 
         /* LIVE BLINKING ANIMATION */
         .live-blink {{
@@ -506,28 +516,16 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- CLEAN TOP NAVIGATION BAR (WITH NIFTY 50, BANK NIFTY, SENSEX, NIFTY MIDCAP) ---
+# --- TOP HEADER ROW ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-# Title Bar Row
-nav_c1, nav_c2, nav_c3 = st.columns([0.22, 0.60, 0.18])
+head_c1, head_c2 = st.columns([0.75, 0.25])
 
-with nav_c1:
-    st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
+with head_c1:
+    st.markdown('<div class="nav-title-clean">⚡ HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
 
-with nav_c2:
-    idx_items = ""
-    for name, data in top_idx.items():
-        cls = "idx-up" if data.get('pct', 0) >= 0 else "idx-down"
-        arrow = "▲" if data.get('pct', 0) >= 0 else "▼"
-        url = data.get("url", "#")
-        val = data.get("val", 0)
-        pct = data.get("pct", 0)
-        idx_items += f'<a class="idx-item" href="{url}" target="_blank"><span class="idx-name">{name}:</span> <span class="idx-val">{val:,}</span> <span class="{cls}">{arrow} {pct}%</span></a> '
-    st.markdown(f'<div style="margin-top: 3px; display:flex; gap:4px; flex-wrap:nowrap;">{idx_items}</div>', unsafe_allow_html=True)
-
-with nav_c3:
+with head_c2:
     b1, b2 = st.columns(2)
     with b1:
         theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
@@ -539,6 +537,27 @@ with nav_c3:
         if st.button("🔄 Refresh"):
             st.cache_data.clear()
             st.rerun()
+
+# --- TOP 4 INDEX CARDS BAR (DIRECTLY BELOW HEADER) ---
+idx_html = '<div class="top-index-bar">'
+for name, data in top_idx.items():
+    pct = data.get('pct', 0)
+    cls = "idx-up-val" if pct >= 0 else "idx-down-val"
+    arrow = "▲" if pct >= 0 else "▼"
+    url = data.get("url", "#")
+    val = data.get("val", 0)
+    chg = data.get("change", 0)
+    
+    idx_html += f'''
+        <a class="idx-box" href="{url}" target="_blank">
+            <div class="idx-title-lbl">{name} 🔗</div>
+            <div class="idx-val-lbl">{val:,.2f}</div>
+            <div class="{cls}">{arrow} {chg:+,2f} ({pct:+.2f}%)</div>
+        </a>
+    '''
+idx_html += '</div>'
+
+st.markdown(idx_html, unsafe_allow_html=True)
 
 # Status & Time Sub-Bar
 st.markdown(f'''
