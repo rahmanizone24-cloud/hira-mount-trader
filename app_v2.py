@@ -46,11 +46,20 @@ else:
 
 st.markdown(f"""
     <style>
-        /* Hide Default Streamlit Chrome */
+        /* Hide Default Streamlit Chrome & Shift Manage App to Extreme Edge */
         header {{visibility: hidden;}}
         footer {{visibility: hidden;}}
         #MainMenu {{visibility: hidden;}}
         
+        div[data-testid="stStatusWidget"] {{
+            display: none !important;
+        }}
+
+        /* Shift Streamlit's bottom right Manage App button away from our hero avatar */
+        .stApp > footer, div[data-testid="stToolbar"], [data-testid="stDecoration"] {{
+            display: none !important;
+        }}
+
         /* Remove Page Padding */
         .block-container {{
             padding-top: 0.3rem !important;
@@ -68,7 +77,7 @@ st.markdown(f"""
         }}
 
         /* HIDE ALL LOADING POPUPS / SPINNERS */
-        div[data-testid="stStatusWidget"], div[data-testid="stSpinner"], .stSpinner {{
+        div[data-testid="stSpinner"], .stSpinner {{
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;
@@ -367,41 +376,48 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* GLOWING ANIMATION FOR AVATAR */
-        .glowing-avatar {{
-            width: 55px;
-            height: 55px;
-            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
-            border: 2px solid #ffffff;
+        /* GLOWING KRRISH STYLE AVATAR */
+        .hero-avatar-container {{
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, rgba(0,212,255,0.3) 0%, rgba(9,9,121,0.8) 100%);
+            border: 2px solid #00d2ff;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
-            box-shadow: 0 0 15px rgba(0, 210, 255, 0.8);
+            box-shadow: 0 0 18px #00d2ff;
             cursor: pointer;
-            animation: pulseGlow 1.8s infinite alternate;
+            animation: pulseGlow 2s infinite alternate;
             user-select: none;
+            overflow: hidden;
+        }}
+
+        .hero-avatar-img {{
+            width: 85%;
+            height: 85%;
+            object-fit: contain;
+            filter: drop-shadow(0px 2px 4px rgba(0,210,255,0.8));
         }}
 
         @keyframes pulseGlow {{
-            0% {{ box-shadow: 0 0 8px rgba(0, 210, 255, 0.5); transform: scale(0.98); }}
-            100% {{ box-shadow: 0 0 22px rgba(0, 210, 255, 1); transform: scale(1.05); }}
+            0% {{ box-shadow: 0 0 8px rgba(0, 210, 255, 0.5); transform: scale(0.96); }}
+            100% {{ box-shadow: 0 0 25px rgba(0, 210, 255, 1); transform: scale(1.05); }}
         }}
 
-        /* ALERT HISTORY PANEL */
+        /* ALERT HISTORY PANEL DRAWER */
         .alerts-history-panel {{
             display: none;
             position: fixed;
-            bottom: 85px;
+            bottom: 90px;
             right: 20px;
-            width: 270px;
-            max-height: 350px;
+            width: 280px;
+            max-height: 380px;
             background-color: {card_bg};
-            border: 2px solid #58a6ff;
+            border: 2px solid #00d2ff;
             border-radius: 12px;
             padding: 12px;
-            box-shadow: 0px 10px 30px rgba(0,0,0,0.6);
+            box-shadow: 0px 10px 30px rgba(0,0,0,0.8);
             z-index: 99999;
             overflow-y: auto;
         }}
@@ -409,15 +425,36 @@ st.markdown(f"""
         /* AUTO-DISMISS TOAST BUBBLE */
         .toast-bubble {{
             position: fixed;
-            bottom: 85px;
+            bottom: 90px;
             right: 20px;
             background-color: {card_bg};
-            border: 2px solid #58a6ff;
+            border: 2px solid #00d2ff;
             border-radius: 10px;
             padding: 10px 14px;
-            max-width: 260px;
-            box-shadow: 0px 8px 24px rgba(0,0,0,0.5);
+            max-width: 270px;
+            box-shadow: 0px 8px 24px rgba(0,0,0,0.6);
             z-index: 99998;
+            animation: slideUp 0.3s ease-out;
+        }}
+
+        @keyframes slideUp {{
+            from {{ transform: translateY(20px); opacity: 0; }}
+            to {{ transform: translateY(0); opacity: 1; }}
+        }}
+
+        .clear-btn {{
+            background-color: rgba(248, 81, 73, 0.2);
+            color: #f85149;
+            border: 1px solid #f85149;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 6px;
+            cursor: pointer;
+        }}
+        .clear-btn:hover {{
+            background-color: #f85149;
+            color: #ffffff;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -876,20 +913,38 @@ for stock in all_ready_stocks:
 if not alert_items_html:
     alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">No active breakouts yet</div>'
 
+# KRRISH-STYLE MASKED HERO AVATAR SVG (HIGH QUALITY SVG DATA)
+HERO_SVG = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<path d="M50 5 L85 20 L85 50 C85 70 50 95 50 95 C50 95 15 70 15 50 L15 20 Z" fill="#090d16" stroke="#00d2ff" stroke-width="3"/>
+<path d="M50 12 L78 25 L78 48 C78 64 50 85 50 85 C50 85 22 64 22 48 L22 25 Z" fill="#111827"/>
+<path d="M30 38 Q50 28 70 38 Q75 48 70 55 Q50 48 30 55 Q25 48 30 38 Z" fill="#00d2ff"/>
+<circle cx="40" cy="44" r="3" fill="#ffffff"/>
+<circle cx="60" cy="44" r="3" fill="#ffffff"/>
+<path d="M50 58 L55 68 L45 68 Z" fill="#00d2ff"/>
+<path d="M50 25 L58 40 L75 40 L61 50 L66 65 L50 55 L34 65 L39 50 L25 40 L42 40 Z" fill="none" stroke="#00d2ff" stroke-width="2" opacity="0.4"/>
+</svg>"""
+
 # --- INTERACTIVE ROBOT ASSISTANT WITH TOGGLE & AUTO-HIDE ---
 robot_html = f"""
-    <!-- AVATAR ICON WITH GLOW -->
+    <!-- AVATAR ICON WITH GLOW (KRRISH STYLE) -->
     <div style="position: fixed; bottom: 20px; right: 20px; z-index: 99999;" onclick="toggleAlertPanel()">
-        <div class="glowing-avatar" title="Click to view Alert History">🦸‍♂️</div>
+        <div class="hero-avatar-container" title="Click to view Alert History">
+            <div class="hero-avatar-img">{HERO_SVG}</div>
+        </div>
     </div>
 
-    <!-- ALERT HISTORY DRAWER PANEL -->
+    <!-- ALERT HISTORY DRAWER PANEL WITH CLEAR OPTION -->
     <div id="alertHistoryPanel" class="alerts-history-panel">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid {border_color}; padding-bottom:6px; margin-bottom:8px;">
             <span style="font-weight:900; font-size:12px; color:{text_main};">📢 Alert History</span>
-            <span style="font-size:10px; color:{accent_blue}; cursor:pointer;" onclick="toggleAlertPanel()">✖ Close</span>
+            <div>
+                <button class="clear-btn" onclick="clearAlertHistory()">Clear</button>
+                <span style="font-size:12px; color:{accent_blue}; cursor:pointer; margin-left:8px;" onclick="toggleAlertPanel()">✖</span>
+            </div>
         </div>
-        {alert_items_html}
+        <div id="alertListContainer">
+            {alert_items_html}
+        </div>
     </div>
 
     <!-- AUTO-DISMISS POPUP TOAST (DISAPPEARS IN 5 SECONDS) -->
@@ -927,6 +982,14 @@ robot_html = f"""
                 panel.style.display = "none";
             }} else {{
                 panel.style.display = "block";
+            }}
+        }}
+
+        // Clear Alert History List
+        function clearAlertHistory() {{
+            var container = document.getElementById('alertListContainer');
+            if(container) {{
+                container.innerHTML = '<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">Cleared all active alerts</div>';
             }}
         }}
 
