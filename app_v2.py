@@ -320,7 +320,17 @@ st.markdown(f"""
             border-radius: 5px;
             padding: 2px 6px;
             font-weight: 900;
-            font-size: 12px;
+            font-size: 11px;
+        }}
+
+        .qty-box {{
+            background-color: rgba(88, 166, 255, 0.15);
+            color: {accent_blue};
+            border: 1px solid rgba(88, 166, 255, 0.4);
+            border-radius: 5px;
+            padding: 2px 6px;
+            font-weight: 900;
+            font-size: 11px;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -454,6 +464,9 @@ def analyze_stock_5m(symbol):
                     vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
                     break
 
+        # CALCULATION: ₹10,000 Capital with 5x Intraday Margin (₹50,000 buying power)
+        calc_qty = int((10000 * 5) / curr_price) if curr_price > 0 else 0
+
         if signal_bullish or signal_bearish:
             return {
                 "Symbol": clean_symbol,
@@ -464,7 +477,8 @@ def analyze_stock_5m(symbol):
                 "VolMultiple": vol_multiple if vol_multiple > 1.0 else 1.50,
                 "IsBullish": signal_bullish,
                 "IsBearish": signal_bearish,
-                "TVUrl": tv_url
+                "TVUrl": tv_url,
+                "Qty": calc_qty
             }
         return None
     except:
@@ -638,7 +652,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (TOP 10 VOL SURGE FILTERED) ---
+# --- ROW LIST (TOP 10 VOL SURGE FILTERED WITH QTY) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -646,11 +660,12 @@ with tb_col1:
         <div class="setup-box">
             <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS (TOP 10 VOL SURGE)</div>
             <div class="row-header">
-                <span style="width: 28%;">SYMBOL</span>
-                <span style="width: 22%;">TRIGGER TIME</span>
-                <span style="width: 20%;">VOL SURGE</span>
-                <span style="width: 15%; text-align:right;">PRICE</span>
-                <span style="width: 15%; text-align:right;">CHANGE</span>
+                <span style="width: 25%;">SYMBOL</span>
+                <span style="width: 18%;">TRIGGER</span>
+                <span style="width: 18%;">VOL SURGE</span>
+                <span style="width: 15%;">QTY</span>
+                <span style="width: 12%; text-align:right;">PRICE</span>
+                <span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
     """, unsafe_allow_html=True)
     
@@ -658,11 +673,12 @@ with tb_col1:
         for s in bullish_signals:
             st.markdown(f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 28%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
-                    <div style="width: 22%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 20%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 15%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                    <div style="width: 15%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
+                    <div style="width: 25%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
+                    <div style="width: 18%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                    <div style="width: 18%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                    <div style="width: 15%;"><span class="qty-box">{s['Qty']}</span></div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
     else:
@@ -675,11 +691,12 @@ with tb_col2:
         <div class="setup-box">
             <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS (TOP 10 VOL SURGE)</div>
             <div class="row-header">
-                <span style="width: 28%;">SYMBOL</span>
-                <span style="width: 22%;">TRIGGER TIME</span>
-                <span style="width: 20%;">VOL SURGE</span>
-                <span style="width: 15%; text-align:right;">PRICE</span>
-                <span style="width: 15%; text-align:right;">CHANGE</span>
+                <span style="width: 25%;">SYMBOL</span>
+                <span style="width: 18%;">TRIGGER</span>
+                <span style="width: 18%;">VOL SURGE</span>
+                <span style="width: 15%;">QTY</span>
+                <span style="width: 12%; text-align:right;">PRICE</span>
+                <span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
     """, unsafe_allow_html=True)
     
@@ -687,11 +704,12 @@ with tb_col2:
         for s in bearish_signals:
             st.markdown(f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 28%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
-                    <div style="width: 22%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 20%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 15%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                    <div style="width: 15%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
+                    <div style="width: 25%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
+                    <div style="width: 18%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                    <div style="width: 18%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                    <div style="width: 15%;"><span class="qty-box">{s['Qty']}</span></div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
     else:
