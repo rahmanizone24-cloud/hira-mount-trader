@@ -16,6 +16,35 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# --- STRICT F&O STOCKS BLACKLIST (COMPLETE NSE F&O LIST FOR PERMANENT REMOVAL) ---
+FNO_STOCKS = {
+    "AARTIIND", "ABB", "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS",
+    "ALKEM", "AMBUJACEM", "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "ASTRAL",
+    "ATUL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJFINANCE",
+    "BALKRISIND", "BALRAMCHIN", "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT",
+    "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BOSCHLTD", "BPCL", "BRITANNIA",
+    "BSOFT", "CANBK", "CANFINHOME", "CHAMBLFERT", "CHOLAFIN", "CIPLA", "COALINDIA",
+    "COFORGE", "COLPAL", "CONCOR", "COROMANDEL", "CROMPTON", "CUMMINSIND", "DABUR",
+    "DALBHARAT", "DEEPAKNTR", "DIVISLAB", "DIXON", "DLF", "DRREDDY", "EICHERMOT",
+    "ESCORTS", "EXIDEIND", "FEDERALBNK", "GAIL", "GLENMARK", "GMRINFRA", "GNFC",
+    "GODREJCP", "GODREJPROP", "GRANULES", "GRASIM", "GUJGASLTD", "HAL", "HAVELLS",
+    "HCLTECH", "HDFCAMC", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO", "HAL",
+    "HINDCOPPER", "HINDPETRO", "HINDUNILVR", "ICICIBANK", "ICICIGI", "ICICIPRULI",
+    "IDEA", "IDFCFIRSTB", "IEX", "IGL", "INDHOTEL", "INDIACEM", "INDIAMART",
+    "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "IOC", "IPCALAB", "IRCTC",
+    "IRFC", "ITC", "JINDALSTEL", "JKCEMENT", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK",
+    "LTIM", "LT", "LTF", "LTI", "LTTS", "LUPIN", "M&M", "M&MFIN", "MANAPPURAM",
+    "MARICO", "MARUTI", "MCDOWELL-N", "MCX", "METROPOLIS", "MFSL", "MGL", "MOTHERSON",
+    "MPHASIS", "MRF", "MUTHOOTFIN", "NATIONALUM", "NAUKRI", "NAVINFLUOR", "NESTLEIND",
+    "NMDC", "NTPC", "OBEROIRLTY", "OFSS", "ONGC", "PAGEIND", "PERSISTENT", "PETRONET",
+    "PFC", "PIDILITIND", "PIIND", "PNB", "POLYCAB", "POWERGRID", "PVRINOX", "RAMCOCEM",
+    "RBLBANK", "RECLTD", "RELIANCE", "SAIL", "SBICARD", "SBILIFE", "SBIN", "SHREECEM",
+    "SHRIRAMFIN", "SIEMENS", "SRF", "SUNPHARMA", "SUNTV", "TATACHEM", "TATACOMM",
+    "TATACONSUM", "TATAMOTORS", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TITAN",
+    "TORNTPHARM", "TORNTPOWER", "TRENT", "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL",
+    "VEDL", "VOLTAS", "WIPRO", "ZEEL", "ZYDUSLIFE"
+}
+
 # --- THEME STATE MANAGEMENT ---
 query_params = st.query_params
 
@@ -301,30 +330,41 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOAD SYMBOLS FROM HIRA STOCKS CSV FILE ---
+# --- LOAD SYMBOLS FROM HIRA STOCKS CSV FILE (STRICT F&O REMOVAL FILTER) ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
+    raw_symbols = []
     csv_file = "Hira Stocks.csv"
     if os.path.exists(csv_file):
         try:
             df = pd.read_csv(csv_file)
             syms = df['symbol'].dropna().astype(str).str.strip().unique().tolist()
-            return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
+            raw_symbols = syms
         except Exception:
             pass
-            
-    return [
-        "BLUESTARCO.NS", "JSWDULUX.NS", "ABSLAMC.NS", "BAJAJCON.NS", "MMFL.NS", "PGIL.NS", "ABREL.NS",
-        "GANDHITUBE.NS", "TRITURBINE.NS", "PRAJIND.NS", "MPHASIS.NS", "ASAHIINDIA.NS", "APCOTEXIND.NS",
-        "HEROMOTOCO.NS", "BBTC.NS", "TIPSINDUST.NS", "EQUITASBNK.NS", "EASEMYTRIP.NS",
-        "INDRAMEDCO.NS", "GRAVITA.NS", "PRECAM.NS", "PRICOLLTD.NS", "BHARATWIRE.NS", "SUNDRMFAST.NS",
-        "RADICO.NS", "INDOTECH.NS", "KEC.NS", "SUBROS.NS", "CARBORUNIV.NS", "UBL.NS", "MASTEK.NS",
-        "DCMSHRIRAM.NS", "MINDACORP.NS", "GMRINFRA.NS", "GRANULES.NS", "AARTIDRUGS.NS", "GENUSPOWER.NS",
-        "KPITTECH.NS", "SCHAEFFLER.NS", "FINPIPE.NS", "JBCHEPHARM.NS", "SWANENERGY.NS", "SUPREMEIND.NS",
-        "ZENSARTECH.NS", "NIVALLI.NS", "CGPOWER.NS", "CDSL.NS", "SWSOLAR.NS", "KFINTECH.NS", "CAMS.NS",
-        "MAPMYINDIA.NS", "KAYNES.NS", "TRIDENT.NS", "CEINFO.NS", "NETWEB.NS", "DOMS.NS", "HAPPYFORGE.NS",
-        "DATAPATTNS.NS", "PREMIERENE.NS", "TATAINVEST.NS", "OLECTRA.NS", "RAYMOND.NS", "RITES.NS"
-    ]
+
+    if not raw_symbols:
+        raw_symbols = [
+            "BLUESTARCO", "JSWDULUX", "ABSLAMC", "BAJAJCON", "MMFL", "PGIL", "ABREL",
+            "GANDHITUBE", "TRITURBINE", "PRAJIND", "MPHASIS", "ASAHIINDIA", "APCOTEXIND",
+            "HEROMOTOCO", "BBTC", "TIPSINDUST", "EQUITASBNK", "EASEMYTRIP",
+            "INDRAMEDCO", "GRAVITA", "PRECAM", "PRICOLLTD", "BHARATWIRE", "SUNDRMFAST",
+            "RADICO", "INDOTECH", "KEC", "SUBROS", "CARBORUNIV", "UBL", "MASTEK",
+            "DCMSHRIRAM", "MINDACORP", "GMRINFRA", "GRANULES", "AARTIDRUGS", "GENUSPOWER",
+            "KPITTECH", "SCHAEFFLER", "FINPIPE", "JBCHEPHARM", "SWANENERGY", "SUPREMEIND",
+            "ZENSARTECH", "NIVALLI", "CGPOWER", "CDSL", "SWSOLAR", "KFINTECH", "CAMS",
+            "MAPMYINDIA", "KAYNES", "TRIDENT", "CEINFO", "NETWEB", "DOMS", "HAPPYFORGE",
+            "DATAPATTNS", "PREMIERENE", "TATAINVEST", "OLECTRA", "RAYMOND", "RITES"
+        ]
+
+    # ✅ PERMANENT REMOVAL OF F&O STOCKS (PURE CASH ONLY)
+    pure_cash_symbols = []
+    for s in raw_symbols:
+        clean_sym = s.replace(".NS", "").upper().strip()
+        if clean_sym not in FNO_STOCKS:
+            pure_cash_symbols.append(f"{clean_sym}.NS")
+
+    return pure_cash_symbols
 
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
