@@ -436,11 +436,15 @@ def analyze_stock_5m(symbol):
         df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
         
-        if len(df_5m) < 2 or len(df_daily) < 2:
+        if len(df_5m) < 10 or len(df_daily) < 2:
             return None
 
-        today = df_5m.index[-1].date()
-        today_df = df_5m[df_5m.index.date == today].copy()
+        # CONTINUOUS MULTI-DAY EMA CALCULATION
+        df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
+        df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
+
+        latest_trading_date = df_5m.index[-1].date()
+        today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
         
         if len(today_df) < 1:
             return None
@@ -462,9 +466,6 @@ def analyze_stock_5m(symbol):
         vol_multiple = 1.0
 
         if len(today_df) >= 2:
-            today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
-            today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
-
             c1 = today_df.iloc[0]
             c2 = today_df.iloc[1]
 
@@ -478,8 +479,8 @@ def analyze_stock_5m(symbol):
                 (c1_range_pct <= 1.5) and
                 (c1['Close'] > c1['EMA20']) and
                 (c1['Close'] > c1['EMA200']) and
-                (c1_ema20_dist <= 0.3) and
-                (c1_ema200_dist <= 0.3)
+                (c1_ema20_dist <= 0.8) and
+                (c1_ema200_dist <= 0.8)
             )
 
             c2_bull_inside = (
@@ -496,8 +497,8 @@ def analyze_stock_5m(symbol):
                 (c1_range_pct <= 1.5) and
                 (c1['Close'] < c1['EMA20']) and
                 (c1['Close'] < c1['EMA200']) and
-                (c1_ema20_dist <= 0.3) and
-                (c1_ema200_dist <= 0.3)
+                (c1_ema20_dist <= 0.8) and
+                (c1_ema200_dist <= 0.8)
             )
 
             c2_bear_inside = (
@@ -546,7 +547,6 @@ def analyze_stock_5m(symbol):
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
                             break
 
-        # ALWAYS RETURN STOCK DATA FOR MOVERS & CARDS
         return {
             "Symbol": clean_symbol,
             "Price": curr_price,
