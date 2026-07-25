@@ -109,11 +109,15 @@ st.markdown(f"""
             gap: 4px;
             align-items: center;
             text-decoration: none !important;
-            padding: 2px 6px;
+            padding: 3px 8px;
             border-radius: 5px;
             background-color: {sub_card_bg};
             border: 1px solid {border_color};
             font-size: 11px;
+            transition: border-color 0.2s;
+        }}
+        .idx-item:hover {{
+            border-color: {accent_blue};
         }}
         .idx-name {{ color: {text_sub}; font-weight: 700; font-size: 10px; }}
         .idx-val {{ color: {text_main}; font-weight: 800; font-size: 11px; }}
@@ -329,12 +333,12 @@ def load_hira_stocks():
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
 
-# --- FETCH INDEX DATA ---
+# --- FETCH EXACT 4 INDICES (NIFTY 50, BANK NIFTY, SENSEX, NIFTY MIDCAP) ---
 @st.cache_data(ttl=30)
 def fetch_indices():
     indices = {
-        "BANK NIFTY": ("^NSEBANK", "NSE:BANKNIFTY"),
         "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
+        "BANK NIFTY": ("^NSEBANK", "NSE:BANKNIFTY"),
         "SENSEX": ("^BSESN", "BSE:SENSEX"),
         "NIFTY MIDCAP": ("NIFTY_MID_SELECT.NS", "NSE:NIFTY_MID_SELECT")
     }
@@ -506,12 +510,12 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- CLEAN TOP NAVIGATION BAR (STREAMLIT COLUMNS) ---
+# --- CLEAN TOP NAVIGATION BAR (ONLY EXACT 4 INDICES ADDED) ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-# 1. Title Bar Row
-nav_c1, nav_c2, nav_c3 = st.columns([0.30, 0.50, 0.20])
+# Title Bar Row with NIFTY 50, BANK NIFTY, SENSEX, NIFTY MIDCAP
+nav_c1, nav_c2, nav_c3 = st.columns([0.22, 0.60, 0.18])
 
 with nav_c1:
     st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
@@ -525,7 +529,7 @@ with nav_c2:
         val = data.get("val", 0)
         pct = data.get("pct", 0)
         idx_items += f'<a class="idx-item" href="{url}" target="_blank"><span class="idx-name">{name}:</span> <span class="idx-val">{val:,}</span> <span class="{cls}">{arrow} {pct}%</span></a> '
-    st.markdown(f'<div style="margin-top: 3px;">{idx_items}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="margin-top: 3px; display:flex; gap:6px;">{idx_items}</div>', unsafe_allow_html=True)
 
 with nav_c3:
     b1, b2 = st.columns(2)
@@ -540,7 +544,7 @@ with nav_c3:
             st.cache_data.clear()
             st.rerun()
 
-# 2. Status & Time Sub-Bar
+# Status & Time Sub-Bar
 st.markdown(f'''
     <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:12px; margin-top:-8px;">
         {status_html}
