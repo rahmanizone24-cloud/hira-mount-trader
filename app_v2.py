@@ -46,7 +46,7 @@ else:
 
 st.markdown(f"""
     <style>
-        /* Hide Default Streamlit Chrome & Shift Manage App to Extreme Edge */
+        /* Hide Default Streamlit Chrome */
         header {{visibility: hidden;}}
         footer {{visibility: hidden;}}
         #MainMenu {{visibility: hidden;}}
@@ -55,7 +55,6 @@ st.markdown(f"""
             display: none !important;
         }}
 
-        /* Shift Streamlit's bottom right Manage App button away from our hero avatar */
         .stApp > footer, div[data-testid="stToolbar"], [data-testid="stDecoration"] {{
             display: none !important;
         }}
@@ -114,7 +113,7 @@ st.markdown(f"""
             line-height: 38px;
         }}
 
-        /* SPACIOUS & LARGER TOP ROW INDEX PILLS WITH PROPER SPACING */
+        /* TOP ROW INDEX PILLS */
         .header-indices-wrapper {{
             display: flex;
             align-items: center;
@@ -157,7 +156,7 @@ st.markdown(f"""
             100% {{ opacity: 1; transform: scale(1); }}
         }}
 
-        /* COMPACT & NEAT MARKET STATUS TAGS */
+        /* MARKET STATUS TAGS */
         .market-status-open {{
             background-color: rgba(63, 185, 80, 0.15);
             color: #3fb950;
@@ -296,7 +295,7 @@ st.markdown(f"""
             margin-bottom: 6px;
         }}
 
-        /* ROW ITEM WITH ROUNDED BUTTON BOX FOR SYMBOL */
+        /* ROW ITEM */
         .stock-row-item {{
             display: flex;
             justify-content: space-between;
@@ -378,38 +377,30 @@ st.markdown(f"""
 
         /* GLOWING KRRISH STYLE AVATAR */
         .hero-avatar-container {{
-            width: 60px;
-            height: 60px;
-            background: radial-gradient(circle, rgba(0,212,255,0.3) 0%, rgba(9,9,121,0.8) 100%);
+            width: 55px;
+            height: 55px;
+            background: radial-gradient(circle, rgba(0,212,255,0.4) 0%, rgba(9,9,121,0.9) 100%);
             border: 2px solid #00d2ff;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 18px #00d2ff;
+            box-shadow: 0 0 15px #00d2ff;
             cursor: pointer;
             animation: pulseGlow 2s infinite alternate;
             user-select: none;
-            overflow: hidden;
-        }}
-
-        .hero-avatar-img {{
-            width: 85%;
-            height: 85%;
-            object-fit: contain;
-            filter: drop-shadow(0px 2px 4px rgba(0,210,255,0.8));
         }}
 
         @keyframes pulseGlow {{
             0% {{ box-shadow: 0 0 8px rgba(0, 210, 255, 0.5); transform: scale(0.96); }}
-            100% {{ box-shadow: 0 0 25px rgba(0, 210, 255, 1); transform: scale(1.05); }}
+            100% {{ box-shadow: 0 0 22px rgba(0, 210, 255, 1); transform: scale(1.05); }}
         }}
 
         /* ALERT HISTORY PANEL DRAWER */
         .alerts-history-panel {{
             display: none;
             position: fixed;
-            bottom: 90px;
+            bottom: 85px;
             right: 20px;
             width: 280px;
             max-height: 380px;
@@ -425,7 +416,7 @@ st.markdown(f"""
         /* AUTO-DISMISS TOAST BUBBLE */
         .toast-bubble {{
             position: fixed;
-            bottom: 90px;
+            bottom: 85px;
             right: 20px;
             background-color: {card_bg};
             border: 2px solid #00d2ff;
@@ -434,12 +425,6 @@ st.markdown(f"""
             max-width: 270px;
             box-shadow: 0px 8px 24px rgba(0,0,0,0.6);
             z-index: 99998;
-            animation: slideUp 0.3s ease-out;
-        }}
-
-        @keyframes slideUp {{
-            from {{ transform: translateY(20px); opacity: 0; }}
-            to {{ transform: translateY(0); opacity: 1; }}
         }}
 
         .clear-btn {{
@@ -462,7 +447,7 @@ st.markdown(f"""
 # --- KEYWORDS TO STRICTLY BAN ETFs ---
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
 
-# --- STRICT NSE F&O STOCKS LIST TO BAN F&O HEAVYWEIGHTS (TO PREFER PURE CASH STOCKS ONLY) ---
+# --- STRICT NSE F&O STOCKS LIST ---
 FNO_STOCKS = [
     "AARTIIND", "ABB", "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS", "ALKEM", "AMBUJACEMENT", 
     "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "ASTRAL", "ATUL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", 
@@ -484,7 +469,7 @@ FNO_STOCKS = [
     "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL", "ZYDUSLIFE"
 ]
 
-# --- DYNAMIC CSV LOADER (FILTERING OUT ETFs & F&O STOCKS TO PREFER PURE CASH) ---
+# --- DYNAMIC CSV LOADER ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
     csv_candidates = [
@@ -499,7 +484,6 @@ def load_hira_stocks():
                 col = 'symbol' if 'symbol' in df.columns else df.columns[0]
                 syms = df[col].dropna().astype(str).str.strip().unique().tolist()
                 
-                # FILTER OUT ETFs AND FNO HEAVYWEIGHTS
                 filtered_syms = []
                 for s in syms:
                     clean_s = s.upper().replace(".NS", "")
@@ -582,8 +566,8 @@ def analyze_stock_5m(symbol):
         if len(today_df) < 2:
             return None
 
-        c1 = today_df.iloc[0] # 09:15 Candle
-        c2 = today_df.iloc[1] # 09:20 Candle (Pause Candle)
+        c1 = today_df.iloc[0]
+        c2 = today_df.iloc[1]
 
         max_base_vol = max(c1['Volume'], c2['Volume'])
         if max_base_vol < 5000:
@@ -613,7 +597,6 @@ def analyze_stock_5m(symbol):
 
         c1_range_pct = (c1_range / c1_low) * 100
 
-        # STRICT RULE: RANGE <= 1.25%
         if c1_range_pct > 1.25:
             return None
 
@@ -628,7 +611,6 @@ def analyze_stock_5m(symbol):
 
         c1_vwap = c1['VWAP']
 
-        # BULLISH CONDITION
         c1_bull_cond = (
             (c1_range_pct <= 1.25) and 
             (c1_close > c1['EMA20']) and 
@@ -638,7 +620,6 @@ def analyze_stock_5m(symbol):
         )
         c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # BEARISH CONDITION
         c1_bear_cond = (
             (c1_range_pct <= 1.25) and 
             (c1_close < c1['EMA20']) and 
@@ -648,7 +629,6 @@ def analyze_stock_5m(symbol):
         )
         c2_bear_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # BULLISH CHECK
         if c1_bull_cond and c2_bull_inside:
             signal_bullish = True
             status_state = "WATCH"
@@ -664,7 +644,6 @@ def analyze_stock_5m(symbol):
                         vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                         break
 
-        # BEARISH CHECK
         if c1_bear_cond and c2_bear_inside:
             signal_bearish = True
             status_state = "WATCH"
@@ -913,27 +892,24 @@ for stock in all_ready_stocks:
 if not alert_items_html:
     alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">No active breakouts yet</div>'
 
-# KRRISH-STYLE MASKED HERO AVATAR SVG (HIGH QUALITY SVG DATA)
-HERO_SVG = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-<path d="M50 5 L85 20 L85 50 C85 70 50 95 50 95 C50 95 15 70 15 50 L15 20 Z" fill="#090d16" stroke="#00d2ff" stroke-width="3"/>
-<path d="M50 12 L78 25 L78 48 C78 64 50 85 50 85 C50 85 22 64 22 48 L22 25 Z" fill="#111827"/>
-<path d="M30 38 Q50 28 70 38 Q75 48 70 55 Q50 48 30 55 Q25 48 30 38 Z" fill="#00d2ff"/>
-<circle cx="40" cy="44" r="3" fill="#ffffff"/>
-<circle cx="60" cy="44" r="3" fill="#ffffff"/>
-<path d="M50 58 L55 68 L45 68 Z" fill="#00d2ff"/>
-<path d="M50 25 L58 40 L75 40 L61 50 L66 65 L50 55 L34 65 L39 50 L25 40 L42 40 Z" fill="none" stroke="#00d2ff" stroke-width="2" opacity="0.4"/>
-</svg>"""
+# --- CLEAN INTERACTIVE HERO ASSISTANT ---
+latest_sym = latest_ready_stock['Symbol'] if latest_ready_stock else ''
+latest_type = ('Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown') if latest_ready_stock else ''
+latest_time = latest_ready_stock['SignalTime'] if latest_ready_stock else ''
+latest_price = f"₹{latest_ready_stock['Price']:.2f}" if latest_ready_stock else ''
+latest_change = f"{latest_ready_stock['ChangePct']:+.2f}%" if latest_ready_stock else ''
+latest_color = ("#3fb950" if latest_ready_stock and latest_ready_stock['IsBullish'] else "#f85149") if latest_ready_stock else "#58a6ff"
+toast_display = 'block' if latest_ready_stock else 'none'
 
-# --- INTERACTIVE ROBOT ASSISTANT WITH TOGGLE & AUTO-HIDE ---
 robot_html = f"""
-    <!-- AVATAR ICON WITH GLOW (KRRISH STYLE) -->
+    <!-- KRRISH AVATAR ICON -->
     <div style="position: fixed; bottom: 20px; right: 20px; z-index: 99999;" onclick="toggleAlertPanel()">
         <div class="hero-avatar-container" title="Click to view Alert History">
-            <div class="hero-avatar-img">{HERO_SVG}</div>
+            <span style="font-size:28px;">🦸‍♂️</span>
         </div>
     </div>
 
-    <!-- ALERT HISTORY DRAWER PANEL WITH CLEAR OPTION -->
+    <!-- ALERT HISTORY PANEL -->
     <div id="alertHistoryPanel" class="alerts-history-panel">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid {border_color}; padding-bottom:6px; margin-bottom:8px;">
             <span style="font-weight:900; font-size:12px; color:{text_main};">📢 Alert History</span>
@@ -947,23 +923,20 @@ robot_html = f"""
         </div>
     </div>
 
-    <!-- AUTO-DISMISS POPUP TOAST (DISAPPEARS IN 5 SECONDS) -->
-    <div id="toastNotification" class="toast-bubble" style="display: {'block' if latest_ready_stock else 'none'};">
-        <div style="font-weight:900; color:{'#3fb950' if latest_ready_stock and latest_ready_stock['IsBullish'] else '#f85149'}; font-size:12px; margin-bottom:2px;">
+    <!-- AUTO-DISMISS TOAST BUBBLE (DISAPPEARS IN 5 SECONDS) -->
+    <div id="toastNotification" class="toast-bubble" style="display: {toast_display};">
+        <div style="font-weight:900; color:{latest_color}; font-size:12px; margin-bottom:2px;">
             🚨 READY ALERT!
         </div>
         <div style="font-size:11px; color:{text_main};">
-            <b>{latest_ready_stock['Symbol'] if latest_ready_stock else ''}</b> gave a 
-            <b>{'Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown'}</b> at 
-            <b>{latest_ready_stock['SignalTime'] if latest_ready_stock else ''}</b>.
+            <b>{latest_sym}</b> gave a <b>{latest_type}</b> at <b>{latest_time}</b>.
         </div>
         <div style="font-size:10px; color:{text_sub}; margin-top:3px;">
-            Price: ₹{latest_ready_stock['Price']:.2f} ({latest_ready_stock['ChangePct']:+.2f}%)
+            Price: {latest_price} ({latest_change})
         </div>
     </div>
 
     <script>
-        // Auto-Hide Toast Notification after 5 Seconds
         setTimeout(function() {{
             var toast = document.getElementById('toastNotification');
             if(toast) {{
@@ -971,13 +944,10 @@ robot_html = f"""
             }}
         }}, 5000);
 
-        // Toggle Alert History Panel on Avatar Click
         function toggleAlertPanel() {{
             var panel = document.getElementById('alertHistoryPanel');
             var toast = document.getElementById('toastNotification');
-            
             if(toast) toast.style.display = 'none';
-
             if (panel.style.display === "block") {{
                 panel.style.display = "none";
             }} else {{
@@ -985,16 +955,12 @@ robot_html = f"""
             }}
         }}
 
-        // Clear Alert History List
         function clearAlertHistory() {{
             var container = document.getElementById('alertListContainer');
             if(container) {{
                 container.innerHTML = '<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">Cleared all active alerts</div>';
             }}
         }}
-
-        // Play Beep Sound on Alert
-        {"const audioCtx = new (window.AudioContext || window.webkitAudioContext)(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.3);" if latest_ready_stock else ""}
     </script>
 """
 st.markdown(robot_html, unsafe_allow_html=True)
