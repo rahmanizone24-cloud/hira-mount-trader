@@ -462,21 +462,22 @@ def analyze_stock_5m(symbol):
         signal_bullish = False
         signal_bearish = False
         status_state = ""
-        signal_time = latest.name.strftime("%H:%M")
+        signal_time = "-"
         vol_multiple = 1.0
 
         if len(today_df) >= 2:
             c1 = today_df.iloc[0] # 09:15 Candle
             c2 = today_df.iloc[1] # 09:20 Candle
 
-            c1_range_pct = ((c1['High'] - c1['Low']) / c1['Close']) * 100
+            # STRICT 1.5% MAX RANGE CHECK ON CANDLE 1
+            c1_range_pct = ((c1['High'] - c1['Low']) / c1['Low']) * 100
             c1_ema20_dist = abs(c1['Close'] - c1['EMA20']) / c1['Close'] * 100
             c1_ema200_dist = abs(c1['Close'] - c1['EMA200']) / c1['Close'] * 100
 
-            # Bullish Condition
+            # Bullish Base Condition (STRICT c1_range_pct <= 1.50%)
             c1_bull_cond = (
+                (c1_range_pct <= 1.50) and
                 (c1['Close'] > c1['Low']) and
-                (c1_range_pct <= 1.5) and
                 (c1['Close'] > c1['EMA20']) and
                 (c1['Close'] > c1['EMA200']) and
                 (c1_ema20_dist <= 0.8) and
@@ -491,10 +492,10 @@ def analyze_stock_5m(symbol):
                 ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
             )
 
-            # Bearish Condition
+            # Bearish Base Condition (STRICT c1_range_pct <= 1.50%)
             c1_bear_cond = (
+                (c1_range_pct <= 1.50) and
                 (c1['Close'] < c1['High']) and
-                (c1_range_pct <= 1.5) and
                 (c1['Close'] < c1['EMA20']) and
                 (c1['Close'] < c1['EMA200']) and
                 (c1_ema20_dist <= 0.8) and
@@ -513,18 +514,17 @@ def analyze_stock_5m(symbol):
             if max_base_vol == 0:
                 max_base_vol = 1
 
-            # --- MORNING CUT-OFF FILTER (ONLY DETECT BREAKOUTS UNTIL 10:30 AM) ---
+            # --- MORNING BREAKOUT FILTER (ONLY 09:25 AM TO 10:30 AM) ---
             if c1_bull_cond and c2_bull_inside:
                 signal_bullish = True
                 status_state = "WATCH"
-                signal_time = c2.name.strftime("%H:%M")
+                signal_time = "09:20"
                 
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
                         c_time_str = c_curr.name.strftime("%H:%M")
                         
-                        # Stop scanning after 10:30 AM cutoff
                         if c_time_str > "10:30":
                             break
                             
@@ -540,14 +540,13 @@ def analyze_stock_5m(symbol):
             if c1_bear_cond and c2_bear_inside:
                 signal_bearish = True
                 status_state = "WATCH"
-                signal_time = c2.name.strftime("%H:%M")
+                signal_time = "09:20"
                 
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
                         c_time_str = c_curr.name.strftime("%H:%M")
                         
-                        # Stop scanning after 10:30 AM cutoff
                         if c_time_str > "10:30":
                             break
                             
@@ -731,6 +730,10 @@ if market_movers:
         with m_cols[i]:
             p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
             sign = "+" if m['ChangePct'] >= 0 else ""
+            
+            # Show Alert Time if signal exists, otherwise clean display
+            time_display = f"🕒 Alert Time: {m['SignalTime']}" if m['SignalTime'] != "-" else "🕒 Live Track"
+            
             st.markdown(f"""
                 <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
                     <div class="stock-card">
@@ -739,7 +742,7 @@ if market_movers:
                         <div style="font-size: 12px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'};">
                             {sign}{m['ChangePct']:.2f}%
                         </div>
-                        <div class="stock-meta">🕒 Trigger: {m['SignalTime']}</div>
+                        <div class="stock-meta">{time_display}</div>
                     </div>
                 </a>
             """, unsafe_allow_html=True)
