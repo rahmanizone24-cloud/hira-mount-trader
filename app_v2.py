@@ -53,10 +53,10 @@ st.markdown(f"""
         
         /* Remove Page Padding */
         .block-container {{
-            padding-top: 0.2rem !important;
+            padding-top: 0.3rem !important;
             padding-bottom: 0.1rem !important;
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
+            padding-left: 0.6rem !important;
+            padding-right: 0.6rem !important;
             max-width: 100% !important;
         }}
         
@@ -74,18 +74,18 @@ st.markdown(f"""
             opacity: 0 !important;
         }}
 
-        /* Custom Small Button Styling */
+        /* Custom Larger Button Styling */
         .stButton>button {{
             background-color: {btn_bg} !important;
             color: {accent_blue} !important;
             border: 1px solid {border_color} !important;
             border-radius: 6px !important;
-            font-weight: 700 !important;
-            font-size: 11px !important;
-            padding: 2px 6px !important;
+            font-weight: 800 !important;
+            font-size: 12px !important;
+            padding: 4px 8px !important;
             transition: all 0.2s !important;
             min-height: 0px !important;
-            height: 30px !important;
+            height: 38px !important;
             width: 100% !important;
         }}
         .stButton>button:hover {{
@@ -93,47 +93,49 @@ st.markdown(f"""
             color: {text_main} !important;
         }}
 
-        /* CLEAN TITLE TEXT */
+        /* CLEAN & BOLD TITLE TEXT */
         .nav-title-clean {{
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 900;
             color: {accent_blue} !important;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
             font-family: 'Trebuchet MS', 'Impact', sans-serif;
             text-transform: uppercase;
             white-space: nowrap;
-            line-height: 30px;
+            line-height: 38px;
         }}
 
-        /* SINGLE TOP ROW INDEX PILLS */
+        /* SPACIOUS & LARGER TOP ROW INDEX PILLS */
         .header-indices-wrapper {{
             display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: space-between;
+            gap: 10px;
             width: 100%;
-            height: 30px;
+            height: 38px;
             white-space: nowrap;
         }}
         
         .idx-pill {{
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             background-color: {sub_card_bg};
-            border: 1px solid {border_color};
-            border-radius: 5px;
-            padding: 2px 7px;
+            border: 1.5px solid {border_color};
+            border-radius: 7px;
+            padding: 5px 12px;
             text-decoration: none !important;
-            font-size: 11px;
-            transition: border-color 0.2s;
+            font-size: 12px;
+            transition: border-color 0.2s, transform 0.1s;
         }}
         .idx-pill:hover {{
             border-color: {accent_blue};
+            transform: translateY(-1px);
         }}
-        .idx-lbl {{ color: {text_sub}; font-weight: 700; font-size: 10px; }}
-        .idx-num {{ color: {text_main}; font-weight: 800; font-size: 11px; }}
-        .idx-up-p {{ color: #3fb950; font-weight: 800; font-size: 10px; }}
-        .idx-down-p {{ color: #f85149; font-weight: 800; font-size: 10px; }}
+        .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 11px; text-transform: uppercase; }}
+        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 13px; }}
+        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 11px; }}
+        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 11px; }}
 
         /* LIVE BLINKING ANIMATION */
         .live-blink {{
@@ -151,9 +153,9 @@ st.markdown(f"""
             background-color: rgba(63, 185, 80, 0.15);
             color: #3fb950;
             border: 1px solid rgba(63, 185, 80, 0.4);
-            padding: 2px 6px;
-            border-radius: 5px;
-            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 800;
             white-space: nowrap;
         }}
@@ -162,9 +164,9 @@ st.markdown(f"""
             background-color: rgba(248, 81, 73, 0.15);
             color: #f85149;
             border: 1px solid rgba(248, 81, 73, 0.4);
-            padding: 2px 6px;
-            border-radius: 5px;
-            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 800;
             white-space: nowrap;
         }}
@@ -346,8 +348,8 @@ def load_hira_stocks():
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
 
-# --- FETCH EXACT 4 INDICES (NIFTY 50, BANK NIFTY, SENSEX, NIFTY MIDCAP) ---
-@st.cache_data(ttl=30)
+# --- FAST FETCH EXACT 4 INDICES (OPTIMIZED CACHE & FAST DATA) ---
+@st.cache_data(ttl=60)
 def fetch_indices():
     indices = {
         "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
@@ -356,9 +358,11 @@ def fetch_indices():
         "NIFTY MIDCAP": ("NIFTY_MID_SELECT.NS", "NSE:NIFTY_MID_SELECT")
     }
     res = {}
+    tickers = yf.Tickers(" ".join([sym for sym, _ in indices.values()]))
+    
     for name, (sym, tv_sym) in indices.items():
         try:
-            df = yf.Ticker(sym).history(period="2d")
+            df = tickers.tickers[sym].history(period="2d")
             if len(df) >= 2:
                 curr = df['Close'].iloc[-1]
                 prev = df['Close'].iloc[-2]
@@ -487,7 +491,8 @@ def run_market_scanner():
     bearish_list = []
     all_stocks = []
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
+    # Fast Concurrent Execution (35 threads)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=35) as executor:
         results = executor.map(analyze_stock_5m, NIFTY_CASH_ONLY_SYMBOLS)
         for res in results:
             if res:
@@ -525,11 +530,11 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP SINGLE ROW NAVIGATION HEADER ---
+# --- TOP SINGLE ROW NAVIGATION HEADER (ENLARGED & BALANCED) ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-# Construct indices HTML Pills
+# Construct larger, bold index HTML Pills
 idx_pills_html = '<div class="header-indices-wrapper">'
 for name, data in top_idx.items():
     pct = data.get('pct', 0)
@@ -547,8 +552,8 @@ for name, data in top_idx.items():
     )
 idx_pills_html += '</div>'
 
-# Single Line Header Column Division
-nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.18, 0.46, 0.11, 0.13, 0.06, 0.06])
+# Single Line Header Layout
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.16, 0.50, 0.10, 0.12, 0.06, 0.06])
 
 with nav_col1:
     st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
@@ -557,10 +562,10 @@ with nav_col2:
     st.markdown(idx_pills_html, unsafe_allow_html=True)
 
 with nav_col3:
-    st.markdown(f'<div style="margin-top:4px;">{status_html}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="margin-top:2px;">{status_html}</div>', unsafe_allow_html=True)
 
 with nav_col4:
-    st.markdown(f'<div style="font-size: 10px; color: {text_sub}; font-weight: 700; margin-top:6px; white-space:nowrap;">🕒 {now_time}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap;">🕒 {now_time}</div>', unsafe_allow_html=True)
 
 with nav_col5:
     theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
@@ -574,7 +579,7 @@ with nav_col6:
         st.cache_data.clear()
         st.rerun()
 
-st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
 # --- EXECUTE SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
