@@ -356,7 +356,10 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- DYNAMIC CSV LOADER (LOADS 850+ STOCKS) ---
+# --- KEYWORDS TO STRICTLY BAN ETFs ---
+ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
+
+# --- DYNAMIC CSV LOADER (FILTERING OUT ETFs) ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
     csv_candidates = [
@@ -368,15 +371,21 @@ def load_hira_stocks():
         if os.path.exists(file_candidate):
             try:
                 df = pd.read_csv(file_candidate)
-                # Auto detect symbol column
                 col = 'symbol' if 'symbol' in df.columns else df.columns[0]
                 syms = df[col].dropna().astype(str).str.strip().unique().tolist()
-                if len(syms) > 0:
-                    return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
+                
+                # FILTER OUT ETFs
+                filtered_syms = []
+                for s in syms:
+                    clean_s = s.upper()
+                    if not any(kw in clean_s for kw in ETF_KEYWORDS):
+                        filtered_syms.append(f"{s}.NS" if not s.endswith(".NS") else s)
+                
+                if len(filtered_syms) > 0:
+                    return filtered_syms
             except Exception:
                 pass
             
-    # Default Fallback List
     return ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS']
 
 ALL_HIRA_SYMBOLS = load_hira_stocks()
@@ -422,6 +431,12 @@ def calculate_ema(series, length):
 
 def analyze_stock_5m(symbol):
     try:
+        clean_symbol = symbol.replace(".NS", "").upper()
+        
+        # DOUBLE CHECK ETF FILTER
+        if any(kw in clean_symbol for kw in ETF_KEYWORDS):
+            return None
+
         ticker = yf.Ticker(symbol)
         df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
@@ -438,13 +453,20 @@ def analyze_stock_5m(symbol):
         if len(today_df) < 2:
             return None
 
+        c1 = today_df.iloc[0] # 09:15 Candle
+        c2 = today_df.iloc[1] # 09:20 Candle (Inside Bar / Profit Booking)
+
+        # VOLUME FILTER: REJECT LOW VOLUME STOCKS (Base Candle Volume < 5,000)
+        max_base_vol = max(c1['Volume'], c2['Volume'])
+        if max_base_vol < 5000:
+            return None
+
         latest = today_df.iloc[-1]
         curr_price = latest['Close']
         prev_close = df_daily['Close'].iloc[-2]
         day_change_pct = ((curr_price - prev_close) / prev_close) * 100
         change_pts = curr_price - prev_close
 
-        clean_symbol = symbol.replace(".NS", "")
         tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
         calc_qty = int((10000 * 5) / curr_price) if curr_price > 0 else 0
 
@@ -454,29 +476,16 @@ def analyze_stock_5m(symbol):
         signal_time = "-"
         vol_multiple = 1.0
 
-        c1 = today_df.iloc[0] # 09:15 Candle
-        c2 = today_df.iloc[1] # 09:20 Candle (Inside Bar / Profit Booking)
-
         # STRICT 1.50% RANGE LIMIT ON CANDLE 1
         c1_range_pct = ((c1['High'] - c1['Low']) / c1['Low']) * 100
 
         # --- BULLISH BASE STRUCTURE ---
-        # 9:15 Candle Range <= 1.50% & Closed Above 20 EMA
         c1_bull_cond = (c1_range_pct <= 1.50) and (c1['Close'] >= c1['EMA20'])
-
-        # 9:20 Candle Inside Bar (Profit Booking)
         c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
         # --- BEARISH BASE STRUCTURE ---
-        # 9:15 Candle Range <= 1.50% & Closed Below 20 EMA
         c1_bear_cond = (c1_range_pct <= 1.50) and (c1['Close'] <= c1['EMA20'])
-
-        # 9:20 Candle Inside Bar (Profit Booking)
         c2_bear_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
-
-        max_base_vol = max(c1['Volume'], c2['Volume'])
-        if max_base_vol == 0:
-            max_base_vol = 1
 
         # --- CHECK BULLISH SIGNAL (STARTS AT WATCH) ---
         if c1_bull_cond and c2_bull_inside:
@@ -484,7 +493,6 @@ def analyze_stock_5m(symbol):
             status_state = "WATCH"
             signal_time = "09:20"
             
-            # Check if any subsequent candle (from 09:25 onwards) breaks Candle 1 High
             if len(today_df) >= 3:
                 for i in range(2, len(today_df)):
                     c_curr = today_df.iloc[i]
@@ -502,7 +510,6 @@ def analyze_stock_5m(symbol):
             status_state = "WATCH"
             signal_time = "09:20"
             
-            # Check if any subsequent candle (from 09:25 onwards) breaks Candle 1 Low
             if len(today_df) >= 3:
                 for i in range(2, len(today_df)):
                     c_curr = today_df.iloc[i]
@@ -536,7 +543,6 @@ def run_market_scanner():
     bearish_list = []
     all_stocks = []
 
-    # MULTI-THREADED SCANNER OPTIMIZED FOR 850+ STOCKS
     with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
         results = executor.map(analyze_stock_5m, ALL_HIRA_SYMBOLS)
         for res in results:
@@ -551,15 +557,19 @@ def run_market_scanner():
     top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
     top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
 
-    # SORTING: READY SETUPS TOP, WATCH SETUPS BOTTOM
-    sorted_bullish = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple']), reverse=True)
-    sorted_bearish = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple']), reverse=True)
+    # SORTING: READY SETUPS TOP, HIGH VOL MULTIPLE & CHANGE PCT TOP
+    sorted_bullish = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], x['ChangePct']), reverse=True)
+    sorted_bearish = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], abs(x['ChangePct'])), reverse=True)
+
+    # STRICT TOP 10 LIMITATION FOR DASHBOARD
+    top_10_bullish = sorted_bullish[:10]
+    top_10_bearish = sorted_bearish[:10]
 
     gainers_4 = all_df.sort_values(by="ChangePct", ascending=False).head(4).to_dict('records') if not all_df.empty else []
     losers_4 = all_df.sort_values(by="ChangePct", ascending=True).head(4).to_dict('records') if not all_df.empty else []
     balanced_movers = gainers_4 + losers_4
 
-    return sorted_bullish, sorted_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
+    return top_10_bullish, top_10_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
 # --- MARKET OPEN / CLOSE LOGIC ---
 ist_tz = pytz.timezone('Asia/Kolkata')
@@ -709,13 +719,13 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (BULLISH & BEARISH SETUPS WITH STATUS BUTTONS) ---
+# --- ROW LIST (BULLISH & BEARISH SETUPS - TOP 10 ONLY) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
     st.markdown("""
         <div class="setup-box">
-            <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
+            <div class="setup-header-bull"><span class="live-blink">🟢</span> TOP 10 BULLISH SETUPS</div>
             <div class="row-header">
                 <span style="width: 20%;">SYMBOL</span>
                 <span style="width: 15%;">STATUS</span>
@@ -747,12 +757,12 @@ with tb_col1:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakouts in Scanned Stocks...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bullish breakouts...</div>', unsafe_allow_html=True)
 
 with tb_col2:
     st.markdown("""
         <div class="setup-box">
-            <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
+            <div class="setup-header-bear"><span class="live-blink">🔴</span> TOP 10 BEARISH SETUPS</div>
             <div class="row-header">
                 <span style="width: 20%;">SYMBOL</span>
                 <span style="width: 15%;">STATUS</span>
@@ -760,7 +770,7 @@ with tb_col2:
                 <span style="width: 15%;">VOL SURGE</span>
                 <span style="width: 12%;">QTY</span>
                 <span style="width: 11%; text-align:right;">PRICE</span>
-                <span style="width: 12%; text-align:right;">CHANGE</span>
+                <span style="width: 11%; text-align:right;">CHANGE</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -784,7 +794,7 @@ with tb_col2:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Scanned Stocks...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
 # --- AUTO-REFRESH (30 SECONDS) ---
 if is_market_open:
