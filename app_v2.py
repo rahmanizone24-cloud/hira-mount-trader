@@ -476,15 +476,48 @@ def analyze_stock_5m(symbol):
         signal_time = "-"
         vol_multiple = 1.0
 
-        # STRICT 1.50% RANGE LIMIT ON CANDLE 1
-        c1_range_pct = ((c1['High'] - c1['Low']) / c1['Low']) * 100
+        # --- CANDLE 1 STRICT MOMENTUM & RANGE ANALYSIS ---
+        c1_high, c1_low = c1['High'], c1['Low']
+        c1_open, c1_close = c1['Open'], c1['Close']
+        c1_range = c1_high - c1_low
 
-        # --- BULLISH BASE STRUCTURE ---
-        c1_bull_cond = (c1_range_pct <= 1.50) and (c1['Close'] >= c1['EMA20'])
+        if c1_range == 0:
+            return None
+
+        c1_range_pct = (c1_range / c1_low) * 100
+        c1_body = abs(c1_close - c1_open)
+        body_ratio = c1_body / c1_range
+
+        upper_wick = c1_high - max(c1_open, c1_close)
+        lower_wick = min(c1_open, c1_close) - c1_low
+
+        upper_wick_ratio = upper_wick / c1_range
+        lower_wick_ratio = lower_wick / c1_range
+
+        # --- STRICT BULLISH CONDITION ---
+        # 1. Range <= 1.50%
+        # 2. Closed Above 20 EMA
+        # 3. Solid Body >= 65% of Range (Strong Conviction)
+        # 4. Upper Wick (Rejection) <= 25% of Range
+        c1_bull_cond = (
+            (c1_range_pct <= 1.50) and 
+            (c1_close >= c1['EMA20']) and 
+            (body_ratio >= 0.65) and 
+            (upper_wick_ratio <= 0.25)
+        )
         c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # --- BEARISH BASE STRUCTURE ---
-        c1_bear_cond = (c1_range_pct <= 1.50) and (c1['Close'] <= c1['EMA20'])
+        # --- STRICT BEARISH CONDITION ---
+        # 1. Range <= 1.50%
+        # 2. Closed Below 20 EMA
+        # 3. Solid Body >= 65% of Range (Strong Conviction)
+        # 4. Lower Wick (Buying Tail) <= 25% of Range
+        c1_bear_cond = (
+            (c1_range_pct <= 1.50) and 
+            (c1_close <= c1['EMA20']) and 
+            (body_ratio >= 0.65) and 
+            (lower_wick_ratio <= 0.25)
+        )
         c2_bear_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
         # --- CHECK BULLISH SIGNAL (STARTS AT WATCH) ---
