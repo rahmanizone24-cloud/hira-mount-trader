@@ -466,8 +466,8 @@ def analyze_stock_5m(symbol):
         vol_multiple = 1.0
 
         if len(today_df) >= 2:
-            c1 = today_df.iloc[0]
-            c2 = today_df.iloc[1]
+            c1 = today_df.iloc[0] # 09:15 Candle
+            c2 = today_df.iloc[1] # 09:20 Candle
 
             c1_range_pct = ((c1['High'] - c1['Low']) / c1['Close']) * 100
             c1_ema20_dist = abs(c1['Close'] - c1['EMA20']) / c1['Close'] * 100
@@ -513,6 +513,7 @@ def analyze_stock_5m(symbol):
             if max_base_vol == 0:
                 max_base_vol = 1
 
+            # --- MORNING CUT-OFF FILTER (ONLY DETECT BREAKOUTS UNTIL 10:30 AM) ---
             if c1_bull_cond and c2_bull_inside:
                 signal_bullish = True
                 status_state = "WATCH"
@@ -521,12 +522,18 @@ def analyze_stock_5m(symbol):
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
+                        c_time_str = c_curr.name.strftime("%H:%M")
+                        
+                        # Stop scanning after 10:30 AM cutoff
+                        if c_time_str > "10:30":
+                            break
+                            
                         if (c_curr['High'] > max(c1['High'], c2['High']) and
                             c_curr['Close'] > c_curr['Open'] and
                             c_curr['Volume'] > (max_base_vol * 1.5)):
                             
                             status_state = "READY"
-                            signal_time = c_curr.name.strftime("%H:%M")
+                            signal_time = c_time_str
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
                             break
 
@@ -538,12 +545,18 @@ def analyze_stock_5m(symbol):
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
+                        c_time_str = c_curr.name.strftime("%H:%M")
+                        
+                        # Stop scanning after 10:30 AM cutoff
+                        if c_time_str > "10:30":
+                            break
+                            
                         if (c_curr['Low'] < min(c1['Low'], c2['Low']) and
                             c_curr['Close'] < c_curr['Open'] and
                             c_curr['Volume'] > (max_base_vol * 1.5)):
                             
                             status_state = "READY"
-                            signal_time = c_curr.name.strftime("%H:%M")
+                            signal_time = c_time_str
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
                             break
 
