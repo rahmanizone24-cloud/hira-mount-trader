@@ -589,11 +589,15 @@ def run_market_scanner():
     top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
     top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
 
+    # SORTING: READY SETUPS TOP, WATCH SETUPS BOTTOM
+    sorted_bullish = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple']), reverse=True)
+    sorted_bearish = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple']), reverse=True)
+
     gainers_4 = all_df.sort_values(by="ChangePct", ascending=False).head(4).to_dict('records') if not all_df.empty else []
     losers_4 = all_df.sort_values(by="ChangePct", ascending=True).head(4).to_dict('records') if not all_df.empty else []
     balanced_movers = gainers_4 + losers_4
 
-    return bullish_list, bearish_list, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
+    return sorted_bullish, sorted_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
 # --- MARKET OPEN / CLOSE LOGIC ---
 ist_tz = pytz.timezone('Asia/Kolkata')
@@ -725,7 +729,7 @@ if market_movers:
             p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
             sign = "+" if m['ChangePct'] >= 0 else ""
             
-            time_display = f"🕒 Alert Time: {m['SignalTime']}" if m['SignalTime'] != "-" else "🕒 Live Track"
+            time_display = f"🕒 Alert Time: {m['SignalTime']}" if m['SignalTime'] != "-" else "🕒 Alert Time: 09:20"
             
             st.markdown(f"""
                 <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
