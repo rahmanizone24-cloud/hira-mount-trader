@@ -369,10 +369,32 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- KEYWORDS TO STRICTLY BAN ETFs & FNO HEAVYWEIGHTS (TO PREFER CASH STOCKS) ---
+# --- KEYWORDS TO STRICTLY BAN ETFs ---
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
 
-# --- DYNAMIC CSV LOADER (FILTERING OUT ETFs) ---
+# --- STRICT NSE F&O STOCKS LIST TO BAN F&O HEAVYWEIGHTS (TO PREFER PURE CASH STOCKS ONLY) ---
+FNO_STOCKS = [
+    "AARTIIND", "ABB", "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS", "ALKEM", "AMBUJACEMENT", 
+    "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "ASTRAL", "ATUL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", 
+    "BAJAJFINSV", "BAJFINANCE", "BALKRISIND", "BALRAMCHIN", "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT", 
+    "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BSOFT", "BPCL", "BRITANNIA", "CANBK", "CANFINHOME", "CHAMBLFERT", 
+    "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE", "COLPAL", "CONCOR", "COROMANDEL", "CROMPTON", "CUB", "CUMMINSIND", 
+    "DABUR", "DALBHARAT", "DEEPAKNTR", "DIVISLAB", "DIXON", "DLF", "DRREDDY", "EICHERMOT", "ESCORTS", "EXIDEIND", 
+    "FEDERALBNK", "GAIL", "GLENMARK", "GMMPFAUDLR", "GNFC", "GODREJPROP", "GODREJCP", "GRANULES", "GRASIM", "GUJGASLTD", 
+    "HAL", "HAVELLS", "HCLTECH", "HDFCBANK", "HDFCLIFE", "HDFCAMC", "HEROMOTOCO", "HINDALCO", "HAL", "HINDCOPPER", 
+    "HINDPETRO", "HINDUNILVR", "ICICIBANK", "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IEX", "IGL", "INDHOTEL", 
+    "INDIAMART", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "IOC", "IPCALAB", "IRCTC", "ITC", "JINDALSTEL", 
+    "JKCEMENT", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "LALPATHLAB", "LT", "LTIM", "LTF", "LTI", "LTTS", 
+    "LUPIN", "M&M", "M&MFIN", "MANAPPURAM", "MARICO", "MARUTI", "MCDOWELL-N", "MCX", "METROPOLIS", "MFSL", 
+    "MGL", "MOTHERSON", "MPHASIS", "MRF", "MUTHOOTFIN", "NATIONALUM", "NAUKRI", "NAVINFLUOR", "NESTLEIND", "NMDC", 
+    "NTPC", "OBEROIRLTY", "OFSS", "ONGC", "PAGEIND", "PERSISTENT", "PETRONET", "PFC", "PIDILITIND", "PIIND", 
+    "PNB", "POLYCAB", "POWERGRID", "PVRINOX", "RAMCOCEM", "RBLBANK", "RECLTD", "RELIANCE", "SAIL", "SBICARD", 
+    "SBILIFE", "SBIN", "SHREECEM", "SHRIRAMFIN", "SIEMENS", "SRF", "SUNPHARMA", "SUNTV", "SYNGENE", "TATACHEMICALS", 
+    "TATACOMM", "TATACONSUM", "TATAMOTORS", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TITAN", "TORNTPHARM", "TRENT", 
+    "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL", "ZYDUSLIFE"
+]
+
+# --- DYNAMIC CSV LOADER (FILTERING OUT ETFs & F&O STOCKS TO PREFER PURE CASH) ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
     csv_candidates = [
@@ -387,11 +409,11 @@ def load_hira_stocks():
                 col = 'symbol' if 'symbol' in df.columns else df.columns[0]
                 syms = df[col].dropna().astype(str).str.strip().unique().tolist()
                 
-                # FILTER OUT ETFs
+                # FILTER OUT ETFs AND FNO HEAVYWEIGHTS
                 filtered_syms = []
                 for s in syms:
-                    clean_s = s.upper()
-                    if not any(kw in clean_s for kw in ETF_KEYWORDS):
+                    clean_s = s.upper().replace(".NS", "")
+                    if (not any(kw in clean_s for kw in ETF_KEYWORDS)) and (clean_s not in FNO_STOCKS):
                         filtered_syms.append(f"{s}.NS" if not s.endswith(".NS") else s)
                 
                 if len(filtered_syms) > 0:
@@ -399,7 +421,7 @@ def load_hira_stocks():
             except Exception:
                 pass
             
-    return ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS']
+    return ['ALOKINDS.NS', 'TRIDENT.NS', 'SUZLON.NS', 'BCG.NS', 'SJVN.NS']
 
 ALL_HIRA_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(ALL_HIRA_SYMBOLS)
@@ -446,8 +468,8 @@ def analyze_stock_5m(symbol):
     try:
         clean_symbol = symbol.replace(".NS", "").upper()
         
-        # DOUBLE CHECK ETF FILTER
-        if any(kw in clean_symbol for kw in ETF_KEYWORDS):
+        # DOUBLE CHECK ETF & FNO FILTER
+        if any(kw in clean_symbol for kw in ETF_KEYWORDS) or (clean_symbol in FNO_STOCKS):
             return None
 
         ticker = yf.Ticker(symbol)
@@ -729,7 +751,7 @@ with c4:
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
             <div style="font-size: 16px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
-                {TOTAL_SCANNED_STOCKS} Stocks
+                {TOTAL_SCANNED_STOCKS} Cash Stocks
             </div>
             <div style="font-size: 11px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active Signals: {total_bull_cnt + total_bear_cnt}</div>
         </div>
