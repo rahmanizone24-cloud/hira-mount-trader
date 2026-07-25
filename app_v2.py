@@ -514,14 +514,15 @@ def run_market_scanner():
     top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
     top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
     
-    bullish_top10 = sorted(bullish_list, key=lambda x: x['VolMultiple'], reverse=True)[:10]
-    bearish_top10 = sorted(bearish_list, key=lambda x: x['VolMultiple'], reverse=True)[:10]
+    # EXACTLY TOP 5 FOR BOTH BULLISH & BEARISH SETUPS
+    bullish_top5 = sorted(bullish_list, key=lambda x: x['VolMultiple'], reverse=True)[:5]
+    bearish_top5 = sorted(bearish_list, key=lambda x: x['VolMultiple'], reverse=True)[:5]
 
     gainers_4 = all_df.sort_values(by="ChangePct", ascending=False).head(4).to_dict('records') if not all_df.empty else []
     losers_4 = all_df.sort_values(by="ChangePct", ascending=True).head(4).to_dict('records') if not all_df.empty else []
     balanced_movers = gainers_4 + losers_4
 
-    return bullish_top10, bearish_top10, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
+    return bullish_top5, bearish_top5, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
 # --- MARKET OPEN / CLOSE LOGIC ---
 ist_tz = pytz.timezone('Asia/Kolkata')
@@ -668,7 +669,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (TOP 10 VOL SURGE FILTERED WITH QTY) ---
+# --- ROW LIST (TOP 5 VOL SURGE FILTERED WITH QTY) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
