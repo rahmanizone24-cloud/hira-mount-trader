@@ -6,7 +6,6 @@ import datetime
 import concurrent.futures
 import os
 import pytz
-import time
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -20,8 +19,10 @@ st.set_page_config(
 query_params = st.query_params
 
 if 'theme' not in st.session_state:
+    # URL parameter se theme check karein, warna default 'dark' rakhein
     st.session_state.theme = query_params.get('theme', 'dark')
 
+# CSS Inject karne se pehle ensure karein ki query_params aur state synchronized hain
 st.query_params['theme'] = st.session_state.theme
 
 # --- THEME CSS DEFINITIONS ---
@@ -67,7 +68,7 @@ st.markdown(f"""
             font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         }}
         
-        /* PREVENT PAGE BLUR / FLICKER ON AUTO REFRESH */
+        /* Prevent Page Blur */
         .stApp > div {{
             opacity: 1 !important;
             transition: none !important;
@@ -110,14 +111,19 @@ st.markdown(f"""
             margin-bottom: 12px;
         }}
         
-        /* CLEAN TITLE TEXT (BLUE BADGE STRIP REMOVED) */
-        .nav-title-clean {{
+        /* HIGH HIGHLIGHTED TITLE BADGE */
+        .nav-title-badge {{
             font-size: 18px;
             font-weight: 900;
-            color: {accent_blue} !important;
+            background: linear-gradient(135deg, #1f6feb 0%, #0969da 100%);
+            color: #ffffff !important;
+            padding: 5px 14px;
+            border-radius: 6px;
             letter-spacing: 1.2px;
             font-family: 'Trebuchet MS', 'Impact', sans-serif;
             text-transform: uppercase;
+            box-shadow: 0px 2px 10px rgba(31, 111, 235, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             display: inline-block;
         }}
 
@@ -314,17 +320,7 @@ st.markdown(f"""
             border-radius: 5px;
             padding: 2px 6px;
             font-weight: 900;
-            font-size: 11px;
-        }}
-
-        .qty-box {{
-            background-color: rgba(88, 166, 255, 0.15);
-            color: {accent_blue};
-            border: 1px solid rgba(88, 166, 255, 0.4);
-            border-radius: 5px;
-            padding: 2px 6px;
-            font-weight: 900;
-            font-size: 11px;
+            font-size: 12px;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -340,7 +336,6 @@ def load_hira_stocks():
             return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
         except Exception:
             pass
-            
     return [
         "BLUESTARCO.NS", "JSWDULUX.NS", "ABSLAMC.NS", "BAJAJCON.NS", "MMFL.NS", "PGIL.NS", "ABREL.NS",
         "GANDHITUBE.NS", "TRITURBINE.NS", "PRAJIND.NS", "MPHASIS.NS", "ASAHIINDIA.NS", "APCOTEXIND.NS",
@@ -351,7 +346,10 @@ def load_hira_stocks():
         "KPITTECH.NS", "SCHAEFFLER.NS", "FINPIPE.NS", "JBCHEPHARM.NS", "SWANENERGY.NS", "SUPREMEIND.NS",
         "ZENSARTECH.NS", "NIVALLI.NS", "CGPOWER.NS", "CDSL.NS", "SWSOLAR.NS", "KFINTECH.NS", "CAMS.NS",
         "MAPMYINDIA.NS", "KAYNES.NS", "TRIDENT.NS", "CEINFO.NS", "NETWEB.NS", "DOMS.NS", "HAPPYFORGE.NS",
-        "DATAPATTNS.NS", "PREMIERENE.NS", "TATAINVEST.NS", "OLECTRA.NS", "RAYMOND.NS", "RITES.NS"
+        "DATAPATTNS.NS", "PREMIERENE.NS", "TATAINVEST.NS", "OLECTRA.NS", "RAYMOND.NS", "RITES.NS",
+        "HFCL.NS", "EMUDHRA.NS", "NEWGEN.NS", "RATEGAIN.NS", "CLEAN.NS", "ANANDRATHI.NS", "JUBLPHARMA.NS",
+        "ECLERX.NS", "STARHEALTH.NS", "HAPPSTMNDS.NS", "LATENTVIEW.NS", "CAMPUS.NS", "HOMAFIRST.NS",
+        "AAVAS.NS", "MEDPLUS.NS", "KIMS.NS", "VIJAYA.NS", "SJS.NS", "MTARTECH.NS", "PARAS.NS", "PRINCEPIPE.NS"
     ]
 
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
@@ -384,10 +382,6 @@ def fetch_indices():
 def calculate_ema(series, length):
     return series.ewm(span=length, adjust=False).mean()
 
-def calculate_vwap(df):
-    tp = (df['High'] + df['Low'] + df['Close']) / 3
-    return (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
-
 def analyze_stock_5m(symbol):
     try:
         ticker = yf.Ticker(symbol)
@@ -405,7 +399,6 @@ def analyze_stock_5m(symbol):
             
         today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
         today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
-        today_df['VWAP'] = calculate_vwap(today_df)
 
         c1 = today_df.iloc[0]
         c1_green = c1['Close'] > c1['Open']
@@ -432,22 +425,21 @@ def analyze_stock_5m(symbol):
         signal_time = ""
         vol_multiple = 1.0
 
-        # BULLISH CHECK (WITH VWAP)
+        # BULLISH CHECK
         if c1_green and (c1_range_pct <= 2.0) and c2_inside:
             for i in range(2, len(today_df)):
                 c_curr = today_df.iloc[i]
                 if (c_curr['Close'] > c1['High'] and 
                     c_curr['Volume'] > c2['Volume'] and 
                     c_curr['Close'] > c_curr['EMA200'] and 
-                    c_curr['Close'] > c_curr['EMA20'] and
-                    c_curr['Close'] > c_curr['VWAP']):
+                    c_curr['Close'] > c_curr['EMA20']):
                     
                     signal_bullish = True
                     signal_time = c_curr.name.strftime("%H:%M")
                     vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
                     break
 
-        # BEARISH CHECK (WITH VWAP)
+        # BEARISH CHECK
         is_near_pdl = c1['Open'] <= (pdl * 1.015)
         if c1_red and (c1_range_pct <= 2.0) and c2_inside and is_near_pdl:
             for i in range(2, len(today_df)):
@@ -455,16 +447,12 @@ def analyze_stock_5m(symbol):
                 if (c_curr['Close'] < c1['Low'] and 
                     c_curr['Volume'] > c2['Volume'] and 
                     c_curr['Close'] < c_curr['EMA200'] and 
-                    c_curr['Close'] < c_curr['EMA20'] and
-                    c_curr['Close'] < c_curr['VWAP']):
+                    c_curr['Close'] < c_curr['EMA20']):
                     
                     signal_bearish = True
                     signal_time = c_curr.name.strftime("%H:%M")
                     vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
                     break
-
-        # CALCULATION: ₹10,000 Capital with 5x Intraday Margin (₹50,000 buying power)
-        calc_qty = int((10000 * 5) / curr_price) if curr_price > 0 else 0
 
         if signal_bullish or signal_bearish:
             return {
@@ -476,8 +464,7 @@ def analyze_stock_5m(symbol):
                 "VolMultiple": vol_multiple if vol_multiple > 1.0 else 1.50,
                 "IsBullish": signal_bullish,
                 "IsBearish": signal_bearish,
-                "TVUrl": tv_url,
-                "Qty": calc_qty
+                "TVUrl": tv_url
             }
         return None
     except:
@@ -545,7 +532,7 @@ with head_col1:
 
     st.markdown(f"""
         <div class="top-nav">
-            <div class="nav-title-clean">HIRA MOUNT TRADER</div>
+            <div class="nav-title-badge">HIRA MOUNT TRADER</div>
             <div class="nav-indices">
                 {idx_items_html}
             </div>
@@ -564,7 +551,7 @@ with head_col2:
         if st.button(theme_icon, use_container_width=True):
             new_theme = 'light' if st.session_state.theme == 'dark' else 'dark'
             st.session_state.theme = new_theme
-            st.query_params['theme'] = new_theme
+            st.query_params['theme'] = new_theme  # URL parameter me set karein
             st.rerun()
     with btn_c2:
         if st.button("🔄 Refresh", use_container_width=True):
@@ -651,20 +638,19 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (TOP 10 VOL SURGE FILTERED WITH QTY) ---
+# --- ROW LIST (TOP 10 VOL SURGE FILTERED) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
     st.markdown("""
         <div class="setup-box">
-            <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
+            <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS (TOP 10 VOL SURGE)</div>
             <div class="row-header">
-                <span style="width: 25%;">SYMBOL</span>
-                <span style="width: 18%;">TRIGGER</span>
-                <span style="width: 18%;">VOL SURGE</span>
-                <span style="width: 15%;">QTY</span>
-                <span style="width: 12%; text-align:right;">PRICE</span>
-                <span style="width: 12%; text-align:right;">CHANGE</span>
+                <span style="width: 28%;">SYMBOL</span>
+                <span style="width: 22%;">TRIGGER TIME</span>
+                <span style="width: 20%;">VOL SURGE</span>
+                <span style="width: 15%; text-align:right;">PRICE</span>
+                <span style="width: 15%; text-align:right;">CHANGE</span>
             </div>
     """, unsafe_allow_html=True)
     
@@ -672,12 +658,11 @@ with tb_col1:
         for s in bullish_signals:
             st.markdown(f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 25%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
-                    <div style="width: 18%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 18%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 15%;"><span class="qty-box">{s['Qty']}</span></div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
+                    <div style="width: 28%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
+                    <div style="width: 22%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                    <div style="width: 20%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                    <div style="width: 15%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                    <div style="width: 15%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
     else:
@@ -688,14 +673,13 @@ with tb_col1:
 with tb_col2:
     st.markdown("""
         <div class="setup-box">
-            <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
+            <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS (TOP 10 VOL SURGE)</div>
             <div class="row-header">
-                <span style="width: 25%;">SYMBOL</span>
-                <span style="width: 18%;">TRIGGER</span>
-                <span style="width: 18%;">VOL SURGE</span>
-                <span style="width: 15%;">QTY</span>
-                <span style="width: 12%; text-align:right;">PRICE</span>
-                <span style="width: 12%; text-align:right;">CHANGE</span>
+                <span style="width: 28%;">SYMBOL</span>
+                <span style="width: 22%;">TRIGGER TIME</span>
+                <span style="width: 20%;">VOL SURGE</span>
+                <span style="width: 15%; text-align:right;">PRICE</span>
+                <span style="width: 15%; text-align:right;">CHANGE</span>
             </div>
     """, unsafe_allow_html=True)
     
@@ -703,20 +687,14 @@ with tb_col2:
         for s in bearish_signals:
             st.markdown(f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 25%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
-                    <div style="width: 18%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 18%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 15%;"><span class="qty-box">{s['Qty']}</span></div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
+                    <div style="width: 28%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
+                    <div style="width: 22%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                    <div style="width: 20%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                    <div style="width: 15%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                    <div style="width: 15%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira Stocks...</div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
-
-# --- AUTOMATIC SILENT AUTO-REFRESH (EVERY 30 SECONDS - ONLY WHEN MARKET IS OPEN) ---
-if is_market_open:
-    time.sleep(30)
-    st.rerun()
