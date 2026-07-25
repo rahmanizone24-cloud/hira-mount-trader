@@ -300,6 +300,40 @@ st.markdown(f"""
             display: inline-block;
         }}
 
+        /* STATUS BUTTON STYLES */
+        .status-watch {{
+            background-color: #C0C0C0;
+            color: #000000;
+            border: 1px solid #A9A9A9;
+            border-radius: 5px;
+            padding: 3px 8px;
+            font-weight: 900;
+            font-size: 11px;
+            display: inline-block;
+        }}
+
+        .status-ready-bull {{
+            background-color: #006400;
+            color: #FFFFFF;
+            border: 1px solid #004d00;
+            border-radius: 5px;
+            padding: 3px 8px;
+            font-weight: 900;
+            font-size: 11px;
+            display: inline-block;
+        }}
+
+        .status-ready-bear {{
+            background-color: #8B0000;
+            color: #FFFFFF;
+            border: 1px solid #660000;
+            border-radius: 5px;
+            padding: 3px 8px;
+            font-weight: 900;
+            font-size: 11px;
+            display: inline-block;
+        }}
+
         .vol-box {{
             background-color: rgba(210, 153, 34, 0.15);
             color: #d29922;
@@ -350,7 +384,7 @@ def load_hira_stocks():
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
 
-# --- ACCURATE FETCH FOR TOP INDICES (REAL-TIME CLOSE & PREVIOUS CLOSE) ---
+# --- ACCURATE FETCH FOR TOP INDICES ---
 @st.cache_data(ttl=30)
 def fetch_indices():
     indices = {
@@ -388,93 +422,122 @@ def fetch_indices():
 def calculate_ema(series, length):
     return series.ewm(span=length, adjust=False).mean()
 
-def calculate_vwap(df):
-    tp = (df['High'] + df['Low'] + df['Close']) / 3
-    return (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
-
 def analyze_stock_5m(symbol):
     try:
         ticker = yf.Ticker(symbol)
         df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
         
-        if len(df_5m) < 25 or len(df_daily) < 2:
-            return None
-
-        avg_daily_vol = df_daily['Volume'].iloc[-2] if len(df_daily) >= 2 else 0
-        if avg_daily_vol < 500000:
+        if len(df_5m) < 3 or len(df_daily) < 2:
             return None
 
         today = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == today].copy()
         
-        if len(today_df) < 3:
-            return None
-
-        avg_5m_vol = today_df['Volume'].mean()
-        if avg_5m_vol < 1000:
-            return None
-
-        avg_candle_range = (today_df['High'] - today_df['Low']).mean()
-        if avg_candle_range <= 0.2:
+        if len(today_df) < 2:
             return None
             
         today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
         today_df['EMA200'] = calculate_ema(today_df['Close'], 200)
-        today_df['VWAP'] = calculate_vwap(today_df)
 
         c1 = today_df.iloc[0]
-        c1_green = c1['Close'] > c1['Open']
-        c1_red = c1['Close'] < c1['Open']
-        c1_range_pct = ((c1['High'] - c1['Low']) / c1['Open']) * 100
-        
         c2 = today_df.iloc[1]
-        c2_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
+
+        # --- CANDLE 1 CALCULATIONS ---
+        c1_range_pct = ((c1['High'] - c1['Low']) / c1['Close']) * 100
+        c1_ema20_dist = abs(c1['Close'] - c1['EMA20']) / c1['Close'] * 100
+        c1_ema200_dist = abs(c1['Close'] - c1['EMA200']) / c1['Close'] * 100
+
+        # --- CANDLE 1 & 2 BULLISH BASE SETUP ---
+        c1_bull_cond = (
+            (c1['Close'] > c1['Low']) and
+            (c1_range_pct <= 1.5) and
+            (c1['Close'] > c1['EMA20']) and
+            (c1['Close'] > c1['EMA200']) and
+            (c1_ema20_dist <= 0.3) and
+            (c1_ema200_dist <= 0.3)
+        )
+
+        c2_bull_inside = (
+            (c2['High'] <= c1['High']) and
+            (c2['Low'] >= c1['Low']) and
+            (c2['High'] < c1['High']) and
+            (c2['Close'] >= c2['Low'] + ((c2['High'] - c2['Low']) * 0.3)) and
+            ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
+        )
+
+        # --- CANDLE 1 & 2 BEARISH BASE SETUP ---
+        c1_bear_cond = (
+            (c1['Close'] < c1['High']) and
+            (c1_range_pct <= 1.5) and
+            (c1['Close'] < c1['EMA20']) and
+            (c1['Close'] < c1['EMA200']) and
+            (c1_ema20_dist <= 0.3) and
+            (c1_ema200_dist <= 0.3)
+        )
+
+        c2_bear_inside = (
+            (c2['High'] <= c1['High']) and
+            (c2['Low'] >= c1['Low']) and
+            (c2['Low'] > c1['Low']) and
+            (c2['Close'] <= c2['High'] - ((c2['High'] - c2['Low']) * 0.3)) and
+            ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
+        )
+
+        signal_bullish = False
+        signal_bearish = False
+        status_state = "" # "WATCH" or "READY"
+        signal_time = c2.name.strftime("%H:%M")
+        vol_multiple = 1.0
+
+        max_base_vol = max(c1['Volume'], c2['Volume'])
+        if max_base_vol == 0:
+            max_base_vol = 1
+
+        # Check Bullish Setup
+        if c1_bull_cond and c2_bull_inside:
+            signal_bullish = True
+            status_state = "WATCH"
+            
+            # Check Breakout in Candle 3, 4, 5+
+            if len(today_df) >= 3:
+                for i in range(2, len(today_df)):
+                    c_curr = today_df.iloc[i]
+                    if (c_curr['High'] > max(c1['High'], c2['High']) and
+                        c_curr['Close'] > c_curr['Open'] and
+                        c_curr['Volume'] > (max_base_vol * 1.5)):
+                        
+                        status_state = "READY"
+                        signal_time = c_curr.name.strftime("%H:%M")
+                        vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
+                        break
+
+        # Check Bearish Setup
+        if c1_bear_cond and c2_bear_inside:
+            signal_bearish = True
+            status_state = "WATCH"
+            
+            # Check Breakdown in Candle 3, 4, 5+
+            if len(today_df) >= 3:
+                for i in range(2, len(today_df)):
+                    c_curr = today_df.iloc[i]
+                    if (c_curr['Low'] < min(c1['Low'], c2['Low']) and
+                        c_curr['Close'] < c_curr['Open'] and
+                        c_curr['Volume'] > (max_base_vol * 1.5)):
+                        
+                        status_state = "READY"
+                        signal_time = c_curr.name.strftime("%H:%M")
+                        vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
+                        break
 
         latest = today_df.iloc[-1]
         curr_price = latest['Close']
         prev_close = df_daily['Close'].iloc[-2]
-        pdl = df_daily['Low'].iloc[-2]
         day_change_pct = ((curr_price - prev_close) / prev_close) * 100
         change_pts = curr_price - prev_close
 
         clean_symbol = symbol.replace(".NS", "")
         tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
-
-        signal_bullish = False
-        signal_bearish = False
-        signal_time = ""
-        vol_multiple = 1.0
-
-        if c1_green and (c1_range_pct <= 2.0) and c2_inside:
-            for i in range(2, len(today_df)):
-                c_curr = today_df.iloc[i]
-                if (c_curr['Close'] > c1['High'] and 
-                    c_curr['Volume'] > c2['Volume'] and 
-                    c_curr['Close'] > c_curr['EMA200'] and 
-                    c_curr['Close'] > c_curr['EMA20'] and
-                    c_curr['Close'] > c_curr['VWAP']):
-                    
-                    signal_bullish = True
-                    signal_time = c_curr.name.strftime("%H:%M")
-                    vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
-                    break
-
-        is_near_pdl = c1['Open'] <= (pdl * 1.015)
-        if c1_red and (c1_range_pct <= 2.0) and c2_inside and is_near_pdl:
-            for i in range(2, len(today_df)):
-                c_curr = today_df.iloc[i]
-                if (c_curr['Close'] < c1['Low'] and 
-                    c_curr['Volume'] > c2['Volume'] and 
-                    c_curr['Close'] < c_curr['EMA200'] and 
-                    c_curr['Close'] < c_curr['EMA20'] and
-                    c_curr['Close'] < c_curr['VWAP']):
-                    
-                    signal_bearish = True
-                    signal_time = c_curr.name.strftime("%H:%M")
-                    vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
-                    break
-
         calc_qty = int((10000 * 5) / curr_price) if curr_price > 0 else 0
 
         if signal_bullish or signal_bearish:
@@ -483,10 +546,11 @@ def analyze_stock_5m(symbol):
                 "Price": curr_price,
                 "ChangePct": day_change_pct,
                 "ChangePts": round(change_pts, 2),
-                "SignalTime": signal_time if signal_time else "10:15",
-                "VolMultiple": vol_multiple if vol_multiple > 1.0 else 1.50,
+                "SignalTime": signal_time,
+                "VolMultiple": vol_multiple,
                 "IsBullish": signal_bullish,
                 "IsBearish": signal_bearish,
+                "StatusState": status_state,
                 "TVUrl": tv_url,
                 "Qty": calc_qty
             }
@@ -514,9 +578,8 @@ def run_market_scanner():
     top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
     top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
     
-    # EXACTLY TOP 5 FOR BOTH BULLISH & BEARISH SETUPS
-    bullish_top5 = sorted(bullish_list, key=lambda x: x['VolMultiple'], reverse=True)[:5]
-    bearish_top5 = sorted(bearish_list, key=lambda x: x['VolMultiple'], reverse=True)[:5]
+    bullish_top5 = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple']), reverse=True)[:5]
+    bearish_top5 = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple']), reverse=True)[:5]
 
     gainers_4 = all_df.sort_values(by="ChangePct", ascending=False).head(4).to_dict('records') if not all_df.empty else []
     losers_4 = all_df.sort_values(by="ChangePct", ascending=True).head(4).to_dict('records') if not all_df.empty else []
@@ -539,7 +602,7 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP SINGLE ROW NAVIGATION HEADER (OPTIMIZED COLUMN RATIOS FOR PERFECT SPACING) ---
+# --- TOP SINGLE ROW NAVIGATION HEADER ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
@@ -560,7 +623,6 @@ for name, data in top_idx.items():
     )
 idx_pills_html += '</div>'
 
-# Adjusted Column Division: Index section given 53% space to prevent overlap
 nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.15, 0.53, 0.09, 0.11, 0.06, 0.06])
 
 with nav_col1:
@@ -669,7 +731,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (TOP 5 VOL SURGE FILTERED WITH QTY) ---
+# --- ROW LIST (BULLISH & BEARISH SETUPS WITH STATUS BUTTONS) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -677,11 +739,12 @@ with tb_col1:
         <div class="setup-box">
             <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
             <div class="row-header">
-                <span style="width: 25%;">SYMBOL</span>
-                <span style="width: 18%;">TRIGGER</span>
-                <span style="width: 18%;">VOL SURGE</span>
-                <span style="width: 15%;">QTY</span>
-                <span style="width: 12%; text-align:right;">PRICE</span>
+                <span style="width: 20%;">SYMBOL</span>
+                <span style="width: 15%;">STATUS</span>
+                <span style="width: 15%;">ALERT TIME</span>
+                <span style="width: 15%;">VOL SURGE</span>
+                <span style="width: 12%;">QTY</span>
+                <span style="width: 11%; text-align:right;">PRICE</span>
                 <span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
         </div>
@@ -689,13 +752,19 @@ with tb_col1:
     
     if bullish_signals:
         for s in bullish_signals:
+            if s['StatusState'] == 'WATCH':
+                status_btn_html = '<span class="status-watch">WATCH</span>'
+            else:
+                status_btn_html = '<span class="status-ready-bull">READY</span>'
+
             st.markdown(f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 25%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
-                    <div style="width: 18%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 18%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 15%;"><span class="qty-box">{s['Qty']}</span></div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                    <div style="width: 20%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
+                    <div style="width: 15%;">{status_btn_html}</div>
+                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                    <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                    <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
+                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
                     <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
@@ -707,11 +776,12 @@ with tb_col2:
         <div class="setup-box">
             <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
             <div class="row-header">
-                <span style="width: 25%;">SYMBOL</span>
-                <span style="width: 18%;">TRIGGER</span>
-                <span style="width: 18%;">VOL SURGE</span>
-                <span style="width: 15%;">QTY</span>
-                <span style="width: 12%; text-align:right;">PRICE</span>
+                <span style="width: 20%;">SYMBOL</span>
+                <span style="width: 15%;">STATUS</span>
+                <span style="width: 15%;">ALERT TIME</span>
+                <span style="width: 15%;">VOL SURGE</span>
+                <span style="width: 12%;">QTY</span>
+                <span style="width: 11%; text-align:right;">PRICE</span>
                 <span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
         </div>
@@ -719,20 +789,26 @@ with tb_col2:
     
     if bearish_signals:
         for s in bearish_signals:
+            if s['StatusState'] == 'WATCH':
+                status_btn_html = '<span class="status-watch">WATCH</span>'
+            else:
+                status_btn_html = '<span class="status-ready-bear">READY</span>'
+
             st.markdown(f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 25%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
-                    <div style="width: 18%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 18%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 15%;"><span class="qty-box">{s['Qty']}</span></div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                    <div style="width: 20%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
+                    <div style="width: 15%;">{status_btn_html}</div>
+                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                    <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                    <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
+                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
                     <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira Stocks...</div>', unsafe_allow_html=True)
 
-# --- SMOOTH & SILENT AUTO-REFRESH (30 SECONDS - NO LAG, NO FLICKER) ---
+# --- AUTO-REFRESH (30 SECONDS) ---
 if is_market_open:
     st.markdown("""
         <script>
