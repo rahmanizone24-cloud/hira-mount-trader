@@ -356,29 +356,39 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOAD SYMBOLS FROM HIRA STOCKS CSV FILE ---
+# --- EXACT 100 HIRA STOCKS UNIVERSE (HARDCODED FROM Hira Stocks (1).csv) ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
-    csv_file = "Hira Stocks.csv"
-    if os.path.exists(csv_file):
-        try:
-            df = pd.read_csv(csv_file)
-            syms = df['symbol'].dropna().astype(str).str.strip().unique().tolist()
-            return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
-        except Exception:
-            pass
+    # Priority 1: Check CSV if present locally
+    for file_candidate in ["Hira Stocks (1).csv", "Hira Stocks.csv"]:
+        if os.path.exists(file_candidate):
+            try:
+                df = pd.read_csv(file_candidate)
+                syms = df['symbol'].dropna().astype(str).str.strip().unique().tolist()
+                if len(syms) == 100:
+                    return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
+            except Exception:
+                pass
             
+    # Priority 2: Direct 100 Stocks List extracted from your CSV file
     return [
-        "BLUESTARCO.NS", "JSWDULUX.NS", "ABSLAMC.NS", "BAJAJCON.NS", "MMFL.NS", "PGIL.NS", "ABREL.NS",
-        "GANDHITUBE.NS", "TRITURBINE.NS", "PRAJIND.NS", "MPHASIS.NS", "ASAHIINDIA.NS", "APCOTEXIND.NS",
-        "HEROMOTOCO.NS", "BBTC.NS", "TIPSINDUST.NS", "EQUITASBNK.NS", "EASEMYTRIP.NS",
-        "INDRAMEDCO.NS", "GRAVITA.NS", "PRECAM.NS", "PRICOLLTD.NS", "BHARATWIRE.NS", "SUNDRMFAST.NS",
-        "RADICO.NS", "INDOTECH.NS", "KEC.NS", "SUBROS.NS", "CARBORUNIV.NS", "UBL.NS", "MASTEK.NS",
-        "DCMSHRIRAM.NS", "MINDACORP.NS", "GMRINFRA.NS", "GRANULES.NS", "AARTIDRUGS.NS", "GENUSPOWER.NS",
-        "KPITTECH.NS", "SCHAEFFLER.NS", "FINPIPE.NS", "JBCHEPHARM.NS", "SWANENERGY.NS", "SUPREMEIND.NS",
-        "ZENSARTECH.NS", "NIVALLI.NS", "CGPOWER.NS", "CDSL.NS", "SWSOLAR.NS", "KFINTECH.NS", "CAMS.NS",
-        "MAPMYINDIA.NS", "KAYNES.NS", "TRIDENT.NS", "CEINFO.NS", "NETWEB.NS", "DOMS.NS", "HAPPYFORGE.NS",
-        "DATAPATTNS.NS", "PREMIERENE.NS", "TATAINVEST.NS", "OLECTRA.NS", "RAYMOND.NS", "RITES.NS"
+        'SWSOLAR.NS', 'CGPOWER.NS', 'GENUSPOWER.NS', 'OLECTRA.NS', 'PREMIERENE.NS', 'PRAJIND.NS', 
+        'CDSL.NS', 'KFINTECH.NS', 'ABSLAMC.NS', 'NETWEB.NS', 'DATAPATTNS.NS', 'MAPMYINDIA.NS', 
+        'ZENSARTECH.NS', 'MPHASIS.NS', 'MASTEK.NS', 'TIPSINDUST.NS', 'TRITURBINE.NS', 'ASAHIINDIA.NS', 
+        'APCOTEXIND.NS', 'GRAVITA.NS', 'PRICOLLTD.NS', 'SUNDRMFAST.NS', 'INDOTECH.NS', 'KEC.NS', 
+        'SUBROS.NS', 'CARBORUNIV.NS', 'MINDACORP.NS', 'GANDHITUBE.NS', 'MMFL.NS', 'HAPPYFORGE.NS', 
+        'BLUESTARCO.NS', 'JSWDULUX.NS', 'BAJAJCON.NS', 'PGIL.NS', 'ABREL.NS', 'BBTC.NS', 
+        'RADICO.NS', 'UBL.NS', 'RAYMOND.NS', 'INDRAMEDCO.NS', 'GRANULES.NS', 'AARTIDRUGS.NS', 
+        'JBCHEPHARM.NS', 'FINPIPE.NS', 'SWANENERGY.NS', 'DCMSHRIRAM.NS', 'NIVALLI.NS', 'RITES.NS', 
+        'CYIENT.NS', 'HAPPSTMNDS.NS', 'SONACOMS.NS', 'KEI.NS', 'ASTRAL.NS', 'BEML.NS', 
+        'COCHINSHIP.NS', 'GRSE.NS', 'MAZDOCK.NS', 'PARAS.NS', 'IDEAFORGE.NS', 'MTARTECH.NS', 
+        'PPLPHARMA.NS', 'ERIS.NS', 'AARTIIND.NS', 'DEEPAKNTR.NS', 'NOCIL.NS', 'CLEAN.NS', 
+        'CHAMBLFERT.NS', 'GNFC.NS', 'KPITTECH.NS', 'TIINDIA.NS', 'TUBEINVEST.NS', 'ANANTRAJ.NS', 
+        'SOBHA.NS', 'BRIGADE.NS', 'PHOENIXLTD.NS', 'PRESTIGE.NS', 'WELCORP.NS', 'BSOFT.NS', 
+        'TANLA.NS', 'INTELLECT.NS', 'NEWGEN.NS', 'CEINFO.NS', 'ECLERX.NS', 'AFFLE.NS', 
+        'LATENTVIEW.NS', 'ROUTE.NS', 'MAHINDCIE.NS', 'VARROC.NS', 'SMLISUZU.NS', 'SANSERA.NS', 
+        'CIEINDIA.NS', 'SUPRAJIT.NS', 'FACT.NS', 'MHRIL.NS', 'CHALET.NS', 'EIHOTEL.NS', 
+        'CENTURYPLY.NS', 'GREENPANEL.NS', 'ACE.NS', 'CYIENTDLM.NS'
     ]
 
 NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
