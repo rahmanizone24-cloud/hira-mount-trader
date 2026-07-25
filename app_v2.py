@@ -732,7 +732,12 @@ with tb_col2:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira Stocks...</div>', unsafe_allow_html=True)
 
-# --- SILENT AUTO-REFRESH (30 SECONDS - ONLY WHEN MARKET IS OPEN) ---
+# --- SMOOTH & SILENT AUTO-REFRESH (30 SECONDS - NO LAG, NO FLICKER) ---
 if is_market_open:
-    time.sleep(30)
-    st.rerun()
+    st.markdown("""
+        <script>
+            setTimeout(function(){
+                window.location.reload();
+            }, 30000);
+        </script>
+    """, unsafe_allow_html=True)
