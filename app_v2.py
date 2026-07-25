@@ -367,59 +367,57 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* AI ROBOT POPUP WIDGET (BOTTOM RIGHT) */
-        .robot-container {{
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 99999;
-            display: flex;
-            align-items: flex-end;
-            gap: 12px;
-            animation: slideInRight 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }}
-        
-        .robot-bubble {{
-            background-color: {card_bg};
-            border: 2px solid #58a6ff;
-            border-radius: 12px;
-            padding: 10px 14px;
-            max-width: 260px;
-            box-shadow: 0px 8px 24px rgba(0,0,0,0.4);
-            color: {text_main};
-            font-size: 12px;
-            position: relative;
-        }}
-
-        .robot-bubble::after {{
-            content: '';
-            position: absolute;
-            bottom: 15px;
-            right: -10px;
-            border-width: 6px 0 6px 10px;
-            border-style: solid;
-            border-color: transparent transparent transparent #58a6ff;
-            display: block;
-            width: 0;
-        }}
-
-        .robot-avatar {{
+        /* GLOWING ANIMATION FOR AVATAR */
+        .glowing-avatar {{
             width: 55px;
             height: 55px;
-            background: linear-gradient(135deg, #1f6feb, #238636);
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
             border: 2px solid #ffffff;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 28px;
-            box-shadow: 0px 4px 15px rgba(88, 166, 255, 0.5);
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.8);
             cursor: pointer;
+            animation: pulseGlow 1.8s infinite alternate;
+            user-select: none;
         }}
 
-        @keyframes slideInRight {{
-            from {{ transform: translateX(100%); opacity: 0; }}
-            to {{ transform: translateX(0); opacity: 1; }}
+        @keyframes pulseGlow {{
+            0% {{ box-shadow: 0 0 8px rgba(0, 210, 255, 0.5); transform: scale(0.98); }}
+            100% {{ box-shadow: 0 0 22px rgba(0, 210, 255, 1); transform: scale(1.05); }}
+        }}
+
+        /* ALERT HISTORY PANEL */
+        .alerts-history-panel {{
+            display: none;
+            position: fixed;
+            bottom: 85px;
+            right: 20px;
+            width: 270px;
+            max-height: 350px;
+            background-color: {card_bg};
+            border: 2px solid #58a6ff;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0px 10px 30px rgba(0,0,0,0.6);
+            z-index: 99999;
+            overflow-y: auto;
+        }}
+
+        /* AUTO-DISMISS TOAST BUBBLE */
+        .toast-bubble {{
+            position: fixed;
+            bottom: 85px;
+            right: 20px;
+            background-color: {card_bg};
+            border: 2px solid #58a6ff;
+            border-radius: 10px;
+            padding: 10px 14px;
+            max-width: 260px;
+            box-shadow: 0px 8px 24px rgba(0,0,0,0.5);
+            z-index: 99998;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -853,43 +851,90 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- FIND LATEST READY SIGNAL FOR ROBOT POPUP ---
-latest_ready_stock = None
-for s in bullish_signals + bearish_signals:
-    if s['StatusState'] == 'READY':
-        latest_ready_stock = s
-        break
+# --- COLLECT ALL READY STOCKS FOR HISTORY PANEL ---
+all_ready_stocks = [s for s in (bullish_signals + bearish_signals) if s['StatusState'] == 'READY']
+latest_ready_stock = all_ready_stocks[0] if all_ready_stocks else None
 
-# --- ROBOT ASSISTANT POPUP & SOUND ALERT HTML/JS ---
-if latest_ready_stock:
-    signal_type = "Bullish Breakout" if latest_ready_stock['IsBullish'] else "Bearish Breakdown"
-    badge_color = "#3fb950" if latest_ready_stock['IsBullish'] else "#f85149"
-    
-    robot_html = f"""
-        <div class="robot-container">
-            <div class="robot-bubble">
-                <div style="font-weight:900; color:{badge_color}; margin-bottom:3px;">🚨 READY ALERT!</div>
-                <div style="font-size:11px;"><b>{latest_ready_stock['Symbol']}</b> gave a <b>{signal_type}</b> at <b>{latest_ready_stock['SignalTime']}</b>.</div>
-                <div style="font-size:10px; color:{text_sub}; margin-top:4px;">Price: ₹{latest_ready_stock['Price']:.2f} ({latest_ready_stock['ChangePct']:+.2f}%)</div>
+# --- GENERATE HTML LIST FOR ALERT HISTORY PANEL ---
+alert_items_html = ""
+for stock in all_ready_stocks:
+    s_type = "Bull" if stock['IsBullish'] else "Bear"
+    s_color = "#3fb950" if stock['IsBullish'] else "#f85149"
+    alert_items_html += f"""
+        <div style="background-color: {sub_card_bg}; border: 1px solid {border_color}; border-left: 4px solid {s_color}; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:900; font-size:13px; color:{accent_blue};">{stock['Symbol']}</span>
+                <span style="font-size:11px; font-weight:800; color:{s_color};">● {s_type}</span>
             </div>
-            <div class="robot-avatar" title="Hira Mount Trading Bot">🤖</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px; font-size:10px; color:{text_sub};">
+                <span>₹{stock['Price']:.2f} ({stock['ChangePct']:+.2f}%)</span>
+                <span>🕒 {stock['SignalTime']}</span>
+            </div>
         </div>
-
-        <script>
-            // Play Alert Beep Sound
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880Hz Beep
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.3);
-        </script>
     """
-    st.markdown(robot_html, unsafe_allow_html=True)
+
+if not alert_items_html:
+    alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">No active breakouts yet</div>'
+
+# --- INTERACTIVE ROBOT ASSISTANT WITH TOGGLE & AUTO-HIDE ---
+robot_html = f"""
+    <!-- AVATAR ICON WITH GLOW -->
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 99999;" onclick="toggleAlertPanel()">
+        <div class="glowing-avatar" title="Click to view Alert History">🦸‍♂️</div>
+    </div>
+
+    <!-- ALERT HISTORY DRAWER PANEL -->
+    <div id="alertHistoryPanel" class="alerts-history-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid {border_color}; padding-bottom:6px; margin-bottom:8px;">
+            <span style="font-weight:900; font-size:12px; color:{text_main};">📢 Alert History</span>
+            <span style="font-size:10px; color:{accent_blue}; cursor:pointer;" onclick="toggleAlertPanel()">✖ Close</span>
+        </div>
+        {alert_items_html}
+    </div>
+
+    <!-- AUTO-DISMISS POPUP TOAST (DISAPPEARS IN 5 SECONDS) -->
+    <div id="toastNotification" class="toast-bubble" style="display: {'block' if latest_ready_stock else 'none'};">
+        <div style="font-weight:900; color:{'#3fb950' if latest_ready_stock and latest_ready_stock['IsBullish'] else '#f85149'}; font-size:12px; margin-bottom:2px;">
+            🚨 READY ALERT!
+        </div>
+        <div style="font-size:11px; color:{text_main};">
+            <b>{latest_ready_stock['Symbol'] if latest_ready_stock else ''}</b> gave a 
+            <b>{'Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown'}</b> at 
+            <b>{latest_ready_stock['SignalTime'] if latest_ready_stock else ''}</b>.
+        </div>
+        <div style="font-size:10px; color:{text_sub}; margin-top:3px;">
+            Price: ₹{latest_ready_stock['Price']:.2f} ({latest_ready_stock['ChangePct']:+.2f}%)
+        </div>
+    </div>
+
+    <script>
+        // Auto-Hide Toast Notification after 5 Seconds
+        setTimeout(function() {{
+            var toast = document.getElementById('toastNotification');
+            if(toast) {{
+                toast.style.display = 'none';
+            }}
+        }}, 5000);
+
+        // Toggle Alert History Panel on Avatar Click
+        function toggleAlertPanel() {{
+            var panel = document.getElementById('alertHistoryPanel');
+            var toast = document.getElementById('toastNotification');
+            
+            if(toast) toast.style.display = 'none';
+
+            if (panel.style.display === "block") {{
+                panel.style.display = "none";
+            }} else {{
+                panel.style.display = "block";
+            }}
+        }}
+
+        // Play Beep Sound on Alert
+        {"const audioCtx = new (window.AudioContext || window.webkitAudioContext)(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.3);" if latest_ready_stock else ""}
+    </script>
+"""
+st.markdown(robot_html, unsafe_allow_html=True)
 
 # --- ROW LIST (BULLISH & BEARISH SETUPS) ---
 tb_col1, tb_col2 = st.columns(2)
