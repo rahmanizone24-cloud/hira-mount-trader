@@ -1,38 +1,54 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+import os
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Hira Mount Trader Terminal",
+    page_title="Hira Mount Trader",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- CUSTOM CSS FOR HIGH PERFORMANCE & MODERN UI ---
+# --- CUSTOM CSS FOR EXACT ORIGINAL DASHBOARD UI ---
 st.markdown("""
 <style>
-    .main { background-color: #0e1117; }
+    .stApp { background-color: #0b0e14; color: #e1e3e6; }
+    
+    /* Top Index Cards */
     .index-card {
-        background-color: #1a1c24;
-        border: 1px solid #2d313e;
-        border-radius: 8px;
-        padding: 10px 14px;
+        background-color: #141824;
+        border: 1px solid #232838;
+        border-radius: 6px;
+        padding: 8px 12px;
         text-align: center;
-        transition: transform 0.2s, border-color 0.2s;
-        text-decoration: none !important;
-        display: block;
-        margin-bottom: 10px;
+        transition: 0.2s;
     }
-    .index-card:hover {
-        border-color: #00d47e;
-        transform: translateY(-2px);
+    .index-card:hover { border-color: #3b82f6; }
+    .index-title { color: #8b949e; font-size: 11px; font-weight: 600; }
+    .index-price { font-size: 15px; font-weight: bold; color: #ffffff; }
+    .price-up { color: #10b981; font-size: 11px; font-weight: 600; }
+    .price-down { color: #ef4444; font-size: 11px; font-weight: 600; }
+    
+    /* Summary Metric Cards */
+    .metric-card {
+        background-color: #141824;
+        border: 1px solid #232838;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 15px;
     }
-    .index-title { color: #8a8f9d; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-    .index-price { font-size: 16px; font-weight: bold; color: #ffffff; }
-    .price-up { color: #00d47e; font-weight: 600; font-size: 13px; }
-    .price-down { color: #ff4b4b; font-weight: 600; font-size: 13px; }
+    .metric-title { font-size: 11px; color: #8b949e; font-weight: 700; text-transform: uppercase; }
+    .metric-val { font-size: 18px; font-weight: bold; margin-top: 4px; }
+    
+    /* Table & Container Styling */
+    .setup-box {
+        background-color: #141824;
+        border: 1px solid #232838;
+        border-radius: 8px;
+        padding: 15px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -64,7 +80,10 @@ FNO_STOCKS = {
     "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "YESBANK", "ZEEL"
 }
 
-# --- FETCH INDEX DATA ---
+# --- HEADER TITLE & CLICKABLE INDICES ---
+st.markdown("### 📈 HIRA MOUNT TRADER")
+
+@st.cache_data(ttl=120)
 def fetch_indices():
     indices = {
         "NIFTY 50": {"ticker": "^NSEI", "tv": "NSE:NIFTY"},
@@ -72,12 +91,11 @@ def fetch_indices():
         "SENSEX": {"ticker": "^BSESN", "tv": "BSE:SENSEX"},
         "NIFTY MIDCAP": {"ticker": "NIFTY_MIDCAP_100.NS", "tv": "NSE:NIFTY_MIDCAP_100"}
     }
-    
     data = {}
     for name, info in indices.items():
         try:
             t = yf.Ticker(info["ticker"])
-            hist = t.history(period="5d")
+            hist = t.history(period="2d")
             if len(hist) >= 2:
                 curr = hist["Close"].iloc[-1]
                 prev = hist["Close"].iloc[-2]
@@ -90,24 +108,19 @@ def fetch_indices():
                     "is_up": change >= 0,
                     "tv_link": f"https://www.tradingview.com/chart/?symbol={info['tv']}"
                 }
-            else:
-                data[name] = None
-        except Exception as e:
-            data[name] = None
+            else: data[name] = None
+        except: data[name] = None
     return data
 
-# --- HEADER INDEX CARDS ---
 indices_data = fetch_indices()
-
-col1, col2, col3, col4 = st.columns(4)
-cols = [col1, col2, col3, col4]
+idx_cols = st.columns(4)
 
 for idx, (name, details) in enumerate(indices_data.items()):
-    with cols[idx]:
+    with idx_cols[idx]:
         if details:
             cls = "price-up" if details["is_up"] else "price-down"
             arrow = "▲" if details["is_up"] else "▼"
-            html_code = f"""
+            st.markdown(f"""
             <a href="{details['tv_link']}" target="_blank" style="text-decoration: none;">
                 <div class="index-card">
                     <div class="index-title">{name} 🔗</div>
@@ -115,62 +128,99 @@ for idx, (name, details) in enumerate(indices_data.items()):
                     <div class="{cls}">{arrow} {details['change']} ({details['p_change']})</div>
                 </div>
             </a>
-            """
-            st.markdown(html_code, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <a href="https://www.tradingview.com/chart/" target="_blank" style="text-decoration: none;">
-                <div class="index-card">
-                    <div class="index-title">{name} 🔗</div>
-                    <div class="index-price">Market Live</div>
-                </div>
-            </a>
             """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='index-card'><div class='index-title'>{name}</div><div class='index-price'>--</div></div>", unsafe_allow_html=True)
 
-st.divider()
+st.markdown("<br>", unsafe_allow_html=True)
 
-# --- MAIN TERMINAL ---
-st.title("⚡ HIRA MOUNT TRADER")
-st.caption("Pure Cash Momentum Screener Terminal")
+# --- FILE INPUT / CSV PROCESSING ---
+CSV_FILE = "Stock Screener.csv"
+if not os.path.exists(CSV_FILE):
+    CSV_FILE = "Hira Stocks.csv"
 
-# --- FILE UPLOADER & PROCESSING ---
-uploaded_file = st.file_uploader("📥 Upload your Chartink CSV File (Stock Screener.csv)", type=["csv"])
-
-if uploaded_file is not None:
-    try:
-        df = pd.read_csv(uploaded_file)
-        df.columns = df.columns.str.strip()
-        
-        symbol_col = None
-        for col in ['Symbol', 'NSE Symbol', 'Ticker', 'Stock Name']:
-            if col in df.columns:
-                symbol_col = col
-                break
-                
-        if symbol_col is None:
-            symbol_col = df.columns[0]
-            
-        df['Clean_Symbol'] = df[symbol_col].astype(str).str.upper().str.strip()
-        
-        # Filter F&O
-        pure_cash_df = df[~df['Clean_Symbol'].isin(FNO_STOCKS)].copy()
-        fno_count = len(df) - len(pure_cash_df)
-        
-        st.success(f"📊 Total Stocks in File: **{len(df)}** | ❌ F&O Removed: **{fno_count}** | ✅ **Pure Cash Active: {len(pure_cash_df)}**")
-        
-        # Manual Dismiss Box
-        stocks_list = pure_cash_df['Clean_Symbol'].tolist()
-        dismissed = st.multiselect("🚫 Remove any stock manually from list:", stocks_list)
-        
-        final_df = pure_cash_df[~pure_cash_df['Clean_Symbol'].isin(dismissed)].drop(columns=['Clean_Symbol'])
-        
-        st.dataframe(
-            final_df,
-            use_container_width=True,
-            hide_index=True
-        )
-        
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
+df_raw = None
+if os.path.exists(CSV_FILE):
+    df_raw = pd.read_csv(CSV_FILE)
 else:
-    st.info("👆 Please upload your downloaded `Stock Screener.csv` file using the button above to load the terminal data.")
+    uploaded = st.file_uploader("Upload Chartink CSV File", type=["csv"])
+    if uploaded:
+        df_raw = pd.read_csv(uploaded)
+
+if df_raw is not None:
+    df_raw.columns = df_raw.columns.str.strip()
+    
+    # Identify symbol column
+    sym_col = [c for c in ['Symbol', 'NSE Symbol', 'Ticker', 'Stock Name'] if c in df_raw.columns]
+    symbol_col = sym_col[0] if sym_col else df_raw.columns[0]
+    
+    df_raw['Clean_Symbol'] = df_raw[symbol_col].astype(str).str.upper().str.strip()
+    
+    # 🚫 Pure Cash Filter (F&O Removal)
+    pure_cash = df_raw[~df_raw['Clean_Symbol'].isin(FNO_STOCKS)].copy()
+    
+    # Standardize column names for UI
+    close_col = [c for c in df_raw.columns if 'close' in c.lower() or 'price' in c.lower()]
+    chg_col = [c for c in df_raw.columns if 'change' in c.lower() or 'return' in c.lower()]
+    
+    p_col = close_col[0] if close_col else df_raw.columns[1]
+    c_col = chg_col[0] if chg_col else df_raw.columns[2]
+
+    # Calculate Top Metrics
+    top_gainer = pure_cash.sort_values(by=c_col, ascending=False).iloc[0] if len(pure_cash) > 0 else None
+    top_loser = pure_cash.sort_values(by=c_col, ascending=True).iloc[0] if len(pure_cash) > 0 else None
+    bullish_count = len(pure_cash[pure_cash[c_col] > 0])
+    bearish_count = len(pure_cash[pure_cash[c_col] < 0])
+
+    # --- TOP METRICS CARDS (EXACT MATCH TO PHOTO) ---
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">TOP GAINER</div>
+            <div class="metric-val" style="color: #10b981;">{top_gainer['Clean_Symbol'] if top_gainer is not None else '--'}</div>
+            <div class="price-up">+{top_gainer[c_col]}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">TOP LOSER</div>
+            <div class="metric-val" style="color: #ef4444;">{top_loser['Clean_Symbol'] if top_loser is not None else '--'}</div>
+            <div class="price-down">{top_loser[c_col]}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m3:
+        sentiment = "🟢 Bullish" if bullish_count >= bearish_count else "🔴 Bearish"
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">MARKET SENTIMENT</div>
+            <div class="metric-val">{sentiment}</div>
+            <div style="font-size: 11px; color: #8b949e;">Bullish: {bullish_count} | Bearish: {bearish_count}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with m4:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">SCANNED STOCKS</div>
+            <div class="metric-val" style="color: #3b82f6;">{len(pure_cash)} Pure Cash</div>
+            <div style="font-size: 11px; color: #10b981;">F&O Excluded Automatically</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # --- BULLISH & BEARISH TABLES (SIDE BY SIDE LAYOUT) ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    col_bull, col_bear = st.columns(2)
+
+    with col_bull:
+        st.markdown("<h4 style='color: #10b981;'>🟢 BULLISH SETUPS</h4>", unsafe_allow_html=True)
+        bull_df = pure_cash[pure_cash[c_col] >= 0].sort_values(by=c_col, ascending=False).drop(columns=['Clean_Symbol'])
+        st.dataframe(bull_df, use_container_width=True, hide_index=True, height=450)
+
+    with col_bear:
+        st.markdown("<h4 style='color: #ef4444;'>🔴 BEARISH SETUPS</h4>", unsafe_allow_html=True)
+        bear_df = pure_cash[pure_cash[c_col] < 0].sort_values(by=c_col, ascending=True).drop(columns=['Clean_Symbol'])
+        st.dataframe(bear_df, use_container_width=True, hide_index=True, height=450)
+
+else:
+    st.info(" Please place `Stock Screener.csv` or `Hira Stocks.csv` in the folder or upload it above.")
