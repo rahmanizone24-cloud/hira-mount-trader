@@ -345,6 +345,17 @@ st.markdown(f"""
             display: inline-block;
         }}
 
+        .a-plus-tag {{
+            background-color: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+            border: 1px solid rgba(255, 215, 0, 0.6);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-weight: 900;
+            font-size: 10px;
+            display: inline-block;
+        }}
+
         .vol-box {{
             background-color: rgba(210, 153, 34, 0.15);
             color: #d29922;
@@ -476,11 +487,12 @@ def analyze_stock_5m(symbol):
         df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
         
-        if len(df_5m) < 5 or len(df_daily) < 2:
+        if len(df_5m) < 200 or len(df_daily) < 2:
             return None
 
-        # CONTINUOUS 20 EMA CALCULATION
+        # CALCULATE 20 EMA & 200 EMA
         df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
+        df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
 
         latest_trading_date = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
@@ -510,6 +522,7 @@ def analyze_stock_5m(symbol):
         status_state = ""
         signal_time = "-"
         vol_multiple = 1.0
+        is_a_plus_cluster = False
 
         # --- CANDLE 1 STRICT MOMENTUM & RANGE ANALYSIS ---
         c1_high, c1_low = c1['High'], c1['Low']
@@ -533,6 +546,18 @@ def analyze_stock_5m(symbol):
 
         upper_wick_ratio = upper_wick / c1_range
         lower_wick_ratio = lower_wick / c1_range
+
+        # --- A+ GRADE EMA CLUSTER CHECK (20 EMA & 200 EMA TOGETHER NEAR CANDLE 1) ---
+        ema20_val = c1['EMA20']
+        ema200_val = c1['EMA200']
+        
+        # Check if 20 & 200 EMA are in a close cluster near Candle 1
+        ema_diff_pct = abs(ema20_val - ema200_val) / min(ema20_val, ema200_val) * 100
+        if ema_diff_pct <= 1.2:  # EMAs are tightly clustered
+            # Check if Candle 1 breaks through both EMAs
+            if (c1_open <= max(ema20_val, ema200_val) and c1_close >= max(ema20_val, ema200_val)) or \
+               (c1_open >= min(ema20_val, ema200_val) and c1_close <= min(ema20_val, ema200_val)):
+                is_a_plus_cluster = True
 
         # --- STRICT BULLISH CONDITION ---
         c1_bull_cond = (
@@ -601,6 +626,7 @@ def analyze_stock_5m(symbol):
             "IsBullish": signal_bullish,
             "IsBearish": signal_bearish,
             "StatusState": status_state,
+            "IsAPlusCluster": is_a_plus_cluster,
             "TVUrl": tv_url,
             "Qty": calc_qty
         }
@@ -627,9 +653,9 @@ def run_market_scanner():
     top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
     top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
 
-    # SORTING: READY SETUPS TOP, HIGH VOL MULTIPLE & CHANGE PCT TOP
-    sorted_bullish = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], x['ChangePct']), reverse=True)
-    sorted_bearish = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], abs(x['ChangePct'])), reverse=True)
+    # SORTING: PRIORITIZE A+ CLUSTER FIRST, READY SECOND, HIGH VOL MULTIPLE THIRD
+    sorted_bullish = sorted(bullish_list, key=lambda x: (x['IsAPlusCluster'], x['StatusState'] == 'READY', x['VolMultiple'], x['ChangePct']), reverse=True)
+    sorted_bearish = sorted(bearish_list, key=lambda x: (x['IsAPlusCluster'], x['StatusState'] == 'READY', x['VolMultiple'], abs(x['ChangePct'])), reverse=True)
 
     # LIMIT TO TOP 10
     top_bullish = sorted_bullish[:10]
@@ -798,7 +824,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (BULLISH & BEARISH SETUPS - CLEAN HEADERS) ---
+# --- ROW LIST (BULLISH & BEARISH SETUPS - CLEAN HEADERS WITH A+ CLUSTER HIGHLIGHT) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -819,7 +845,9 @@ with tb_col1:
     
     if bullish_signals:
         for s in bullish_signals:
-            if s['StatusState'] == 'WATCH':
+            if s['IsAPlusCluster']:
+                status_btn_html = '<span class="a-plus-tag">🚀 A+ CLUSTER</span>'
+            elif s['StatusState'] == 'WATCH':
                 status_btn_html = '<span class="status-watch">WATCH</span>'
             else:
                 status_btn_html = '<span class="status-ready-bull">READY</span>'
@@ -856,7 +884,9 @@ with tb_col2:
     
     if bearish_signals:
         for s in bearish_signals:
-            if s['StatusState'] == 'WATCH':
+            if s['IsAPlusCluster']:
+                status_btn_html = '<span class="a-plus-tag">🚀 A+ CLUSTER</span>'
+            elif s['StatusState'] == 'WATCH':
                 status_btn_html = '<span class="status-watch">WATCH</span>'
             else:
                 status_btn_html = '<span class="status-ready-bear">READY</span>'
