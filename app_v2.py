@@ -110,19 +110,14 @@ st.markdown(f"""
             margin-bottom: 12px;
         }}
         
-        /* HIGH HIGHLIGHTED TITLE BADGE */
-        .nav-title-badge {{
+        /* CLEAN TITLE TEXT (BLUE BADGE STRIP REMOVED) */
+        .nav-title-clean {{
             font-size: 18px;
             font-weight: 900;
-            background: linear-gradient(135deg, #1f6feb 0%, #0969da 100%);
-            color: #ffffff !important;
-            padding: 5px 14px;
-            border-radius: 6px;
+            color: {accent_blue} !important;
             letter-spacing: 1.2px;
             font-family: 'Trebuchet MS', 'Impact', sans-serif;
             text-transform: uppercase;
-            box-shadow: 0px 2px 10px rgba(31, 111, 235, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.2);
             display: inline-block;
         }}
 
@@ -334,14 +329,10 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOAD SYMBOLS FROM CSV FILES (HIRA STOCKS & FNO STOCKS) ---
+# --- LOAD SYMBOLS FROM HIRA STOCKS CSV FILE ---
 @st.cache_data(ttl=3600)
-def load_stocks_by_basket(basket_type):
-    file_map = {
-        "Hira Stocks": "Hira Stocks.csv",
-        "F&O Stocks": "FnO Stocks.csv"
-    }
-    csv_file = file_map.get(basket_type, "Hira Stocks.csv")
+def load_hira_stocks():
+    csv_file = "Hira Stocks.csv"
     if os.path.exists(csv_file):
         try:
             df = pd.read_csv(csv_file)
@@ -350,7 +341,6 @@ def load_stocks_by_basket(basket_type):
         except Exception:
             pass
             
-    # Default Cash Stocks Fallback
     return [
         "BLUESTARCO.NS", "JSWDULUX.NS", "ABSLAMC.NS", "BAJAJCON.NS", "MMFL.NS", "PGIL.NS", "ABREL.NS",
         "GANDHITUBE.NS", "TRITURBINE.NS", "PRAJIND.NS", "MPHASIS.NS", "ASAHIINDIA.NS", "APCOTEXIND.NS",
@@ -363,6 +353,9 @@ def load_stocks_by_basket(basket_type):
         "MAPMYINDIA.NS", "KAYNES.NS", "TRIDENT.NS", "CEINFO.NS", "NETWEB.NS", "DOMS.NS", "HAPPYFORGE.NS",
         "DATAPATTNS.NS", "PREMIERENE.NS", "TATAINVEST.NS", "OLECTRA.NS", "RAYMOND.NS", "RITES.NS"
     ]
+
+NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
+TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
 
 # --- FETCH INDEX DATA ---
 @st.cache_data(ttl=30)
@@ -491,13 +484,13 @@ def analyze_stock_5m(symbol):
         return None
 
 @st.cache_data(ttl=30)
-def run_market_scanner(stock_symbols):
+def run_market_scanner():
     bullish_list = []
     bearish_list = []
     all_stocks = []
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
-        results = executor.map(analyze_stock_5m, stock_symbols)
+        results = executor.map(analyze_stock_5m, NIFTY_CASH_ONLY_SYMBOLS)
         for res in results:
             if res:
                 all_stocks.append(res)
@@ -538,7 +531,7 @@ else:
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-head_col1, head_col2 = st.columns([0.70, 0.30])
+head_col1, head_col2 = st.columns([0.80, 0.20])
 
 with head_col1:
     idx_items_html = ""
@@ -552,7 +545,7 @@ with head_col1:
 
     st.markdown(f"""
         <div class="top-nav">
-            <div class="nav-title-badge">HIRA MOUNT TRADER</div>
+            <div class="nav-title-clean">HIRA MOUNT TRADER</div>
             <div class="nav-indices">
                 {idx_items_html}
             </div>
@@ -564,26 +557,22 @@ with head_col1:
     """, unsafe_allow_html=True)
 
 with head_col2:
-    btn_c1, btn_c2, btn_c3 = st.columns([0.45, 0.25, 0.30])
+    st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
+    btn_c1, btn_c2 = st.columns(2)
     with btn_c1:
-        selected_basket = st.selectbox("", ["Hira Stocks", "F&O Stocks"], label_visibility="collapsed")
-    with btn_c2:
-        theme_icon = "🌙" if st.session_state.theme == 'light' else "☀️"
+        theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
         if st.button(theme_icon, use_container_width=True):
             new_theme = 'light' if st.session_state.theme == 'dark' else 'dark'
             st.session_state.theme = new_theme
             st.query_params['theme'] = new_theme
             st.rerun()
-    with btn_c3:
-        if st.button("🔄 Reload", use_container_width=True):
+    with btn_c2:
+        if st.button("🔄 Refresh", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
-# --- LOAD STOCKS & EXECUTE SCANNER ---
-current_stock_symbols = load_stocks_by_basket(selected_basket)
-TOTAL_SCANNED_STOCKS = len(current_stock_symbols)
-
-bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner(current_stock_symbols)
+# --- EXECUTE SCANNER ---
+bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
 
 # --- METRIC CARDS ROW ---
 c1, c2, c3, c4 = st.columns(4)
@@ -626,9 +615,9 @@ with c3:
 with c4:
     st.markdown(f"""
         <div class="metric-container">
-            <div class="card-label">SCANNED BASKET</div>
+            <div class="card-label">SCANNED STOCKS</div>
             <div style="font-size: 16px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
-                {TOTAL_SCANNED_STOCKS} {selected_basket}
+                {TOTAL_SCANNED_STOCKS} Hira Stocks
             </div>
             <div style="font-size: 11px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active Signals: {total_bull_cnt + total_bear_cnt}</div>
         </div>
@@ -666,9 +655,9 @@ st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
-    st.markdown(f"""
+    st.markdown("""
         <div class="setup-box">
-            <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS ({selected_basket.upper()})</div>
+            <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
             <div class="row-header">
                 <span style="width: 25%;">SYMBOL</span>
                 <span style="width: 18%;">TRIGGER</span>
@@ -692,14 +681,14 @@ with tb_col1:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakouts in {selected_basket}...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakouts in Hira Stocks...</div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
 with tb_col2:
-    st.markdown(f"""
+    st.markdown("""
         <div class="setup-box">
-            <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS ({selected_basket.upper()})</div>
+            <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
             <div class="row-header">
                 <span style="width: 25%;">SYMBOL</span>
                 <span style="width: 18%;">TRIGGER</span>
@@ -723,7 +712,7 @@ with tb_col2:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in {selected_basket}...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira Stocks...</div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
