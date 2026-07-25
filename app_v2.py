@@ -104,38 +104,6 @@ st.markdown(f"""
             line-height: 30px;
         }}
 
-        /* INDEX BADGE INSIDE ORANGE BOX LOCATION */
-        .header-indices-wrapper {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            height: 30px;
-            overflow-x: auto;
-            white-space: nowrap;
-        }}
-        
-        .idx-pill {{
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            background-color: {sub_card_bg};
-            border: 1px solid {border_color};
-            border-radius: 6px;
-            padding: 3px 8px;
-            text-decoration: none !important;
-            font-size: 11px;
-            transition: border-color 0.2s;
-        }}
-        .idx-pill:hover {{
-            border-color: {accent_blue};
-        }}
-        .idx-lbl {{ color: {text_sub}; font-weight: 700; font-size: 10px; }}
-        .idx-num {{ color: {text_main}; font-weight: 800; font-size: 11px; }}
-        .idx-up-p {{ color: #3fb950; font-weight: 800; font-size: 10px; }}
-        .idx-down-p {{ color: #f85149; font-weight: 800; font-size: 10px; }}
-
         /* LIVE BLINKING ANIMATION */
         .live-blink {{
             animation: pulseBlink 1.2s ease-in-out infinite;
@@ -524,35 +492,15 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP HEADER ROW WITH ORANGE BOX INDICES FIT IN MIDDLE ---
-top_idx = fetch_indices()
+# --- TOP HEADER ROW ---
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-nav_c1, nav_c2, nav_c3 = st.columns([0.22, 0.62, 0.16])
+head_c1, head_c2 = st.columns([0.80, 0.20])
 
-with nav_c1:
+with head_c1:
     st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
 
-with nav_c2:
-    idx_pills_html = '<div class="header-indices-wrapper">'
-    for name, data in top_idx.items():
-        pct = data.get('pct', 0)
-        cls = "idx-up-p" if pct >= 0 else "idx-down-p"
-        arrow = "▲" if pct >= 0 else "▼"
-        url = data.get("url", "#")
-        val = data.get("val", 0)
-        
-        idx_pills_html += f'''
-            <a class="idx-pill" href="{url}" target="_blank">
-                <span class="idx-lbl">{name}:</span>
-                <span class="idx-num">{val:,.2f}</span>
-                <span class="{cls}">{arrow}{pct:+.2f}%</span>
-            </a>
-        '''
-    idx_pills_html += '</div>'
-    st.markdown(idx_pills_html, unsafe_allow_html=True)
-
-with nav_c3:
+with head_c2:
     b1, b2 = st.columns(2)
     with b1:
         theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
@@ -565,9 +513,37 @@ with nav_c3:
             st.cache_data.clear()
             st.rerun()
 
+# --- TOP 4 INDEX METRIC CARDS (NIFTY 50, BANK NIFTY, SENSEX, NIFTY MIDCAP) ---
+top_idx = fetch_indices()
+idx_col1, idx_col2, idx_col3, idx_col4 = st.columns(4)
+
+indices_cols = [idx_col1, idx_col2, idx_col3, idx_col4]
+
+for i, (name, data) in enumerate(top_idx.items()):
+    with indices_cols[i]:
+        val = data.get('val', 0)
+        pct = data.get('pct', 0)
+        chg = data.get('change', 0)
+        url = data.get('url', '#')
+        
+        val_cls = "card-value-green" if pct >= 0 else "card-value-red"
+        sign = "+" if pct >= 0 else ""
+        
+        st.markdown(f"""
+            <div class="metric-container">
+                <div class="card-label">{name} 🔗</div>
+                <a href="{url}" target="_blank" style="text-decoration:none;">
+                    <div class="{val_cls}">{val:,.2f}</div>
+                    <div style="font-size: 11px; font-weight: 700; color: {'#3fb950' if pct>=0 else '#f85149'}; margin-top: 2px;">
+                        {sign}{chg:,.2f} ({sign}{pct:.2f}%)
+                    </div>
+                </a>
+            </div>
+        """, unsafe_allow_html=True)
+
 # Status & Time Sub-Bar
 st.markdown(f'''
-    <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:12px; margin-top:-8px;">
+    <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:12px; margin-top:8px;">
         {status_html}
         <span style="font-size: 11px; color: {text_sub}; font-weight: 700;">🕒 {now_time}</span>
     </div>
