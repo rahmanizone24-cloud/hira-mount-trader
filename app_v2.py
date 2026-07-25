@@ -95,7 +95,7 @@ st.markdown(f"""
 
         /* CLEAN & BOLD TITLE TEXT */
         .nav-title-clean {{
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 900;
             color: {accent_blue} !important;
             letter-spacing: 0.8px;
@@ -105,12 +105,12 @@ st.markdown(f"""
             line-height: 38px;
         }}
 
-        /* SPACIOUS & LARGER TOP ROW INDEX PILLS */
+        /* SPACIOUS & LARGER TOP ROW INDEX PILLS WITH PROPER SPACING */
         .header-indices-wrapper {{
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 10px;
+            justify-content: flex-start;
+            gap: 8px;
             width: 100%;
             height: 38px;
             white-space: nowrap;
@@ -119,11 +119,11 @@ st.markdown(f"""
         .idx-pill {{
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             background-color: {sub_card_bg};
             border: 1.5px solid {border_color};
             border-radius: 7px;
-            padding: 5px 12px;
+            padding: 4px 10px;
             text-decoration: none !important;
             font-size: 12px;
             transition: border-color 0.2s, transform 0.1s;
@@ -133,7 +133,7 @@ st.markdown(f"""
             transform: translateY(-1px);
         }}
         .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 11px; text-transform: uppercase; }}
-        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 13px; }}
+        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 12px; }}
         .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 11px; }}
         .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 11px; }}
 
@@ -148,27 +148,29 @@ st.markdown(f"""
             100% {{ opacity: 1; transform: scale(1); }}
         }}
 
-        /* MARKET STATUS TAGS */
+        /* COMPACT & NEAT MARKET STATUS TAGS */
         .market-status-open {{
             background-color: rgba(63, 185, 80, 0.15);
             color: #3fb950;
             border: 1px solid rgba(63, 185, 80, 0.4);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 11px;
+            padding: 3px 6px;
+            border-radius: 5px;
+            font-size: 10px;
             font-weight: 800;
             white-space: nowrap;
+            display: inline-block;
         }}
         
         .market-status-closed {{
             background-color: rgba(248, 81, 73, 0.15);
             color: #f85149;
             border: 1px solid rgba(248, 81, 73, 0.4);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 11px;
+            padding: 3px 6px;
+            border-radius: 5px;
+            font-size: 10px;
             font-weight: 800;
             white-space: nowrap;
+            display: inline-block;
         }}
 
         /* Metric Summary Cards */
@@ -371,7 +373,6 @@ def fetch_indices():
                 pct = (change / prev) * 100
                 res[name] = {"val": round(curr, 2), "change": round(change, 2), "pct": round(pct, 2), "url": tv_url}
             else:
-                # Fallback to fast_info
                 curr = ticker.fast_info.last_price
                 prev = ticker.fast_info.previous_close
                 if curr and prev:
@@ -499,7 +500,6 @@ def run_market_scanner():
     bearish_list = []
     all_stocks = []
 
-    # Fast Concurrent Execution (35 threads)
     with concurrent.futures.ThreadPoolExecutor(max_workers=35) as executor:
         results = executor.map(analyze_stock_5m, NIFTY_CASH_ONLY_SYMBOLS)
         for res in results:
@@ -538,11 +538,10 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP SINGLE ROW NAVIGATION HEADER ---
+# --- TOP SINGLE ROW NAVIGATION HEADER (OPTIMIZED COLUMN RATIOS FOR PERFECT SPACING) ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-# Construct accurate & live index HTML Pills
 idx_pills_html = '<div class="header-indices-wrapper">'
 for name, data in top_idx.items():
     pct = data.get('pct', 0)
@@ -560,8 +559,8 @@ for name, data in top_idx.items():
     )
 idx_pills_html += '</div>'
 
-# Single Line Header Layout
-nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.16, 0.50, 0.10, 0.12, 0.06, 0.06])
+# Adjusted Column Division: Index section given 53% space to prevent overlap
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.15, 0.53, 0.09, 0.11, 0.06, 0.06])
 
 with nav_col1:
     st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
@@ -570,7 +569,7 @@ with nav_col2:
     st.markdown(idx_pills_html, unsafe_allow_html=True)
 
 with nav_col3:
-    st.markdown(f'<div style="margin-top:2px;">{status_html}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="margin-top:6px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
 
 with nav_col4:
     st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap;">🕒 {now_time}</div>', unsafe_allow_html=True)
