@@ -216,25 +216,36 @@ st.markdown(f"""
             letter-spacing: 0.5px;
         }}
         
-        /* MARKET MOVERS STOCK CARDS */
+        /* MARKET MOVERS STOCK CARDS - COMPACT SIDE-BY-SIDE LAYOUT */
         .stock-card {{
             background-color: {sub_card_bg};
             border: 1px solid {border_color};
             border-radius: 8px;
-            padding: 10px 10px;
+            padding: 8px 10px;
             text-align: left;
         }}
+        .stock-card-top {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
         .stock-symbol {{
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 800;
             color: {accent_blue};
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }}
-        .stock-price-up {{ font-size: 15px; font-weight: 900; color: #3fb950; margin: 2px 0; }}
-        .stock-price-down {{ font-size: 15px; font-weight: 900; color: #f85149; margin: 2px 0; }}
-        .stock-meta {{ font-size: 10px; color: {text_sub}; font-weight: 600; margin-top: 4px; }}
+        .stock-card-body {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+        }}
+        .stock-price-up {{ font-size: 14px; font-weight: 900; color: #3fb950; }}
+        .stock-price-down {{ font-size: 14px; font-weight: 900; color: #f85149; }}
+        .stock-meta {{ font-size: 10px; color: {text_sub}; font-weight: 600; text-align: right; }}
 
         /* SETUP CONTAINER BOX */
         .setup-box {{
@@ -338,10 +349,10 @@ st.markdown(f"""
             background-color: rgba(210, 153, 34, 0.15);
             color: #d29922;
             border: 1px solid rgba(210, 153, 34, 0.4);
-            border-radius: 5px;
-            padding: 2px 6px;
+            border-radius: 4px;
+            padding: 1px 5px;
             font-weight: 900;
-            font-size: 11px;
+            font-size: 10px;
             display: inline-block;
         }}
 
@@ -349,16 +360,16 @@ st.markdown(f"""
             background-color: rgba(88, 166, 255, 0.15);
             color: {accent_blue};
             border: 1px solid rgba(88, 166, 255, 0.4);
-            border-radius: 5px;
-            padding: 2px 6px;
+            border-radius: 4px;
+            padding: 1px 5px;
             font-weight: 900;
-            font-size: 11px;
+            font-size: 10px;
             display: inline-block;
         }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- KEYWORDS TO STRICTLY BAN ETFs ---
+# --- KEYWORDS TO STRICTLY BAN ETFs & FNO HEAVYWEIGHTS (TO PREFER CASH STOCKS) ---
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
 
 # --- DYNAMIC CSV LOADER (FILTERING OUT ETFs) ---
@@ -598,15 +609,15 @@ def run_market_scanner():
     sorted_bullish = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], x['ChangePct']), reverse=True)
     sorted_bearish = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], abs(x['ChangePct'])), reverse=True)
 
-    # STRICT TOP 10 LIMITATION FOR DASHBOARD
-    top_10_bullish = sorted_bullish[:10]
-    top_10_bearish = sorted_bearish[:10]
+    # LIMIT TO TOP 10
+    top_bullish = sorted_bullish[:10]
+    top_bearish = sorted_bearish[:10]
 
     gainers_4 = all_df.sort_values(by="ChangePct", ascending=False).head(4).to_dict('records') if not all_df.empty else []
     losers_4 = all_df.sort_values(by="ChangePct", ascending=True).head(4).to_dict('records') if not all_df.empty else []
     balanced_movers = gainers_4 + losers_4
 
-    return top_10_bullish, top_10_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
+    return top_bullish, top_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
 # --- MARKET OPEN / CLOSE LOGIC ---
 ist_tz = pytz.timezone('Asia/Kolkata')
@@ -724,7 +735,7 @@ with c4:
         </div>
     """, unsafe_allow_html=True)
 
-# --- MARKET MOVERS WITH QTY & VOL SURGE BOXES ---
+# --- MARKET MOVERS (COMPACT SIDE-BY-SIDE QTY & VOL BOXES) ---
 st.markdown("""
     <div class="box-container">
         <div class="box-title">🔥 MARKET MOVERS</div>
@@ -739,34 +750,39 @@ if market_movers:
             sign = "+" if m['ChangePct'] >= 0 else ""
             
             time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
-            time_display = f"🕒 {time_str}"
             
             st.markdown(f"""
                 <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
                     <div class="stock-card">
-                        <div class="stock-symbol">{m['Symbol']}</div>
-                        <div class="{p_class} live-blink">₹{m['Price']:.2f}</div>
-                        <div style="font-size: 12px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'}; margin-bottom: 6px;">
-                            {sign}{m['ChangePct']:.2f}%
+                        <div class="stock-card-top">
+                            <span class="stock-symbol">{m['Symbol']}</span>
+                            <div style="display:flex; gap:3px;">
+                                <span class="qty-box" title="Quantity">{m['Qty']}</span>
+                                <span class="vol-box" title="Volume Surge">{m['VolMultiple']:.1f}x</span>
+                            </div>
                         </div>
-                        <div style="display:flex; gap:4px; align-items:center;">
-                            <span class="qty-box">{m['Qty']}</span>
-                            <span class="vol-box">{m['VolMultiple']:.1f}x</span>
+                        <div class="stock-card-body">
+                            <div>
+                                <span class="{p_class} live-blink">₹{m['Price']:.2f}</span>
+                                <span style="font-size: 11px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'};">
+                                    {sign}{m['ChangePct']:.2f}%
+                                </span>
+                            </div>
+                            <div class="stock-meta">🕒 {time_str}</div>
                         </div>
-                        <div class="stock-meta">{time_display}</div>
                     </div>
                 </a>
             """, unsafe_allow_html=True)
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (BULLISH & BEARISH SETUPS - TOP 10 ONLY) ---
+# --- ROW LIST (BULLISH & BEARISH SETUPS - CLEAN HEADERS) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
     st.markdown("""
         <div class="setup-box">
-            <div class="setup-header-bull"><span class="live-blink">🟢</span> TOP 10 BULLISH SETUPS</div>
+            <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
             <div class="row-header">
                 <span style="width: 20%;">SYMBOL</span>
                 <span style="width: 15%;">STATUS</span>
@@ -803,7 +819,7 @@ with tb_col1:
 with tb_col2:
     st.markdown("""
         <div class="setup-box">
-            <div class="setup-header-bear"><span class="live-blink">🔴</span> TOP 10 BEARISH SETUPS</div>
+            <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
             <div class="row-header">
                 <span style="width: 20%;">SYMBOL</span>
                 <span style="width: 15%;">STATUS</span>
