@@ -104,31 +104,37 @@ st.markdown(f"""
             line-height: 30px;
         }}
 
-        /* TOP INDEX BAR CARDS STYLING */
-        .top-index-bar {{
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-top: 5px;
-            margin-bottom: 12px;
+        /* INDEX BADGE INSIDE ORANGE BOX LOCATION */
+        .header-indices-wrapper {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            height: 30px;
+            overflow-x: auto;
+            white-space: nowrap;
         }}
-        .idx-box {{
-            background-color: {card_bg};
+        
+        .idx-pill {{
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background-color: {sub_card_bg};
             border: 1px solid {border_color};
             border-radius: 6px;
-            padding: 6px 12px;
-            text-align: center;
+            padding: 3px 8px;
             text-decoration: none !important;
-            transition: transform 0.2s, border-color 0.2s;
+            font-size: 11px;
+            transition: border-color 0.2s;
         }}
-        .idx-box:hover {{
+        .idx-pill:hover {{
             border-color: {accent_blue};
-            transform: translateY(-1px);
         }}
-        .idx-title-lbl {{ color: {text_sub}; font-weight: 700; font-size: 11px; text-transform: uppercase; }}
-        .idx-val-lbl {{ color: {text_main}; font-weight: 900; font-size: 13px; margin: 1px 0; }}
-        .idx-up-val {{ color: #3fb950; font-weight: 800; font-size: 11px; }}
-        .idx-down-val {{ color: #f85149; font-weight: 800; font-size: 11px; }}
+        .idx-lbl {{ color: {text_sub}; font-weight: 700; font-size: 10px; }}
+        .idx-num {{ color: {text_main}; font-weight: 800; font-size: 11px; }}
+        .idx-up-p {{ color: #3fb950; font-weight: 800; font-size: 10px; }}
+        .idx-down-p {{ color: #f85149; font-weight: 800; font-size: 10px; }}
 
         /* LIVE BLINKING ANIMATION */
         .live-blink {{
@@ -359,8 +365,10 @@ def fetch_indices():
                 pct = (change / prev) * 100
                 tv_url = f"https://www.tradingview.com/chart/?symbol={tv_sym}"
                 res[name] = {"val": round(curr, 2), "change": round(change, 2), "pct": round(pct, 2), "url": tv_url}
+            else:
+                res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": f"https://www.tradingview.com/chart/?symbol={tv_sym}"}
         except:
-            res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": "#"}
+            res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": f"https://www.tradingview.com/chart/?symbol={tv_sym}"}
     return res
 
 def calculate_ema(series, length):
@@ -516,16 +524,35 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP HEADER ROW ---
+# --- TOP HEADER ROW WITH ORANGE BOX INDICES FIT IN MIDDLE ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-head_c1, head_c2 = st.columns([0.75, 0.25])
+nav_c1, nav_c2, nav_c3 = st.columns([0.22, 0.62, 0.16])
 
-with head_c1:
-    st.markdown('<div class="nav-title-clean">⚡ HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
+with nav_c1:
+    st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
 
-with head_c2:
+with nav_c2:
+    idx_pills_html = '<div class="header-indices-wrapper">'
+    for name, data in top_idx.items():
+        pct = data.get('pct', 0)
+        cls = "idx-up-p" if pct >= 0 else "idx-down-p"
+        arrow = "▲" if pct >= 0 else "▼"
+        url = data.get("url", "#")
+        val = data.get("val", 0)
+        
+        idx_pills_html += f'''
+            <a class="idx-pill" href="{url}" target="_blank">
+                <span class="idx-lbl">{name}:</span>
+                <span class="idx-num">{val:,.2f}</span>
+                <span class="{cls}">{arrow}{pct:+.2f}%</span>
+            </a>
+        '''
+    idx_pills_html += '</div>'
+    st.markdown(idx_pills_html, unsafe_allow_html=True)
+
+with nav_c3:
     b1, b2 = st.columns(2)
     with b1:
         theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
@@ -537,27 +564,6 @@ with head_c2:
         if st.button("🔄 Refresh"):
             st.cache_data.clear()
             st.rerun()
-
-# --- TOP 4 INDEX CARDS BAR (DIRECTLY BELOW HEADER) ---
-idx_html = '<div class="top-index-bar">'
-for name, data in top_idx.items():
-    pct = data.get('pct', 0)
-    cls = "idx-up-val" if pct >= 0 else "idx-down-val"
-    arrow = "▲" if pct >= 0 else "▼"
-    url = data.get("url", "#")
-    val = data.get("val", 0)
-    chg = data.get("change", 0)
-    
-    idx_html += f'''
-        <a class="idx-box" href="{url}" target="_blank">
-            <div class="idx-title-lbl">{name} 🔗</div>
-            <div class="idx-val-lbl">{val:,.2f}</div>
-            <div class="{cls}">{arrow} {chg:+,2f} ({pct:+.2f}%)</div>
-        </a>
-    '''
-idx_html += '</div>'
-
-st.markdown(idx_html, unsafe_allow_html=True)
 
 # Status & Time Sub-Bar
 st.markdown(f'''
