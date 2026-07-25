@@ -232,9 +232,9 @@ st.markdown(f"""
             text-overflow: ellipsis;
             white-space: nowrap;
         }}
-        .stock-price-up {{ font-size: 16px; font-weight: 900; color: #3fb950; margin: 2px 0; }}
-        .stock-price-down {{ font-size: 16px; font-weight: 900; color: #f85149; margin: 2px 0; }}
-        .stock-meta {{ font-size: 10px; color: {text_sub}; font-weight: 600; }}
+        .stock-price-up {{ font-size: 15px; font-weight: 900; color: #3fb950; margin: 2px 0; }}
+        .stock-price-down {{ font-size: 15px; font-weight: 900; color: #f85149; margin: 2px 0; }}
+        .stock-meta {{ font-size: 10px; color: {text_sub}; font-weight: 600; margin-top: 4px; }}
 
         /* SETUP CONTAINER BOX */
         .setup-box {{
@@ -342,6 +342,7 @@ st.markdown(f"""
             padding: 2px 6px;
             font-weight: 900;
             font-size: 11px;
+            display: inline-block;
         }}
 
         .qty-box {{
@@ -352,6 +353,7 @@ st.markdown(f"""
             padding: 2px 6px;
             font-weight: 900;
             font-size: 11px;
+            display: inline-block;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -500,10 +502,6 @@ def analyze_stock_5m(symbol):
         lower_wick_ratio = lower_wick / c1_range
 
         # --- STRICT BULLISH CONDITION ---
-        # 1. Range strictly <= 1.50%
-        # 2. Closed Strictly Above 20 EMA
-        # 3. Strong Solid Body >= 65%
-        # 4. Upper Wick (Rejection) <= 25%
         c1_bull_cond = (
             (c1_range_pct <= 1.50) and 
             (c1_close > c1['EMA20']) and 
@@ -513,10 +511,6 @@ def analyze_stock_5m(symbol):
         c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
         # --- STRICT BEARISH CONDITION ---
-        # 1. Range strictly <= 1.50%
-        # 2. Closed Strictly Below 20 EMA
-        # 3. Strong Solid Body >= 65%
-        # 4. Lower Wick (Buying Tail) <= 25%
         c1_bear_cond = (
             (c1_range_pct <= 1.50) and 
             (c1_close < c1['EMA20']) and 
@@ -558,6 +552,11 @@ def analyze_stock_5m(symbol):
                         signal_time = c_time_str
                         vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                         break
+
+        # Calculate Vol Surge for Market Movers
+        latest_vol = latest['Volume']
+        if max_base_vol > 0:
+            vol_multiple = round(latest_vol / max_base_vol, 2)
 
         return {
             "Symbol": clean_symbol,
@@ -725,7 +724,7 @@ with c4:
         </div>
     """, unsafe_allow_html=True)
 
-# --- MARKET MOVERS ---
+# --- MARKET MOVERS WITH QTY & VOL SURGE BOXES ---
 st.markdown("""
     <div class="box-container">
         <div class="box-title">🔥 MARKET MOVERS</div>
@@ -740,15 +739,19 @@ if market_movers:
             sign = "+" if m['ChangePct'] >= 0 else ""
             
             time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
-            time_display = f"🕒 Alert Time: {time_str}"
+            time_display = f"🕒 {time_str}"
             
             st.markdown(f"""
                 <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
                     <div class="stock-card">
                         <div class="stock-symbol">{m['Symbol']}</div>
                         <div class="{p_class} live-blink">₹{m['Price']:.2f}</div>
-                        <div style="font-size: 12px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'};">
+                        <div style="font-size: 12px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'}; margin-bottom: 6px;">
                             {sign}{m['ChangePct']:.2f}%
+                        </div>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <span class="qty-box">{m['Qty']}</span>
+                            <span class="vol-box">{m['VolMultiple']:.1f}x</span>
                         </div>
                         <div class="stock-meta">{time_display}</div>
                     </div>
