@@ -95,14 +95,45 @@ st.markdown(f"""
 
         /* CLEAN TITLE TEXT */
         .nav-title-clean {{
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 900;
             color: {accent_blue} !important;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             font-family: 'Trebuchet MS', 'Impact', sans-serif;
             text-transform: uppercase;
+            white-space: nowrap;
             line-height: 30px;
         }}
+
+        /* SINGLE TOP ROW INDEX PILLS */
+        .header-indices-wrapper {{
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            height: 30px;
+            white-space: nowrap;
+        }}
+        
+        .idx-pill {{
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background-color: {sub_card_bg};
+            border: 1px solid {border_color};
+            border-radius: 5px;
+            padding: 2px 7px;
+            text-decoration: none !important;
+            font-size: 11px;
+            transition: border-color 0.2s;
+        }}
+        .idx-pill:hover {{
+            border-color: {accent_blue};
+        }}
+        .idx-lbl {{ color: {text_sub}; font-weight: 700; font-size: 10px; }}
+        .idx-num {{ color: {text_main}; font-weight: 800; font-size: 11px; }}
+        .idx-up-p {{ color: #3fb950; font-weight: 800; font-size: 10px; }}
+        .idx-down-p {{ color: #f85149; font-weight: 800; font-size: 10px; }}
 
         /* LIVE BLINKING ANIMATION */
         .live-blink {{
@@ -122,8 +153,9 @@ st.markdown(f"""
             border: 1px solid rgba(63, 185, 80, 0.4);
             padding: 2px 6px;
             border-radius: 5px;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 800;
+            white-space: nowrap;
         }}
         
         .market-status-closed {{
@@ -132,8 +164,9 @@ st.markdown(f"""
             border: 1px solid rgba(248, 81, 73, 0.4);
             padding: 2px 6px;
             border-radius: 5px;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 800;
+            white-space: nowrap;
         }}
 
         /* Metric Summary Cards */
@@ -492,62 +525,56 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP HEADER ROW ---
+# --- TOP SINGLE ROW NAVIGATION HEADER ---
+top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-head_c1, head_c2 = st.columns([0.80, 0.20])
+# Construct indices HTML Pills
+idx_pills_html = '<div class="header-indices-wrapper">'
+for name, data in top_idx.items():
+    pct = data.get('pct', 0)
+    cls = "idx-up-p" if pct >= 0 else "idx-down-p"
+    arrow = "▲" if pct >= 0 else "▼"
+    url = data.get("url", "#")
+    val = data.get("val", 0)
+    
+    idx_pills_html += (
+        f'<a class="idx-pill" href="{url}" target="_blank">'
+        f'<span class="idx-lbl">{name}:</span> '
+        f'<span class="idx-num">{val:,.2f}</span> '
+        f'<span class="{cls}">{arrow}{pct:+.2f}%</span>'
+        f'</a>'
+    )
+idx_pills_html += '</div>'
 
-with head_c1:
+# Single Line Header Column Division
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.18, 0.46, 0.11, 0.13, 0.06, 0.06])
+
+with nav_col1:
     st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
 
-with head_c2:
-    b1, b2 = st.columns(2)
-    with b1:
-        theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
-        if st.button(theme_icon):
-            st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
-            st.query_params['theme'] = st.session_state.theme
-            st.rerun()
-    with b2:
-        if st.button("🔄 Refresh"):
-            st.cache_data.clear()
-            st.rerun()
+with nav_col2:
+    st.markdown(idx_pills_html, unsafe_allow_html=True)
 
-# --- TOP 4 INDEX METRIC CARDS (NIFTY 50, BANK NIFTY, SENSEX, NIFTY MIDCAP) ---
-top_idx = fetch_indices()
-idx_col1, idx_col2, idx_col3, idx_col4 = st.columns(4)
+with nav_col3:
+    st.markdown(f'<div style="margin-top:4px;">{status_html}</div>', unsafe_allow_html=True)
 
-indices_cols = [idx_col1, idx_col2, idx_col3, idx_col4]
+with nav_col4:
+    st.markdown(f'<div style="font-size: 10px; color: {text_sub}; font-weight: 700; margin-top:6px; white-space:nowrap;">🕒 {now_time}</div>', unsafe_allow_html=True)
 
-for i, (name, data) in enumerate(top_idx.items()):
-    with indices_cols[i]:
-        val = data.get('val', 0)
-        pct = data.get('pct', 0)
-        chg = data.get('change', 0)
-        url = data.get('url', '#')
-        
-        val_cls = "card-value-green" if pct >= 0 else "card-value-red"
-        sign = "+" if pct >= 0 else ""
-        
-        st.markdown(f"""
-            <div class="metric-container">
-                <div class="card-label">{name} 🔗</div>
-                <a href="{url}" target="_blank" style="text-decoration:none;">
-                    <div class="{val_cls}">{val:,.2f}</div>
-                    <div style="font-size: 11px; font-weight: 700; color: {'#3fb950' if pct>=0 else '#f85149'}; margin-top: 2px;">
-                        {sign}{chg:,.2f} ({sign}{pct:.2f}%)
-                    </div>
-                </a>
-            </div>
-        """, unsafe_allow_html=True)
+with nav_col5:
+    theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
+    if st.button(theme_icon):
+        st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
+        st.query_params['theme'] = st.session_state.theme
+        st.rerun()
 
-# Status & Time Sub-Bar
-st.markdown(f'''
-    <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:12px; margin-top:8px;">
-        {status_html}
-        <span style="font-size: 11px; color: {text_sub}; font-weight: 700;">🕒 {now_time}</span>
-    </div>
-''', unsafe_allow_html=True)
+with nav_col6:
+    if st.button("🔄 Refresh"):
+        st.cache_data.clear()
+        st.rerun()
+
+st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
 # --- EXECUTE SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
