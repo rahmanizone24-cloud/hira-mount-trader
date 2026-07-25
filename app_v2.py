@@ -356,41 +356,31 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- EXACT 100 HIRA STOCKS UNIVERSE ---
+# --- DYNAMIC CSV LOADER (LOADS 850+ STOCKS) ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
-    for file_candidate in ["Hira Stocks (1).csv", "Hira Stocks.csv"]:
+    csv_candidates = [
+        "Hira Stocks (2).csv",
+        "Hira Stocks (1).csv",
+        "Hira Stocks.csv"
+    ]
+    for file_candidate in csv_candidates:
         if os.path.exists(file_candidate):
             try:
                 df = pd.read_csv(file_candidate)
-                syms = df['symbol'].dropna().astype(str).str.strip().unique().tolist()
-                if len(syms) == 100:
+                # Auto detect symbol column
+                col = 'symbol' if 'symbol' in df.columns else df.columns[0]
+                syms = df[col].dropna().astype(str).str.strip().unique().tolist()
+                if len(syms) > 0:
                     return [f"{s}.NS" if not s.endswith(".NS") else s for s in syms]
             except Exception:
                 pass
             
-    return [
-        'SWSOLAR.NS', 'CGPOWER.NS', 'GENUSPOWER.NS', 'OLECTRA.NS', 'PREMIERENE.NS', 'PRAJIND.NS', 
-        'CDSL.NS', 'KFINTECH.NS', 'ABSLAMC.NS', 'NETWEB.NS', 'DATAPATTNS.NS', 'MAPMYINDIA.NS', 
-        'ZENSARTECH.NS', 'MPHASIS.NS', 'MASTEK.NS', 'TIPSINDUST.NS', 'TRITURBINE.NS', 'ASAHIINDIA.NS', 
-        'APCOTEXIND.NS', 'GRAVITA.NS', 'PRICOLLTD.NS', 'SUNDRMFAST.NS', 'INDOTECH.NS', 'KEC.NS', 
-        'SUBROS.NS', 'CARBORUNIV.NS', 'MINDACORP.NS', 'GANDHITUBE.NS', 'MMFL.NS', 'HAPPYFORGE.NS', 
-        'BLUESTARCO.NS', 'JSWDULUX.NS', 'BAJAJCON.NS', 'PGIL.NS', 'ABREL.NS', 'BBTC.NS', 
-        'RADICO.NS', 'UBL.NS', 'RAYMOND.NS', 'INDRAMEDCO.NS', 'GRANULES.NS', 'AARTIDRUGS.NS', 
-        'JBCHEPHARM.NS', 'FINPIPE.NS', 'SWANENERGY.NS', 'DCMSHRIRAM.NS', 'NIVALLI.NS', 'RITES.NS', 
-        'CYIENT.NS', 'HAPPSTMNDS.NS', 'SONACOMS.NS', 'KEI.NS', 'ASTRAL.NS', 'BEML.NS', 
-        'COCHINSHIP.NS', 'GRSE.NS', 'MAZDOCK.NS', 'PARAS.NS', 'IDEAFORGE.NS', 'MTARTECH.NS', 
-        'PPLPHARMA.NS', 'ERIS.NS', 'AARTIIND.NS', 'DEEPAKNTR.NS', 'NOCIL.NS', 'CLEAN.NS', 
-        'CHAMBLFERT.NS', 'GNFC.NS', 'KPITTECH.NS', 'TIINDIA.NS', 'TUBEINVEST.NS', 'ANANTRAJ.NS', 
-        'SOBHA.NS', 'BRIGADE.NS', 'PHOENIXLTD.NS', 'PRESTIGE.NS', 'WELCORP.NS', 'BSOFT.NS', 
-        'TANLA.NS', 'INTELLECT.NS', 'NEWGEN.NS', 'CEINFO.NS', 'ECLERX.NS', 'AFFLE.NS', 
-        'LATENTVIEW.NS', 'ROUTE.NS', 'MAHINDCIE.NS', 'VARROC.NS', 'SMLISUZU.NS', 'SANSERA.NS', 
-        'CIEINDIA.NS', 'SUPRAJIT.NS', 'FACT.NS', 'MHRIL.NS', 'CHALET.NS', 'EIHOTEL.NS', 
-        'CENTURYPLY.NS', 'GREENPANEL.NS', 'ACE.NS', 'CYIENTDLM.NS'
-    ]
+    # Default Fallback List
+    return ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS']
 
-NIFTY_CASH_ONLY_SYMBOLS = load_hira_stocks()
-TOTAL_SCANNED_STOCKS = len(NIFTY_CASH_ONLY_SYMBOLS)
+ALL_HIRA_SYMBOLS = load_hira_stocks()
+TOTAL_SCANNED_STOCKS = len(ALL_HIRA_SYMBOLS)
 
 # --- ACCURATE FETCH FOR TOP INDICES ---
 @st.cache_data(ttl=30)
@@ -546,8 +536,9 @@ def run_market_scanner():
     bearish_list = []
     all_stocks = []
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=35) as executor:
-        results = executor.map(analyze_stock_5m, NIFTY_CASH_ONLY_SYMBOLS)
+    # MULTI-THREADED SCANNER OPTIMIZED FOR 850+ STOCKS
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        results = executor.map(analyze_stock_5m, ALL_HIRA_SYMBOLS)
         for res in results:
             if res:
                 all_stocks.append(res)
@@ -680,7 +671,7 @@ with c4:
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
             <div style="font-size: 16px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
-                {TOTAL_SCANNED_STOCKS} Hira Stocks
+                {TOTAL_SCANNED_STOCKS} Stocks
             </div>
             <div style="font-size: 11px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active Signals: {total_bull_cnt + total_bear_cnt}</div>
         </div>
@@ -756,7 +747,7 @@ with tb_col1:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakouts in Hira Stocks...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakouts in Scanned Stocks...</div>', unsafe_allow_html=True)
 
 with tb_col2:
     st.markdown("""
@@ -793,7 +784,7 @@ with tb_col2:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira Stocks...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Scanned Stocks...</div>', unsafe_allow_html=True)
 
 # --- AUTO-REFRESH (30 SECONDS) ---
 if is_market_open:
