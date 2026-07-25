@@ -547,16 +547,20 @@ def analyze_stock_5m(symbol):
         upper_wick_ratio = upper_wick / c1_range
         lower_wick_ratio = lower_wick / c1_range
 
-        # --- A+ GRADE EMA CLUSTER CHECK (20 EMA & 200 EMA TOGETHER NEAR CANDLE 1) ---
-        ema20_val = c1['EMA20']
-        ema200_val = c1['EMA200']
+        # --- A+ GRADE EMA CLUSTER & STRICT CROSSOVER CHECK ---
+        ema20_c1 = c1['EMA20']
+        ema200_c1 = c1['EMA200']
         
-        # Check if 20 & 200 EMA are in a close cluster near Candle 1
-        ema_diff_pct = abs(ema20_val - ema200_val) / min(ema20_val, ema200_val) * 100
-        if ema_diff_pct <= 1.2:  # EMAs are tightly clustered
-            # Check if Candle 1 breaks through both EMAs
-            if (c1_open <= max(ema20_val, ema200_val) and c1_close >= max(ema20_val, ema200_val)) or \
-               (c1_open >= min(ema20_val, ema200_val) and c1_close <= min(ema20_val, ema200_val)):
+        # Check EMA distance (Tight Cluster Zone <= 1.0%)
+        ema_diff_pct = abs(ema20_c1 - ema200_c1) / min(ema20_c1, ema200_c1) * 100
+        
+        # STRICT CANDLE 1 RANGE CHECK FOR A+ CLUSTER: MUST BE BETWEEN 0.5% and 1.50%
+        if (ema_diff_pct <= 1.0) and (0.50 <= c1_range_pct <= 1.50):
+            # Bullish Crossover: 20 EMA Breaks Above 200 EMA & Candle 1 Closes Above Both
+            if (ema20_c1 >= ema200_c1) and (c1_close > ema20_c1):
+                is_a_plus_cluster = True
+            # Bearish Crossover: 20 EMA Breaks Below 200 EMA & Candle 1 Closes Below Both
+            elif (ema20_c1 <= ema200_c1) and (c1_close < ema20_c1):
                 is_a_plus_cluster = True
 
         # --- STRICT BULLISH CONDITION ---
