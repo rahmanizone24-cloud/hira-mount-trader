@@ -216,7 +216,7 @@ st.markdown(f"""
             letter-spacing: 0.5px;
         }}
         
-        /* MARKET MOVERS STOCK CARDS - COMPACT SIDE-BY-SIDE LAYOUT */
+        /* MARKET MOVERS STOCK CARDS */
         .stock-card {{
             background-color: {sub_card_bg};
             border: 1px solid {border_color};
@@ -366,6 +366,61 @@ st.markdown(f"""
             font-size: 10px;
             display: inline-block;
         }}
+
+        /* AI ROBOT POPUP WIDGET (BOTTOM RIGHT) */
+        .robot-container {{
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 99999;
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            animation: slideInRight 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }}
+        
+        .robot-bubble {{
+            background-color: {card_bg};
+            border: 2px solid #58a6ff;
+            border-radius: 12px;
+            padding: 10px 14px;
+            max-width: 260px;
+            box-shadow: 0px 8px 24px rgba(0,0,0,0.4);
+            color: {text_main};
+            font-size: 12px;
+            position: relative;
+        }}
+
+        .robot-bubble::after {{
+            content: '';
+            position: absolute;
+            bottom: 15px;
+            right: -10px;
+            border-width: 6px 0 6px 10px;
+            border-style: solid;
+            border-color: transparent transparent transparent #58a6ff;
+            display: block;
+            width: 0;
+        }}
+
+        .robot-avatar {{
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, #1f6feb, #238636);
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0px 4px 15px rgba(88, 166, 255, 0.5);
+            cursor: pointer;
+        }}
+
+        @keyframes slideInRight {{
+            from {{ transform: translateX(100%); opacity: 0; }}
+            to {{ transform: translateX(0); opacity: 1; }}
+        }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -473,7 +528,6 @@ def analyze_stock_5m(symbol):
     try:
         clean_symbol = symbol.replace(".NS", "").upper()
         
-        # DOUBLE CHECK ETF & FNO FILTER
         if any(kw in clean_symbol for kw in ETF_KEYWORDS) or (clean_symbol in FNO_STOCKS):
             return None
 
@@ -484,7 +538,6 @@ def analyze_stock_5m(symbol):
         if len(df_5m) < 20 or len(df_daily) < 2:
             return None
 
-        # CALCULATE 20 EMA & VWAP
         df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
         df_5m['VWAP'] = calculate_vwap(df_5m)
 
@@ -497,7 +550,6 @@ def analyze_stock_5m(symbol):
         c1 = today_df.iloc[0] # 09:15 Candle
         c2 = today_df.iloc[1] # 09:20 Candle (Pause Candle)
 
-        # VOLUME FILTER: REJECT LOW VOLUME STOCKS (Base Candle Volume < 5,000)
         max_base_vol = max(c1['Volume'], c2['Volume'])
         if max_base_vol < 5000:
             return None
@@ -517,7 +569,6 @@ def analyze_stock_5m(symbol):
         signal_time = "-"
         vol_multiple = 1.0
 
-        # --- CANDLE 1 STRICT MOMENTUM & RANGE ANALYSIS ---
         c1_high, c1_low = c1['High'], c1['Low']
         c1_open, c1_close = c1['Open'], c1['Close']
         c1_range = c1_high - c1_low
@@ -527,7 +578,7 @@ def analyze_stock_5m(symbol):
 
         c1_range_pct = (c1_range / c1_low) * 100
 
-        # STRICT RULE 1: CANDLE RANGE MUST BE UNDER 1.25% (REJECT LARGE CANDLES)
+        # STRICT RULE: RANGE <= 1.25%
         if c1_range_pct > 1.25:
             return None
 
@@ -540,10 +591,9 @@ def analyze_stock_5m(symbol):
         upper_wick_ratio = upper_wick / c1_range
         lower_wick_ratio = lower_wick / c1_range
 
-        # --- VWAP CONFIRMATION ---
         c1_vwap = c1['VWAP']
 
-        # --- STRICT BULLISH CONDITION (20 EMA + VWAP ABOVE + TINY UPPER WICK) ---
+        # BULLISH CONDITION
         c1_bull_cond = (
             (c1_range_pct <= 1.25) and 
             (c1_close > c1['EMA20']) and 
@@ -553,7 +603,7 @@ def analyze_stock_5m(symbol):
         )
         c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # --- STRICT BEARISH CONDITION (20 EMA + VWAP BELOW + TINY LOWER WICK) ---
+        # BEARISH CONDITION
         c1_bear_cond = (
             (c1_range_pct <= 1.25) and 
             (c1_close < c1['EMA20']) and 
@@ -563,7 +613,7 @@ def analyze_stock_5m(symbol):
         )
         c2_bear_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # --- CHECK BULLISH SIGNAL (STARTS AT WATCH AT 09:20) ---
+        # BULLISH CHECK
         if c1_bull_cond and c2_bull_inside:
             signal_bullish = True
             status_state = "WATCH"
@@ -573,15 +623,13 @@ def analyze_stock_5m(symbol):
                 for i in range(2, len(today_df)):
                     c_curr = today_df.iloc[i]
                     c_time_str = c_curr.name.strftime("%H:%M")
-                    
-                    # BREAKOUT MUST ALSO BE ABOVE VWAP
                     if (c_curr['High'] > c1['High']) and (c_curr['Close'] > c_curr['VWAP']):
                         status_state = "READY"
                         signal_time = c_time_str
                         vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                         break
 
-        # --- CHECK BEARISH SIGNAL (STARTS AT WATCH AT 09:20) ---
+        # BEARISH CHECK
         if c1_bear_cond and c2_bear_inside:
             signal_bearish = True
             status_state = "WATCH"
@@ -591,15 +639,12 @@ def analyze_stock_5m(symbol):
                 for i in range(2, len(today_df)):
                     c_curr = today_df.iloc[i]
                     c_time_str = c_curr.name.strftime("%H:%M")
-                    
-                    # BREAKDOWN MUST ALSO BE BELOW VWAP
                     if (c_curr['Low'] < c1['Low']) and (c_curr['Close'] < c_curr['VWAP']):
                         status_state = "READY"
                         signal_time = c_time_str
                         vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                         break
 
-        # Calculate Vol Surge for Market Movers
         latest_vol = latest['Volume']
         if max_base_vol > 0:
             vol_multiple = round(latest_vol / max_base_vol, 2)
@@ -640,11 +685,9 @@ def run_market_scanner():
     top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
     top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
 
-    # SORTING: READY SETUPS TOP, HIGH VOL MULTIPLE & CHANGE PCT TOP
     sorted_bullish = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], x['ChangePct']), reverse=True)
     sorted_bearish = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], abs(x['ChangePct'])), reverse=True)
 
-    # LIMIT TO TOP 10
     top_bullish = sorted_bullish[:10]
     top_bearish = sorted_bearish[:10]
 
@@ -669,7 +712,7 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP SINGLE ROW NAVIGATION HEADER ---
+# --- TOP NAVIGATION HEADER ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
@@ -770,7 +813,7 @@ with c4:
         </div>
     """, unsafe_allow_html=True)
 
-# --- MARKET MOVERS (COMPACT SIDE-BY-SIDE QTY & VOL BOXES) ---
+# --- MARKET MOVERS ---
 st.markdown("""
     <div class="box-container">
         <div class="box-title">🔥 MARKET MOVERS</div>
@@ -783,7 +826,6 @@ if market_movers:
         with m_cols[i]:
             p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
             sign = "+" if m['ChangePct'] >= 0 else ""
-            
             time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
             
             st.markdown(f"""
@@ -792,8 +834,8 @@ if market_movers:
                         <div class="stock-card-top">
                             <span class="stock-symbol">{m['Symbol']}</span>
                             <div style="display:flex; gap:3px;">
-                                <span class="qty-box" title="Quantity">{m['Qty']}</span>
-                                <span class="vol-box" title="Volume Surge">{m['VolMultiple']:.1f}x</span>
+                                <span class="qty-box">{m['Qty']}</span>
+                                <span class="vol-box">{m['VolMultiple']:.1f}x</span>
                             </div>
                         </div>
                         <div class="stock-card-body">
@@ -811,7 +853,45 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (BULLISH & BEARISH SETUPS - CLEAN HEADERS) ---
+# --- FIND LATEST READY SIGNAL FOR ROBOT POPUP ---
+latest_ready_stock = None
+for s in bullish_signals + bearish_signals:
+    if s['StatusState'] == 'READY':
+        latest_ready_stock = s
+        break
+
+# --- ROBOT ASSISTANT POPUP & SOUND ALERT HTML/JS ---
+if latest_ready_stock:
+    signal_type = "Bullish Breakout" if latest_ready_stock['IsBullish'] else "Bearish Breakdown"
+    badge_color = "#3fb950" if latest_ready_stock['IsBullish'] else "#f85149"
+    
+    robot_html = f"""
+        <div class="robot-container">
+            <div class="robot-bubble">
+                <div style="font-weight:900; color:{badge_color}; margin-bottom:3px;">🚨 READY ALERT!</div>
+                <div style="font-size:11px;"><b>{latest_ready_stock['Symbol']}</b> gave a <b>{signal_type}</b> at <b>{latest_ready_stock['SignalTime']}</b>.</div>
+                <div style="font-size:10px; color:{text_sub}; margin-top:4px;">Price: ₹{latest_ready_stock['Price']:.2f} ({latest_ready_stock['ChangePct']:+.2f}%)</div>
+            </div>
+            <div class="robot-avatar" title="Hira Mount Trading Bot">🤖</div>
+        </div>
+
+        <script>
+            // Play Alert Beep Sound
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880Hz Beep
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        </script>
+    """
+    st.markdown(robot_html, unsafe_allow_html=True)
+
+# --- ROW LIST (BULLISH & BEARISH SETUPS) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -832,10 +912,7 @@ with tb_col1:
     
     if bullish_signals:
         for s in bullish_signals:
-            if s['StatusState'] == 'WATCH':
-                status_btn_html = '<span class="status-watch">WATCH</span>'
-            else:
-                status_btn_html = '<span class="status-ready-bull">READY</span>'
+            status_btn_html = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bull">READY</span>'
 
             st.markdown(f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
@@ -869,10 +946,7 @@ with tb_col2:
     
     if bearish_signals:
         for s in bearish_signals:
-            if s['StatusState'] == 'WATCH':
-                status_btn_html = '<span class="status-watch">WATCH</span>'
-            else:
-                status_btn_html = '<span class="status-ready-bear">READY</span>'
+            status_btn_html = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bear">READY</span>'
 
             st.markdown(f"""
                 <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
