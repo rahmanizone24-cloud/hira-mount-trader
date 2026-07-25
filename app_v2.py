@@ -7,6 +7,7 @@ import concurrent.futures
 import os
 import pytz
 import time
+import streamlit.components.v1 as components
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -46,7 +47,7 @@ else:
 
 st.markdown(f"""
     <style>
-        /* HIDE STREAMLIT CHROME */
+        /* HIDE DEFAULT STREAMLIT CHROME & MANAGE APP TOOLBAR */
         header {{visibility: hidden !important; height: 0px !important;}}
         footer {{visibility: hidden !important; display: none !important;}}
         #MainMenu {{visibility: hidden !important;}}
@@ -55,17 +56,18 @@ st.markdown(f"""
             display: none !important;
         }}
 
-        /* AGGRESSIVELY FORCE MOVE MANAGE APP TOOLBAR TO BOTTOM LEFT */
+        /* AGGRESSIVE CSS TO HIDE STREAMLIT CLOUD "MANAGE APP" TOOLBAR */
         div[data-testid="stAppToolbar"],
         div[class*="viewerBadge"],
         div[class*="stManageAppButton"],
+        .stApp > footer,
         iframe[title="manage-app"] {{
-            left: 10px !important;
-            right: auto !important;
-            bottom: 5px !important;
-            transform: scale(0.7) !important;
-            transform-origin: bottom left !important;
-            z-index: 100 !important;
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0px !important;
+            width: 0px !important;
+            pointer-events: none !important;
         }}
 
         /* Remove Page Padding */
@@ -91,7 +93,7 @@ st.markdown(f"""
             opacity: 0 !important;
         }}
 
-        /* Custom Button Styling */
+        /* Custom Larger Button Styling */
         .stButton>button {{
             background-color: {btn_bg} !important;
             color: {accent_blue} !important;
@@ -382,90 +384,6 @@ st.markdown(f"""
             font-weight: 900;
             font-size: 10px;
             display: inline-block;
-        }}
-
-        /* PURE CSS-BASED KRRISH AVATAR & ALERT DRAWER (ZERO JS DEPENDENCY) */
-        .krrish-drawer-wrapper {{
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            z-index: 99999999 !important;
-        }}
-
-        .krrish-drawer-wrapper details {{
-            position: relative;
-        }}
-
-        .krrish-drawer-wrapper summary {{
-            list-style: none;
-            outline: none;
-            cursor: pointer;
-            user-select: none;
-        }}
-        .krrish-drawer-wrapper summary::-webkit-details-marker {{
-            display: none;
-        }}
-
-        .krrish-avatar-button {{
-            width: 62px;
-            height: 62px;
-            background: radial-gradient(circle, #00d2ff 0%, #031528 80%);
-            border: 2px solid #00d2ff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 25px #00d2ff;
-            animation: pulseGlow 1.8s infinite alternate;
-        }}
-
-        @keyframes pulseGlow {{
-            0% {{ box-shadow: 0 0 10px rgba(0, 210, 255, 0.6); transform: scale(0.96); }}
-            100% {{ box-shadow: 0 0 30px rgba(0, 210, 255, 1); transform: scale(1.08); }}
-        }}
-
-        /* ALERT HISTORY PANEL DRAWER (POPS UP RIGHT ABOVE THE AVATAR) */
-        .krrish-popup-panel {{
-            position: absolute;
-            bottom: 75px;
-            right: 0px;
-            width: 290px;
-            max-height: 400px;
-            background-color: {card_bg};
-            border: 2px solid #00d2ff;
-            border-radius: 12px;
-            padding: 12px;
-            box-shadow: 0px 12px 35px rgba(0,0,0,0.9);
-            overflow-y: auto;
-        }}
-
-        /* AUTO-DISMISS TOAST BUBBLE */
-        .toast-bubble {{
-            position: fixed;
-            bottom: 95px;
-            right: 25px;
-            background-color: {card_bg};
-            border: 2px solid #00d2ff;
-            border-radius: 10px;
-            padding: 10px 14px;
-            max-width: 280px;
-            box-shadow: 0px 8px 24px rgba(0,0,0,0.7);
-            z-index: 9999998 !important;
-        }}
-
-        .clear-btn {{
-            background-color: rgba(248, 81, 73, 0.2);
-            color: #f85149;
-            border: 1px solid #f85149;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 2px 6px;
-            cursor: pointer;
-        }}
-        .clear-btn:hover {{
-            background-color: #f85149;
-            color: #ffffff;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -918,80 +836,149 @@ for stock in all_ready_stocks:
 if not alert_items_html:
     alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">No active breakouts yet</div>'
 
-# --- CLEAN INTERACTIVE HERO ASSISTANT WITH HIGH QUALITY VECTOR AVATAR ---
+# --- ISOLATED KRRISH AVATAR COMPONENT (100% CLEAN & NO GLITCH) ---
 latest_sym = latest_ready_stock['Symbol'] if latest_ready_stock else ''
 latest_type = ('Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown') if latest_ready_stock else ''
 latest_time = latest_ready_stock['SignalTime'] if latest_ready_stock else ''
 latest_price = f"₹{latest_ready_stock['Price']:.2f}" if latest_ready_stock else ''
 latest_change = f"{latest_ready_stock['ChangePct']:+.2f}%" if latest_ready_stock else ''
 latest_color = ("#3fb950" if latest_ready_stock and latest_ready_stock['IsBullish'] else "#f85149") if latest_ready_stock else "#58a6ff"
-toast_display = 'block' if latest_ready_stock else 'none'
+toast_show = 'true' if latest_ready_stock else 'false'
 
-# HD VECTOR KRRISH MASK SVG
-KRRISH_SVG = """<svg viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-<circle cx="50" cy="50" r="45" fill="#031528"/>
-<path d="M50 15 C35 15 25 30 25 45 C25 65 38 80 50 85 C62 80 75 65 75 45 C75 30 65 15 50 15 Z" fill="#0b1d3a"/>
-<path d="M30 38 Q50 25 70 38 Q78 50 70 58 Q50 48 30 58 Q22 50 30 38 Z" fill="#00d2ff"/>
-<circle cx="41" cy="46" r="3.5" fill="#ffffff"/>
-<circle cx="59" cy="46" r="3.5" fill="#ffffff"/>
-<path d="M42 68 Q50 74 58 68" stroke="#00d2ff" stroke-width="3" fill="none"/>
-</svg>"""
+component_code = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+    body {{ margin: 0; padding: 0; background: transparent; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }}
+    
+    .wrapper {{
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        z-index: 999999;
+    }}
 
-robot_html = f"""
-    <!-- PURE CSS DETAILS/SUMMARY TOGGLE FOR ZERO-JS CLICK ACTION -->
-    <div class="krrish-drawer-wrapper">
-        <details>
-            <summary>
-                <div class="krrish-avatar-button" title="Click to view Alert History">
-                    {KRRISH_SVG}
-                </div>
-            </summary>
-            <div class="krrish-popup-panel">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid {border_color}; padding-bottom:6px; margin-bottom:8px;">
-                    <span style="font-weight:900; font-size:12px; color:{text_main};">📢 Alert History</span>
-                    <span style="font-size:10px; color:{accent_blue}; font-weight:800;">Tap Icon To Close</span>
-                </div>
-                <div>
-                    {alert_items_html}
-                </div>
+    .avatar-btn {{
+        width: 58px;
+        height: 58px;
+        background: radial-gradient(circle, #00d2ff 0%, #031528 85%);
+        border: 2px solid #00d2ff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 20px #00d2ff;
+        cursor: pointer;
+        user-select: none;
+        transition: transform 0.2s;
+    }}
+    .avatar-btn:hover {{ transform: scale(1.08); }}
+
+    .toast {{
+        background-color: {card_bg};
+        border: 2px solid #00d2ff;
+        border-radius: 10px;
+        padding: 10px 14px;
+        max-width: 250px;
+        box-shadow: 0px 8px 24px rgba(0,0,0,0.8);
+        margin-bottom: 10px;
+        display: none;
+    }}
+
+    .panel {{
+        background-color: {card_bg};
+        border: 2px solid #00d2ff;
+        border-radius: 12px;
+        padding: 12px;
+        width: 270px;
+        max-height: 320px;
+        box-shadow: 0px 12px 35px rgba(0,0,0,0.9);
+        overflow-y: auto;
+        margin-bottom: 10px;
+        display: none;
+    }}
+
+    .clear-btn {{
+        background-color: rgba(248, 81, 73, 0.2);
+        color: #f85149;
+        border: 1px solid #f85149;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 2px 6px;
+        cursor: pointer;
+    }}
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+    <!-- POPUP PANEL -->
+    <div id="panel" class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid {border_color}; padding-bottom:6px; margin-bottom:8px;">
+            <span style="font-weight:900; font-size:12px; color:{text_main};">📢 Alert History</span>
+            <div>
+                <button class="clear-btn" onclick="clearAlerts()">Clear</button>
+                <span style="font-size:12px; color:{accent_blue}; cursor:pointer; margin-left:8px;" onclick="togglePanel()">✖</span>
             </div>
-        </details>
-    </div>
-
-    <!-- AUTO-DISMISS TOAST BUBBLE (DISAPPEARS IN 5 SECONDS) -->
-    <div id="toastNotification" class="toast-bubble" style="display: {toast_display};">
-        <div style="font-weight:900; color:{latest_color}; font-size:12px; margin-bottom:2px;">
-            🚨 READY ALERT!
         </div>
-        <div style="font-size:11px; color:{text_main};">
-            <b>{latest_sym}</b> gave a <b>{latest_type}</b> at <b>{latest_time}</b>.
-        </div>
-        <div style="font-size:10px; color:{text_sub}; margin-top:3px;">
-            Price: {latest_price} ({latest_change})
+        <div id="alertList">
+            {alert_items_html}
         </div>
     </div>
 
-    <script>
-        // AUTO DISMISS TOAST BUBBLE IN 5 SECONDS
-        setTimeout(function() {{
-            var toast = document.getElementById('toastNotification');
-            if(toast) {{
-                toast.style.display = 'none';
-            }}
-        }}, 5000);
+    <!-- TOAST ALERT -->
+    <div id="toast" class="toast">
+        <div style="font-weight:900; color:{latest_color}; font-size:12px; margin-bottom:2px;">🚨 READY ALERT!</div>
+        <div style="font-size:11px; color:{text_main};"><b>{latest_sym}</b> gave a <b>{latest_type}</b> at <b>{latest_time}</b>.</div>
+        <div style="font-size:10px; color:{text_sub}; margin-top:3px;">Price: {latest_price} ({latest_change})</div>
+    </div>
 
-        // FORCE MOVE STREAMLIT MANAGE APP BAR TO BOTTOM-LEFT CORNER VIA JS
-        window.addEventListener('load', function() {{
-            var toolbar = document.querySelector('div[data-testid="stAppToolbar"]');
-            if(toolbar) {{
-                toolbar.style.left = '10px';
-                toolbar.style.right = 'auto';
-                toolbar.style.bottom = '5px';
-            }}
-        }});
-    </script>
+    <!-- KRRISH AVATAR -->
+    <div class="avatar-btn" onclick="togglePanel()" title="Click to view Alert History">
+        <svg viewBox="0 0 100 100" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="#031528"/>
+            <path d="M50 15 C35 15 25 30 25 45 C25 65 38 80 50 85 C62 80 75 65 75 45 C75 30 65 15 50 15 Z" fill="#0b1d3a"/>
+            <path d="M30 38 Q50 25 70 38 Q78 50 70 58 Q50 48 30 58 Q22 50 30 38 Z" fill="#00d2ff"/>
+            <circle cx="41" cy="46" r="3.5" fill="#ffffff"/>
+            <circle cx="59" cy="46" r="3.5" fill="#ffffff"/>
+            <path d="M42 68 Q50 74 58 68" stroke="#00d2ff" stroke-width="3" fill="none"/>
+        </svg>
+    </div>
+</div>
+
+<script>
+    var showToast = {toast_show};
+    if (showToast) {{
+        var t = document.getElementById('toast');
+        t.style.display = 'block';
+        setTimeout(function() {{ t.style.display = 'none'; }}, 5000);
+    }}
+
+    function togglePanel() {{
+        var p = document.getElementById('panel');
+        var t = document.getElementById('toast');
+        if (t) t.style.display = 'none';
+        if (p.style.display === 'block') {{
+            p.style.display = 'none';
+        }} else {{
+            p.style.display = 'block';
+        }}
+    }}
+
+    function clearAlerts() {{
+        document.getElementById('alertList').innerHTML = '<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">Cleared all active alerts</div>';
+    }}
+</script>
+</body>
+</html>
 """
-st.markdown(robot_html, unsafe_allow_html=True)
+
+components.html(component_code, height=450)
 
 # --- ROW LIST (BULLISH & BEARISH SETUPS) ---
 tb_col1, tb_col2 = st.columns(2)
