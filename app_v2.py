@@ -469,19 +469,15 @@ def analyze_stock_5m(symbol):
             c1 = today_df.iloc[0] # 09:15 Candle
             c2 = today_df.iloc[1] # 09:20 Candle
 
-            # STRICT 1.5% MAX RANGE CHECK ON CANDLE 1
+            # STRICT 1.50% RANGE LIMIT ON CANDLE 1
             c1_range_pct = ((c1['High'] - c1['Low']) / c1['Low']) * 100
-            c1_ema20_dist = abs(c1['Close'] - c1['EMA20']) / c1['Close'] * 100
-            c1_ema200_dist = abs(c1['Close'] - c1['EMA200']) / c1['Close'] * 100
 
-            # Bullish Base Condition (STRICT c1_range_pct <= 1.50%)
+            # Bullish Base Condition (c1 Range <= 1.50% & Price above EMA20/200)
             c1_bull_cond = (
                 (c1_range_pct <= 1.50) and
                 (c1['Close'] > c1['Low']) and
-                (c1['Close'] > c1['EMA20']) and
-                (c1['Close'] > c1['EMA200']) and
-                (c1_ema20_dist <= 0.8) and
-                (c1_ema200_dist <= 0.8)
+                (c1['Close'] >= c1['EMA20']) and
+                (c1['Close'] >= c1['EMA200'])
             )
 
             c2_bull_inside = (
@@ -492,14 +488,12 @@ def analyze_stock_5m(symbol):
                 ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
             )
 
-            # Bearish Base Condition (STRICT c1_range_pct <= 1.50%)
+            # Bearish Base Condition (c1 Range <= 1.50% & Price below EMA20/200)
             c1_bear_cond = (
                 (c1_range_pct <= 1.50) and
                 (c1['Close'] < c1['High']) and
-                (c1['Close'] < c1['EMA20']) and
-                (c1['Close'] < c1['EMA200']) and
-                (c1_ema20_dist <= 0.8) and
-                (c1_ema200_dist <= 0.8)
+                (c1['Close'] <= c1['EMA20']) and
+                (c1['Close'] <= c1['EMA200'])
             )
 
             c2_bear_inside = (
@@ -731,7 +725,6 @@ if market_movers:
             p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
             sign = "+" if m['ChangePct'] >= 0 else ""
             
-            # Show Alert Time if signal exists, otherwise clean display
             time_display = f"🕒 Alert Time: {m['SignalTime']}" if m['SignalTime'] != "-" else "🕒 Live Track"
             
             st.markdown(f"""
