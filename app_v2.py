@@ -345,17 +345,6 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        .a-plus-tag {{
-            background-color: rgba(255, 215, 0, 0.2);
-            color: #ffd700;
-            border: 1px solid rgba(255, 215, 0, 0.6);
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-weight: 900;
-            font-size: 10px;
-            display: inline-block;
-        }}
-
         .vol-box {{
             background-color: rgba(210, 153, 34, 0.15);
             color: #d29922;
@@ -475,6 +464,11 @@ def fetch_indices():
 def calculate_ema(series, length):
     return series.ewm(span=length, adjust=False).mean()
 
+def calculate_vwap(df):
+    tp = (df['High'] + df['Low'] + df['Close']) / 3
+    vwap = (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
+    return vwap
+
 def analyze_stock_5m(symbol):
     try:
         clean_symbol = symbol.replace(".NS", "").upper()
@@ -487,12 +481,12 @@ def analyze_stock_5m(symbol):
         df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
         
-        if len(df_5m) < 200 or len(df_daily) < 2:
+        if len(df_5m) < 20 or len(df_daily) < 2:
             return None
 
-        # CALCULATE 20 EMA & 200 EMA
+        # CALCULATE 20 EMA & VWAP
         df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
-        df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
+        df_5m['VWAP'] = calculate_vwap(df_5m)
 
         latest_trading_date = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
@@ -501,7 +495,7 @@ def analyze_stock_5m(symbol):
             return None
 
         c1 = today_df.iloc[0] # 09:15 Candle
-        c2 = today_df.iloc[1] # 09:20 Candle (Inside Bar / Profit Booking)
+        c2 = today_df.iloc[1] # 09:20 Candle (Pause Candle)
 
         # VOLUME FILTER: REJECT LOW VOLUME STOCKS (Base Candle Volume < 5,000)
         max_base_vol = max(c1['Volume'], c2['Volume'])
@@ -522,7 +516,6 @@ def analyze_stock_5m(symbol):
         status_state = ""
         signal_time = "-"
         vol_multiple = 1.0
-        is_a_plus_cluster = False
 
         # --- CANDLE 1 STRICT MOMENTUM & RANGE ANALYSIS ---
         c1_high, c1_low = c1['High'], c1['Low']
@@ -534,8 +527,8 @@ def analyze_stock_5m(symbol):
 
         c1_range_pct = (c1_range / c1_low) * 100
 
-        # STRICT RULE 1: IF CANDLE 1 RANGE IS GREATER THAN 1.50%, IGNORE IMMEDIATELY
-        if c1_range_pct > 1.50:
+        # STRICT RULE 1: CANDLE RANGE MUST BE UNDER 1.25% (REJECT LARGE CANDLES)
+        if c1_range_pct > 1.25:
             return None
 
         c1_body = abs(c1_close - c1_open)
@@ -547,41 +540,30 @@ def analyze_stock_5m(symbol):
         upper_wick_ratio = upper_wick / c1_range
         lower_wick_ratio = lower_wick / c1_range
 
-        # --- A+ GRADE EMA CLUSTER & STRICT CROSSOVER CHECK ---
-        ema20_c1 = c1['EMA20']
-        ema200_c1 = c1['EMA200']
-        
-        # Check EMA distance (Tight Cluster Zone <= 1.0%)
-        ema_diff_pct = abs(ema20_c1 - ema200_c1) / min(ema20_c1, ema200_c1) * 100
-        
-        # STRICT CANDLE 1 RANGE CHECK FOR A+ CLUSTER: MUST BE BETWEEN 0.5% and 1.50%
-        if (ema_diff_pct <= 1.0) and (0.50 <= c1_range_pct <= 1.50):
-            # Bullish Crossover: 20 EMA Breaks Above 200 EMA & Candle 1 Closes Above Both
-            if (ema20_c1 >= ema200_c1) and (c1_close > ema20_c1):
-                is_a_plus_cluster = True
-            # Bearish Crossover: 20 EMA Breaks Below 200 EMA & Candle 1 Closes Below Both
-            elif (ema20_c1 <= ema200_c1) and (c1_close < ema20_c1):
-                is_a_plus_cluster = True
+        # --- VWAP CONFIRMATION ---
+        c1_vwap = c1['VWAP']
 
-        # --- STRICT BULLISH CONDITION ---
+        # --- STRICT BULLISH CONDITION (20 EMA + VWAP ABOVE + TINY UPPER WICK) ---
         c1_bull_cond = (
-            (c1_range_pct <= 1.50) and 
+            (c1_range_pct <= 1.25) and 
             (c1_close > c1['EMA20']) and 
-            (body_ratio >= 0.65) and 
-            (upper_wick_ratio <= 0.25)
+            (c1_close > c1_vwap) and 
+            (body_ratio >= 0.70) and 
+            (upper_wick_ratio <= 0.20)
         )
         c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # --- STRICT BEARISH CONDITION ---
+        # --- STRICT BEARISH CONDITION (20 EMA + VWAP BELOW + TINY LOWER WICK) ---
         c1_bear_cond = (
-            (c1_range_pct <= 1.50) and 
+            (c1_range_pct <= 1.25) and 
             (c1_close < c1['EMA20']) and 
-            (body_ratio >= 0.65) and 
-            (lower_wick_ratio <= 0.25)
+            (c1_close < c1_vwap) and 
+            (body_ratio >= 0.70) and 
+            (lower_wick_ratio <= 0.20)
         )
         c2_bear_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # --- CHECK BULLISH SIGNAL (STARTS AT WATCH) ---
+        # --- CHECK BULLISH SIGNAL (STARTS AT WATCH AT 09:20) ---
         if c1_bull_cond and c2_bull_inside:
             signal_bullish = True
             status_state = "WATCH"
@@ -592,13 +574,14 @@ def analyze_stock_5m(symbol):
                     c_curr = today_df.iloc[i]
                     c_time_str = c_curr.name.strftime("%H:%M")
                     
-                    if (c_curr['High'] > c1['High']):
+                    # BREAKOUT MUST ALSO BE ABOVE VWAP
+                    if (c_curr['High'] > c1['High']) and (c_curr['Close'] > c_curr['VWAP']):
                         status_state = "READY"
                         signal_time = c_time_str
                         vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                         break
 
-        # --- CHECK BEARISH SIGNAL (STARTS AT WATCH) ---
+        # --- CHECK BEARISH SIGNAL (STARTS AT WATCH AT 09:20) ---
         if c1_bear_cond and c2_bear_inside:
             signal_bearish = True
             status_state = "WATCH"
@@ -609,7 +592,8 @@ def analyze_stock_5m(symbol):
                     c_curr = today_df.iloc[i]
                     c_time_str = c_curr.name.strftime("%H:%M")
                     
-                    if (c_curr['Low'] < c1['Low']):
+                    # BREAKDOWN MUST ALSO BE BELOW VWAP
+                    if (c_curr['Low'] < c1['Low']) and (c_curr['Close'] < c_curr['VWAP']):
                         status_state = "READY"
                         signal_time = c_time_str
                         vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
@@ -630,7 +614,6 @@ def analyze_stock_5m(symbol):
             "IsBullish": signal_bullish,
             "IsBearish": signal_bearish,
             "StatusState": status_state,
-            "IsAPlusCluster": is_a_plus_cluster,
             "TVUrl": tv_url,
             "Qty": calc_qty
         }
@@ -657,9 +640,9 @@ def run_market_scanner():
     top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
     top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
 
-    # SORTING: PRIORITIZE A+ CLUSTER FIRST, READY SECOND, HIGH VOL MULTIPLE THIRD
-    sorted_bullish = sorted(bullish_list, key=lambda x: (x['IsAPlusCluster'], x['StatusState'] == 'READY', x['VolMultiple'], x['ChangePct']), reverse=True)
-    sorted_bearish = sorted(bearish_list, key=lambda x: (x['IsAPlusCluster'], x['StatusState'] == 'READY', x['VolMultiple'], abs(x['ChangePct'])), reverse=True)
+    # SORTING: READY SETUPS TOP, HIGH VOL MULTIPLE & CHANGE PCT TOP
+    sorted_bullish = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], x['ChangePct']), reverse=True)
+    sorted_bearish = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], abs(x['ChangePct'])), reverse=True)
 
     # LIMIT TO TOP 10
     top_bullish = sorted_bullish[:10]
@@ -828,7 +811,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (BULLISH & BEARISH SETUPS - CLEAN HEADERS WITH A+ CLUSTER HIGHLIGHT) ---
+# --- ROW LIST (BULLISH & BEARISH SETUPS - CLEAN HEADERS) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -849,9 +832,7 @@ with tb_col1:
     
     if bullish_signals:
         for s in bullish_signals:
-            if s['IsAPlusCluster']:
-                status_btn_html = '<span class="a-plus-tag">🚀 A+ CLUSTER</span>'
-            elif s['StatusState'] == 'WATCH':
+            if s['StatusState'] == 'WATCH':
                 status_btn_html = '<span class="status-watch">WATCH</span>'
             else:
                 status_btn_html = '<span class="status-ready-bull">READY</span>'
@@ -888,9 +869,7 @@ with tb_col2:
     
     if bearish_signals:
         for s in bearish_signals:
-            if s['IsAPlusCluster']:
-                status_btn_html = '<span class="a-plus-tag">🚀 A+ CLUSTER</span>'
-            elif s['StatusState'] == 'WATCH':
+            if s['StatusState'] == 'WATCH':
                 status_btn_html = '<span class="status-watch">WATCH</span>'
             else:
                 status_btn_html = '<span class="status-ready-bear">READY</span>'
