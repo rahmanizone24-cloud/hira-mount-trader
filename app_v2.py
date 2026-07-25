@@ -966,7 +966,7 @@ for stock in all_ready_stocks:
 if not alert_items_html:
     alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">No active breakouts yet</div>'
 
-# --- FIXED OVERLAY SUPERHERO & ALERT PANEL ---
+# --- CLEAN FLOATING OVERLAY AVATAR & ALERT PANEL ---
 latest_sym = latest_ready_stock['Symbol'] if latest_ready_stock else ''
 latest_type = ('Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown') if latest_ready_stock else ''
 latest_time = latest_ready_stock['SignalTime'] if latest_ready_stock else ''
@@ -984,72 +984,40 @@ KRRISH_SVG = """<svg viewBox="0 0 100 100" width="38" height="38" xmlns="http://
 <path d="M42 68 Q50 74 58 68" stroke="#00d2ff" stroke-width="3" fill="none"/>
 </svg>"""
 
-floating_hero_html = f"""
-    <!-- KRRISH AVATAR FLOATING OVERLAY BUTTON -->
-    <div class="krrish-fixed-float" onclick="toggleAlertPanel()">
-        <div class="krrish-avatar-glow" title="Click to view Alert History">
-            {KRRISH_SVG}
-        </div>
-    </div>
+part1 = '<div class="krrish-fixed-float" onclick="toggleAlertPanel()"><div class="krrish-avatar-glow" title="Click to view Alert History">' + KRRISH_SVG + '</div></div>'
+part2 = '<div id="alertHistoryPanel" class="alerts-history-panel"><div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid ' + border_color + '; padding-bottom:6px; margin-bottom:8px;"><span style="font-weight:900; font-size:12px; color:' + text_main + ';">📢 Alert History</span><div><button class="clear-btn" onclick="clearAlertHistory()">Clear</button><span style="font-size:12px; color:' + accent_blue + '; cursor:pointer; margin-left:8px;" onclick="toggleAlertPanel()">✖</span></div></div><div id="alertListContainer">' + alert_items_html + '</div></div>'
+part3 = '<div id="toastNotification" class="toast-bubble" style="display:' + toast_display + ';"><div style="font-weight:900; color:' + latest_color + '; font-size:12px; margin-bottom:2px;">🚨 READY ALERT!</div><div style="font-size:11px; color:' + text_main + ';"><b>' + latest_sym + '</b> gave a <b>' + latest_type + '</b> at <b>' + latest_time + '</b>.</div><div style="font-size:10px; color:' + text_sub + '; margin-top:3px;">Price: ' + latest_price + ' (' + latest_change + ')</div></div>'
 
-    <!-- ALERT HISTORY DRAWER PANEL -->
-    <div id="alertHistoryPanel" class="alerts-history-panel">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid {border_color}; padding-bottom:6px; margin-bottom:8px;">
-            <span style="font-weight:900; font-size:12px; color:{text_main};">📢 Alert History</span>
-            <div>
-                <button class="clear-btn" onclick="clearAlertHistory()">Clear</button>
-                <span style="font-size:12px; color:{accent_blue}; cursor:pointer; margin-left:8px;" onclick="toggleAlertPanel()">✖</span>
-            </div>
-        </div>
-        <div id="alertListContainer">
-            {alert_items_html}
-        </div>
-    </div>
+script_js = """
+<script>
+    setTimeout(function() {
+        var toast = document.getElementById('toastNotification');
+        if(toast) { toast.style.display = 'none'; }
+    }, 5000);
 
-    <!-- AUTO-DISMISS TOAST BUBBLE (DISAPPEARS IN 5 SECONDS) -->
-    <div id="toastNotification" class="toast-bubble" style="display: {toast_display};">
-        <div style="font-weight:900; color:{latest_color}; font-size:12px; margin-bottom:2px;">
-            🚨 READY ALERT!
-        </div>
-        <div style="font-size:11px; color:{text_main};">
-            <b>{latest_sym}</b> gave a <b>{latest_type}</b> at <b>{latest_time}</b>.
-        </div>
-        <div style="font-size:10px; color:{text_sub}; margin-top:3px;">
-            Price: {latest_price} ({latest_change})
-        </div>
-    </div>
+    function toggleAlertPanel() {
+        var panel = document.getElementById('alertHistoryPanel');
+        var toast = document.getElementById('toastNotification');
+        if(toast) toast.style.display = 'none';
+        if (panel) {
+            if (panel.style.display === "block") {
+                panel.style.display = "none";
+            } else {
+                panel.style.display = "block";
+            }
+        }
+    }
 
-    <script>
-        setTimeout(function() {{
-            var toast = document.getElementById('toastNotification');
-            if(toast) {{
-                toast.style.display = 'none';
-            }}
-        }}, 5000);
-
-        function toggleAlertPanel() {{
-            var panel = document.getElementById('alertHistoryPanel');
-            var toast = document.getElementById('toastNotification');
-            if(toast) toast.style.display = 'none';
-            if (panel) {{
-                if (panel.style.display === "block") {{
-                    panel.style.display = "none";
-                }} else {{
-                    panel.style.display = "block";
-                }}
-            }}
-        }}
-
-        function clearAlertHistory() {{
-            var container = document.getElementById('alertListContainer');
-            if(container) {{
-                container.innerHTML = '<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">Cleared all active alerts</div>';
-            }}
-        }}
-    </script>
+    function clearAlertHistory() {
+        var container = document.getElementById('alertListContainer');
+        if(container) {
+            container.innerHTML = '<div style="text-align:center; color:#8b949e; font-size:11px; padding:15px;">Cleared all active alerts</div>';
+        }
+    }
+</script>
 """
 
-st.markdown(floating_hero_html, unsafe_allow_html=True)
+st.markdown(part1 + part2 + part3 + script_js, unsafe_allow_html=True)
 
 # --- AUTO-REFRESH (30 SECONDS) ---
 if is_market_open:
