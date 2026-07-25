@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-import os
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -65,8 +64,7 @@ FNO_STOCKS = {
     "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "YESBANK", "ZEEL"
 }
 
-# --- CACHED FUNCTION TO FETCH INDEX DATA FAST ---
-@st.cache_data(ttl=60)
+# --- FETCH INDEX DATA ---
 def fetch_indices():
     indices = {
         "NIFTY 50": {"ticker": "^NSEI", "tv": "NSE:NIFTY"},
@@ -79,7 +77,7 @@ def fetch_indices():
     for name, info in indices.items():
         try:
             t = yf.Ticker(info["ticker"])
-            hist = t.history(period="2d")
+            hist = t.history(period="5d")
             if len(hist) >= 2:
                 curr = hist["Close"].iloc[-1]
                 prev = hist["Close"].iloc[-2]
@@ -94,11 +92,11 @@ def fetch_indices():
                 }
             else:
                 data[name] = None
-        except:
+        except Exception as e:
             data[name] = None
     return data
 
-# --- HEADER SECTION WITH CLICKABLE TRADINGVIEW INDEX BARS ---
+# --- HEADER INDEX CARDS ---
 indices_data = fetch_indices()
 
 col1, col2, col3, col4 = st.columns(4)
@@ -120,54 +118,59 @@ for idx, (name, details) in enumerate(indices_data.items()):
             """
             st.markdown(html_code, unsafe_allow_html=True)
         else:
-            st.markdown(f"<div class='index-card'><div class='index-title'>{name}</div><div class='index-price'>--</div></div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <a href="https://www.tradingview.com/chart/" target="_blank" style="text-decoration: none;">
+                <div class="index-card">
+                    <div class="index-title">{name} 🔗</div>
+                    <div class="index-price">Market Live</div>
+                </div>
+            </a>
+            """, unsafe_allow_html=True)
 
 st.divider()
 
-# --- MAIN TERMINAL HEADING ---
+# --- MAIN TERMINAL ---
 st.title("⚡ HIRA MOUNT TRADER")
-st.caption("Live Pure Cash Momentum Terminal | Instant Loading")
+st.caption("Pure Cash Momentum Screener Terminal")
 
-# --- DATA PROCESSING FUNCTION WITH FAST CACHING ---
-@st.cache_data(ttl=300)
-def load_and_process_csv(filepath):
-    df = pd.read_csv(filepath)
-    df.columns = df.columns.str.strip()
-    
-    symbol_col = None
-    for col in ['Symbol', 'NSE Symbol', 'Ticker', 'Stock Name']:
-        if col in df.columns:
-            symbol_col = col
-            break
-            
-    if symbol_col is None:
-        symbol_col = df.columns[0]
+# --- FILE UPLOADER & PROCESSING ---
+uploaded_file = st.file_uploader("📥 Upload your Chartink CSV File (Stock Screener.csv)", type=["csv"])
+
+if uploaded_file is not None:
+    try:
+        df = pd.read_csv(uploaded_file)
+        df.columns = df.columns.str.strip()
         
-    df['Clean_Symbol'] = df[symbol_col].astype(str).str.upper().str.strip()
-    
-    # Filter out F&O Stocks
-    pure_cash_df = df[~df['Clean_Symbol'].isin(FNO_STOCKS)].copy()
-    return pure_cash_df
-
-# --- FILE LOADING ---
-CSV_FILE = "Stock Screener.csv" # یا آپ "Hira Stocks.csv" رکھیں
-
-if os.path.exists(CSV_FILE):
-    pure_cash_df = load_and_process_csv(CSV_FILE)
-    
-    st.success(f"✅ **Pure Cash Stocks Active:** {len(pure_cash_df)} (All F&O Filtered Out)")
-    
-    # Manual Remove Feature
-    stocks_list = pure_cash_df['Clean_Symbol'].tolist()
-    dismissed = st.multiselect("🚫 Click to remove any specific stock manually:", stocks_list)
-    
-    final_df = pure_cash_df[~pure_cash_df['Clean_Symbol'].isin(dismissed)].drop(columns=['Clean_Symbol'])
-    
-    st.dataframe(
-        final_df,
-        use_container_width=True,
-        hide_index=True
-    )
-
+        symbol_col = None
+        for col in ['Symbol', 'NSE Symbol', 'Ticker', 'Stock Name']:
+            if col in df.columns:
+                symbol_col = col
+                break
+                
+        if symbol_col is None:
+            symbol_col = df.columns[0]
+            
+        df['Clean_Symbol'] = df[symbol_col].astype(str).str.upper().str.strip()
+        
+        # Filter F&O
+        pure_cash_df = df[~df['Clean_Symbol'].isin(FNO_STOCKS)].copy()
+        fno_count = len(df) - len(pure_cash_df)
+        
+        st.success(f"📊 Total Stocks in File: **{len(df)}** | ❌ F&O Removed: **{fno_count}** | ✅ **Pure Cash Active: {len(pure_cash_df)}**")
+        
+        # Manual Dismiss Box
+        stocks_list = pure_cash_df['Clean_Symbol'].tolist()
+        dismissed = st.multiselect("🚫 Remove any stock manually from list:", stocks_list)
+        
+        final_df = pure_cash_df[~pure_cash_df['Clean_Symbol'].isin(dismissed)].drop(columns=['Clean_Symbol'])
+        
+        st.dataframe(
+            final_df,
+            use_container_width=True,
+            hide_index=True
+        )
+        
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
 else:
-    st.warning(f"⚠️ `{CSV_FILE}` not found. Please put your downloaded CSV file in the same folder.")
+    st.info("👆 Please upload your downloaded `Stock Screener.csv` file using the button above to load the terminal data.")
