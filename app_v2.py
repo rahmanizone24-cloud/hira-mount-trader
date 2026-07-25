@@ -466,47 +466,42 @@ def analyze_stock_5m(symbol):
 
         if len(today_df) >= 2:
             c1 = today_df.iloc[0] # 09:15 Candle
-            c2 = today_df.iloc[1] # 09:20 Candle
+            c2 = today_df.iloc[1] # 09:20 Candle (Profit Booking / Inside Bar)
 
             # STRICT 1.50% RANGE LIMIT ON CANDLE 1
             c1_range_pct = ((c1['High'] - c1['Low']) / c1['Low']) * 100
 
-            # --- FOCUS STRICTLY ON 20 EMA ---
-            # Bullish: PRICE STRICTLY ABOVE 20 EMA
+            # --- BULLISH BASE CONDITION ---
+            # Candle 1 Range <= 1.50% & Closed Above 20 EMA
             c1_bull_cond = (
                 (c1_range_pct <= 1.50) and
-                (c1['Close'] > c1['Low']) and
                 (c1['Close'] >= c1['EMA20'])
             )
 
+            # Candle 2 Inside Bar (Profit Booking)
             c2_bull_inside = (
                 (c2['High'] <= c1['High']) and
-                (c2['Low'] >= c1['Low']) and
-                (c2['High'] < c1['High']) and
-                (c2['Close'] >= c2['Low'] + ((c2['High'] - c2['Low']) * 0.3)) and
-                ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
+                (c2['Low'] >= c1['Low'])
             )
 
-            # Bearish: PRICE STRICTLY BELOW 20 EMA
+            # --- BEARISH BASE CONDITION ---
+            # Candle 1 Range <= 1.50% & Closed Below 20 EMA
             c1_bear_cond = (
                 (c1_range_pct <= 1.50) and
-                (c1['Close'] < c1['High']) and
                 (c1['Close'] <= c1['EMA20'])
             )
 
+            # Candle 2 Inside Bar (Profit Booking)
             c2_bear_inside = (
                 (c2['High'] <= c1['High']) and
-                (c2['Low'] >= c1['Low']) and
-                (c2['Low'] > c1['Low']) and
-                (c2['Close'] <= c2['High'] - ((c2['High'] - c2['Low']) * 0.3)) and
-                ((c2['High'] - c2['Low']) <= (c1['High'] - c1['Low']))
+                (c2['Low'] >= c1['Low'])
             )
 
             max_base_vol = max(c1['Volume'], c2['Volume'])
             if max_base_vol == 0:
                 max_base_vol = 1
 
-            # --- FULL INTRADAY BREAKOUT DETECTION (ANYTIME DURINg THE DAY) ---
+            # --- INTRADAY UPSIDE / DOWNSIDE BREAKOUT CHECK ---
             if c1_bull_cond and c2_bull_inside:
                 signal_bullish = True
                 status_state = "WATCH"
@@ -517,10 +512,8 @@ def analyze_stock_5m(symbol):
                         c_curr = today_df.iloc[i]
                         c_time_str = c_curr.name.strftime("%H:%M")
                         
-                        if (c_curr['High'] > max(c1['High'], c2['High']) and
-                            c_curr['Close'] > c_curr['Open'] and
-                            c_curr['Volume'] > (max_base_vol * 1.5)):
-                            
+                        # Up-side breakout of Candle 1 High
+                        if (c_curr['High'] > c1['High'] and c_curr['Volume'] > (max_base_vol * 1.5)):
                             status_state = "READY"
                             signal_time = c_time_str
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
@@ -536,10 +529,8 @@ def analyze_stock_5m(symbol):
                         c_curr = today_df.iloc[i]
                         c_time_str = c_curr.name.strftime("%H:%M")
                         
-                        if (c_curr['Low'] < min(c1['Low'], c2['Low']) and
-                            c_curr['Close'] < c_curr['Open'] and
-                            c_curr['Volume'] > (max_base_vol * 1.5)):
-                            
+                        # Down-side breakdown of Candle 1 Low
+                        if (c_curr['Low'] < c1['Low'] and c_curr['Volume'] > (max_base_vol * 1.5)):
                             status_state = "READY"
                             signal_time = c_time_str
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2)
@@ -721,7 +712,6 @@ if market_movers:
             p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
             sign = "+" if m['ChangePct'] >= 0 else ""
             
-            # Dynamic Trigger Alert Time Display for Market Movers
             time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
             time_display = f"🕒 Alert Time: {time_str}"
             
