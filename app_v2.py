@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- THEME STATE MANAGEMENT (PERSISTENT VIA QUERY PARAMS) ---
+# --- THEME STATE MANAGEMENT ---
 query_params = st.query_params
 
 if 'theme' not in st.session_state:
@@ -53,7 +53,7 @@ st.markdown(f"""
         
         /* Remove Page Padding */
         .block-container {{
-            padding-top: 0.1rem !important;
+            padding-top: 0.2rem !important;
             padding-bottom: 0.1rem !important;
             padding-left: 0.5rem !important;
             padding-right: 0.5rem !important;
@@ -65,12 +65,6 @@ st.markdown(f"""
             background-color: {bg_color} !important;
             color: {text_main} !important;
             font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
-        }}
-        
-        /* PREVENT PAGE BLUR / FLICKER ON AUTO REFRESH */
-        .stApp > div {{
-            opacity: 1 !important;
-            transition: none !important;
         }}
 
         /* HIDE ALL LOADING POPUPS / SPINNERS */
@@ -88,54 +82,38 @@ st.markdown(f"""
             border-radius: 6px !important;
             font-weight: 700 !important;
             font-size: 11px !important;
-            padding: 3px 8px !important;
+            padding: 2px 6px !important;
             transition: all 0.2s !important;
             min-height: 0px !important;
-            height: 32px !important;
+            height: 30px !important;
+            width: 100% !important;
         }}
         .stButton>button:hover {{
             border-color: {accent_blue} !important;
             color: {text_main} !important;
         }}
 
-        /* Top Bar Styling */
-        .top-nav {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: {card_bg};
-            padding: 8px 14px;
-            border: 1px solid {border_color};
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }}
-        
-        /* CLEAN TITLE TEXT (BLUE BADGE STRIP REMOVED) */
+        /* CLEAN TITLE TEXT */
         .nav-title-clean {{
             font-size: 18px;
             font-weight: 900;
             color: {accent_blue} !important;
-            letter-spacing: 1.2px;
+            letter-spacing: 1px;
             font-family: 'Trebuchet MS', 'Impact', sans-serif;
             text-transform: uppercase;
-            display: inline-block;
+            line-height: 30px;
         }}
 
-        .nav-indices {{
-            display: flex;
-            gap: 12px;
-            font-size: 12px;
-            align-items: center;
-        }}
         .idx-item {{
-            display: flex;
-            gap: 5px;
+            display: inline-flex;
+            gap: 4px;
             align-items: center;
             text-decoration: none !important;
-            padding: 3px 6px;
+            padding: 2px 6px;
             border-radius: 5px;
             background-color: {sub_card_bg};
             border: 1px solid {border_color};
+            font-size: 11px;
         }}
         .idx-name {{ color: {text_sub}; font-weight: 700; font-size: 10px; }}
         .idx-val {{ color: {text_main}; font-weight: 800; font-size: 11px; }}
@@ -158,26 +136,20 @@ st.markdown(f"""
             background-color: rgba(63, 185, 80, 0.15);
             color: #3fb950;
             border: 1px solid rgba(63, 185, 80, 0.4);
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 5px;
             font-size: 11px;
             font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 5px;
         }}
         
         .market-status-closed {{
             background-color: rgba(248, 81, 73, 0.15);
             color: #f85149;
             border: 1px solid rgba(248, 81, 73, 0.4);
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 5px;
             font-size: 11px;
             font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 5px;
         }}
 
         /* Metric Summary Cards */
@@ -397,10 +369,22 @@ def analyze_stock_5m(symbol):
         if len(df_5m) < 25 or len(df_daily) < 2:
             return None
 
+        avg_daily_vol = df_daily['Volume'].iloc[-2] if len(df_daily) >= 2 else 0
+        if avg_daily_vol < 500000:
+            return None
+
         today = df_5m.index[-1].date()
         today_df = df_5m[df_5m.index.date == today].copy()
         
         if len(today_df) < 3:
+            return None
+
+        avg_5m_vol = today_df['Volume'].mean()
+        if avg_5m_vol < 1000:
+            return None
+
+        avg_candle_range = (today_df['High'] - today_df['Low']).mean()
+        if avg_candle_range <= 0.2:
             return None
             
         today_df['EMA20'] = calculate_ema(today_df['Close'], 20)
@@ -413,8 +397,6 @@ def analyze_stock_5m(symbol):
         c1_range_pct = ((c1['High'] - c1['Low']) / c1['Open']) * 100
         
         c2 = today_df.iloc[1]
-        
-        # STRICT PROFIT BOOKING PAUSE CANDLE: C2 inside C1 range
         c2_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
         latest = today_df.iloc[-1]
@@ -432,7 +414,6 @@ def analyze_stock_5m(symbol):
         signal_time = ""
         vol_multiple = 1.0
 
-        # BULLISH CHECK (WITH VWAP)
         if c1_green and (c1_range_pct <= 2.0) and c2_inside:
             for i in range(2, len(today_df)):
                 c_curr = today_df.iloc[i]
@@ -447,7 +428,6 @@ def analyze_stock_5m(symbol):
                     vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
                     break
 
-        # BEARISH CHECK (WITH VWAP)
         is_near_pdl = c1['Open'] <= (pdl * 1.015)
         if c1_red and (c1_range_pct <= 2.0) and c2_inside and is_near_pdl:
             for i in range(2, len(today_df)):
@@ -463,7 +443,6 @@ def analyze_stock_5m(symbol):
                     vol_multiple = round(c_curr['Volume'] / (c2['Volume'] if c2['Volume'] > 0 else 1), 2)
                     break
 
-        # CALCULATION: ₹10,000 Capital with 5x Intraday Margin (₹50,000 buying power)
         calc_qty = int((10000 * 5) / curr_price) if curr_price > 0 else 0
 
         if signal_bullish or signal_bearish:
@@ -512,14 +491,14 @@ def run_market_scanner():
 
     return bullish_top10, bearish_top10, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
-# --- AUTOMATIC MARKET OPEN / CLOSE LOGIC (INDIAN TIME IST FIXED) ---
+# --- MARKET OPEN / CLOSE LOGIC ---
 ist_tz = pytz.timezone('Asia/Kolkata')
 now_dt = datetime.datetime.now(ist_tz)
 
 market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
 market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
 
-is_weekday = now_dt.weekday() < 5  # Monday = 0, Friday = 4
+is_weekday = now_dt.weekday() < 5
 is_market_open = is_weekday and (market_open_time <= now_dt <= market_close_time)
 
 if is_market_open:
@@ -527,49 +506,47 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP BAR ---
+# --- CLEAN TOP NAVIGATION BAR (STREAMLIT COLUMNS) ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-head_col1, head_col2 = st.columns([0.80, 0.20])
+# 1. Title Bar Row
+nav_c1, nav_c2, nav_c3 = st.columns([0.30, 0.50, 0.20])
 
-with head_col1:
-    idx_items_html = ""
+with nav_c1:
+    st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
+
+with nav_c2:
+    idx_items = ""
     for name, data in top_idx.items():
         cls = "idx-up" if data.get('pct', 0) >= 0 else "idx-down"
         arrow = "▲" if data.get('pct', 0) >= 0 else "▼"
         url = data.get("url", "#")
         val = data.get("val", 0)
         pct = data.get("pct", 0)
-        idx_items_html += f'<a class="idx-item" href="{url}" target="_blank"><span class="idx-name">{name}:</span> <span class="idx-val">{val:,}</span> <span class="{cls}">{arrow} {pct}%</span></a>'
+        idx_items += f'<a class="idx-item" href="{url}" target="_blank"><span class="idx-name">{name}:</span> <span class="idx-val">{val:,}</span> <span class="{cls}">{arrow} {pct}%</span></a> '
+    st.markdown(f'<div style="margin-top: 3px;">{idx_items}</div>', unsafe_allow_html=True)
 
-    st.markdown(f"""
-        <div class="top-nav">
-            <div class="nav-title-clean">HIRA MOUNT TRADER</div>
-            <div class="nav-indices">
-                {idx_items_html}
-            </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-                {status_html}
-                <div style="font-size: 11px; color: {text_sub}; font-weight: 700;">🕒 {now_time}</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-with head_col2:
-    st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
-    btn_c1, btn_c2 = st.columns(2)
-    with btn_c1:
+with nav_c3:
+    b1, b2 = st.columns(2)
+    with b1:
         theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
-        if st.button(theme_icon, use_container_width=True):
-            new_theme = 'light' if st.session_state.theme == 'dark' else 'dark'
-            st.session_state.theme = new_theme
-            st.query_params['theme'] = new_theme
+        if st.button(theme_icon):
+            st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
+            st.query_params['theme'] = st.session_state.theme
             st.rerun()
-    with btn_c2:
-        if st.button("🔄 Refresh", use_container_width=True):
+    with b2:
+        if st.button("🔄 Refresh"):
             st.cache_data.clear()
             st.rerun()
+
+# 2. Status & Time Sub-Bar
+st.markdown(f'''
+    <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:12px; margin-top:-8px;">
+        {status_html}
+        <span style="font-size: 11px; color: {text_sub}; font-weight: 700;">🕒 {now_time}</span>
+    </div>
+''', unsafe_allow_html=True)
 
 # --- EXECUTE SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
@@ -666,6 +643,7 @@ with tb_col1:
                 <span style="width: 12%; text-align:right;">PRICE</span>
                 <span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
+        </div>
     """, unsafe_allow_html=True)
     
     if bullish_signals:
@@ -682,8 +660,6 @@ with tb_col1:
             """, unsafe_allow_html=True)
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakouts in Hira Stocks...</div>', unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 with tb_col2:
     st.markdown("""
@@ -697,6 +673,7 @@ with tb_col2:
                 <span style="width: 12%; text-align:right;">PRICE</span>
                 <span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
+        </div>
     """, unsafe_allow_html=True)
     
     if bearish_signals:
@@ -713,10 +690,8 @@ with tb_col2:
             """, unsafe_allow_html=True)
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for Pure Pause Candle breakdowns in Hira Stocks...</div>', unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# --- AUTOMATIC SILENT AUTO-REFRESH (EVERY 30 SECONDS - ONLY WHEN MARKET IS OPEN) ---
+# --- SILENT AUTO-REFRESH (30 SECONDS - ONLY WHEN MARKET IS OPEN) ---
 if is_market_open:
     time.sleep(30)
     st.rerun()
