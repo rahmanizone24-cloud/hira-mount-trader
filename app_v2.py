@@ -485,6 +485,11 @@ def analyze_stock_5m(symbol):
             return None
 
         c1_range_pct = (c1_range / c1_low) * 100
+
+        # STRICT RULE 1: IF CANDLE 1 RANGE IS GREATER THAN 1.50%, IGNORE IMMEDIATELY
+        if c1_range_pct > 1.50:
+            return None
+
         c1_body = abs(c1_close - c1_open)
         body_ratio = c1_body / c1_range
 
@@ -495,26 +500,26 @@ def analyze_stock_5m(symbol):
         lower_wick_ratio = lower_wick / c1_range
 
         # --- STRICT BULLISH CONDITION ---
-        # 1. Range <= 1.50%
-        # 2. Closed Above 20 EMA
-        # 3. Solid Body >= 65% of Range (Strong Conviction)
-        # 4. Upper Wick (Rejection) <= 25% of Range
+        # 1. Range strictly <= 1.50%
+        # 2. Closed Strictly Above 20 EMA
+        # 3. Strong Solid Body >= 65%
+        # 4. Upper Wick (Rejection) <= 25%
         c1_bull_cond = (
             (c1_range_pct <= 1.50) and 
-            (c1_close >= c1['EMA20']) and 
+            (c1_close > c1['EMA20']) and 
             (body_ratio >= 0.65) and 
             (upper_wick_ratio <= 0.25)
         )
         c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
         # --- STRICT BEARISH CONDITION ---
-        # 1. Range <= 1.50%
-        # 2. Closed Below 20 EMA
-        # 3. Solid Body >= 65% of Range (Strong Conviction)
-        # 4. Lower Wick (Buying Tail) <= 25% of Range
+        # 1. Range strictly <= 1.50%
+        # 2. Closed Strictly Below 20 EMA
+        # 3. Strong Solid Body >= 65%
+        # 4. Lower Wick (Buying Tail) <= 25%
         c1_bear_cond = (
             (c1_range_pct <= 1.50) and 
-            (c1_close <= c1['EMA20']) and 
+            (c1_close < c1['EMA20']) and 
             (body_ratio >= 0.65) and 
             (lower_wick_ratio <= 0.25)
         )
