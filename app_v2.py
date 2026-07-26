@@ -554,14 +554,16 @@ def calculate_vwap(df):
     vwap = (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
     return vwap
 
-# --- BATCHED & VECTORIZED FAST SCANNER ENGINE ---
+# -------------------------------------------------------------
+# 🔥 ALL-IN-ONE ULTRA-FAST & ULTRA-STRICT SCANNER ENGINE
+# -------------------------------------------------------------
 @st.cache_data(ttl=15)
 def run_market_scanner():
     bullish_list = []
     bearish_list = []
     all_stocks = []
 
-    # 🚀 STEP 1: BULK DOWNLOAD ALL STOCKS AT ONCE (SUPER FAST)
+    # 🚀 BULK DOWNLOAD (FAST MULTI-THREADED)
     try:
         bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="5m", progress=False, group_by="ticker", threads=True)
         bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=True)
@@ -574,7 +576,7 @@ def run_market_scanner():
 
     per_trade_cap = 10000
 
-    # 🚀 STEP 2: FAST VECTORIZED PROCESSING IN MEMORY
+    # 🚀 VECTORIZED IN-MEMORY ULTRA-STRICT EVALUATION
     for symbol in ALL_HIRA_SYMBOLS:
         try:
             clean_symbol = symbol.replace(".NS", "").upper()
@@ -589,7 +591,9 @@ def run_market_scanner():
             if len(df_5m) < 20 or len(df_daily) < 2:
                 continue
 
+            # Indicators Calculation
             df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
+            df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
             df_5m['VWAP'] = calculate_vwap(df_5m)
 
             latest_trading_date = df_5m.index[-1].date()
@@ -598,8 +602,30 @@ def run_market_scanner():
             if len(today_df) < 2:
                 continue
 
-            c1 = today_df.iloc[0]
-            c2 = today_df.iloc[1]
+            # 1. PREVIOUS DAY SIDEWAYS FILTER
+            prev_day = df_daily.iloc[-2]
+            prev_day_range_pct = ((prev_day['High'] - prev_day['Low']) / prev_day['Close']) * 100
+            is_prev_day_sideways = prev_day_range_pct <= 1.5
+
+            c1 = today_df.iloc[0]  # Candle 1
+            c2 = today_df.iloc[1]  # Candle 2 (Inside Bar)
+
+            c1_high, c1_low = c1['High'], c1['Low']
+            c1_open, c1_close = c1['Open'], c1['Close']
+            c1_range = c1_high - c1_low
+
+            if c1_range == 0:
+                continue
+
+            c1_range_pct = (c1_range / c1_close) * 100
+            c1_ema20_dist = abs(c1_close - c1['EMA20']) / c1_close * 100
+            c1_ema200_dist = abs(c1_close - c1['EMA200']) / c1_close * 100
+
+            # Body and Wicks Ratio Check
+            c1_body = abs(c1_close - c1_open)
+            body_ratio = c1_body / c1_range
+            upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
+            lower_wick_ratio = (min(c1_open, c1_close) - c1_low) / c1_range
 
             max_base_vol = max(c1['Volume'], c2['Volume'])
             if max_base_vol < 1000:
@@ -620,59 +646,84 @@ def run_market_scanner():
             signal_time = "-"
             vol_multiple = 1.0
 
-            c1_high, c1_low = c1['High'], c1['Low']
-            c1_open, c1_close = c1['Open'], c1['Close']
-            c1_range = c1_high - c1_low
+            # 🟢 ULTRA-STRICT BULLISH PAUSE SETUP CHECK
+            c1_bull_cond = (
+                is_prev_day_sideways and
+                (c1_close > c1_low) and
+                (c1_range_pct <= 1.5) and
+                (body_ratio >= 0.55) and
+                (upper_wick_ratio <= 0.30) and
+                (c1_close >= c1['VWAP']) and
+                (c1_close > c1['EMA20']) and
+                (c1_close > c1['EMA200']) and
+                (c1_ema20_dist <= 0.3) and
+                (c1_ema200_dist <= 0.3)
+            )
 
-            if c1_range == 0:
-                continue
+            c2_bull_cond = (
+                (c2['High'] <= c1_high) and
+                (c2['Low'] >= c1_low) and
+                (c2['High'] < c1_high) and
+                (c2['Close'] >= (c2['Low'] + (c2['High'] - c2['Low']) * 0.3)) and
+                ((c2['High'] - c2['Low']) <= c1_range)
+            )
 
-            c1_range_pct = (c1_range / c1_low) * 100
-            if c1_range_pct > 1.00:
-                continue
+            # 🔴 ULTRA-STRICT BEARISH PAUSE SETUP CHECK
+            c1_bear_cond = (
+                is_prev_day_sideways and
+                (c1_close < c1_high) and
+                (c1_range_pct <= 1.5) and
+                (body_ratio >= 0.55) and
+                (lower_wick_ratio <= 0.30) and
+                (c1_close <= c1['VWAP']) and
+                (c1_close < c1['EMA20']) and
+                (c1_close < c1['EMA200']) and
+                (c1_ema20_dist <= 0.3) and
+                (c1_ema200_dist <= 0.3)
+            )
 
-            c1_body = abs(c1_close - c1_open)
-            body_ratio = c1_body / c1_range
+            c2_bear_cond = (
+                (c2['High'] <= c1_high) and
+                (c2['Low'] >= c1_low) and
+                (c2['Low'] > c1_low) and
+                (c2['Close'] <= (c2['High'] - (c2['High'] - c2['Low']) * 0.3)) and
+                ((c2['High'] - c2['Low']) <= c1_range)
+            )
 
-            upper_wick = c1_high - max(c1_open, c1_close)
-            lower_wick = min(c1_open, c1_close) - c1_low
-
-            upper_wick_ratio = upper_wick / c1_range
-            lower_wick_ratio = lower_wick / c1_range
-
-            c1_vwap = c1['VWAP']
-            c1_ema20 = c1['EMA20']
-
-            c1_bull_cond = (c1_close >= c1_ema20) and (c1_close >= c1_vwap) and (body_ratio >= 0.55) and (upper_wick_ratio <= 0.30)
-            c1_bear_cond = (c1_close <= c1_ema20) and (c1_close <= c1_vwap) and (body_ratio >= 0.55) and (lower_wick_ratio <= 0.30)
-
-            if c1_bull_cond:
+            # STATE 1: WATCH TRIGGERS
+            if c1_bull_cond and c2_bull_cond:
                 signal_bullish = True
-                status_state = "READY"
+                status_state = "WATCH"
                 signal_time = "09:20"
-                if (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low']):
-                    status_state = "WATCH"
 
+                # STATE 2: READY TRIGGER (CANDLE 3, 4, 5+)
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
-                        if (c_curr['High'] > c1['High']) and (c_curr['Close'] > c_curr['VWAP']):
+                        price_breakout = c_curr['High'] > max(c1_high, c2['High'])
+                        strong_structure = (c_curr['Close'] > c_curr['Open']) and (c_curr['Close'] > c_curr['VWAP'])
+                        volume_spike = c_curr['Volume'] > (max_base_vol * 1.5)
+
+                        if price_breakout and strong_structure and volume_spike:
                             status_state = "READY"
                             signal_time = c_curr.name.strftime("%H:%M")
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                             break
 
-            elif c1_bear_cond:
+            elif c1_bear_cond and c2_bear_cond:
                 signal_bearish = True
-                status_state = "READY"
+                status_state = "WATCH"
                 signal_time = "09:20"
-                if (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low']):
-                    status_state = "WATCH"
 
+                # STATE 2: READY TRIGGER (CANDLE 3, 4, 5+)
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
-                        if (c_curr['Low'] < c1['Low']) and (c_curr['Close'] < c_curr['VWAP']):
+                        price_breakdown = c_curr['Low'] < min(c1_low, c2['Low'])
+                        strong_structure = (c_curr['Close'] < c_curr['Open']) and (c_curr['Close'] < c_curr['VWAP'])
+                        volume_spike = c_curr['Volume'] > (max_base_vol * 1.5)
+
+                        if price_breakdown and strong_structure and volume_spike:
                             status_state = "READY"
                             signal_time = c_curr.name.strftime("%H:%M")
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
