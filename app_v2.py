@@ -118,7 +118,6 @@ st.markdown(f"""
         .stock-row-item {{ display: flex; justify-content: space-between; align-items: center; background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; text-decoration: none !important; }}
         .sym-btn-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 5px; padding: 3px 8px; color: {accent_blue}; font-weight: 900; font-size: 13px; display: inline-block; }}
         
-        .status-watch {{ background-color: #C0C0C0; color: #000000; border: 1px solid #A9A9A9; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
         .status-ready-bull {{ background-color: #006400; color: #FFFFFF; border: 1px solid #004d00; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
         .status-ready-bear {{ background-color: #8B0000; color: #FFFFFF; border: 1px solid #660000; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
         .vol-box {{ background-color: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.4); border-radius: 5px; padding: 2px 6px; font-weight: 900; font-size: 11px; display: inline-block; }}
@@ -135,7 +134,6 @@ ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFC
 # --- 🚀 STRICT NIFTY 500 LOADER ---
 @st.cache_data(ttl=86400)
 def load_nifty500_stocks():
-    # Fetch directly from NSE Official URL
     try:
         url = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
         df_web = pd.read_csv(url)
@@ -147,7 +145,6 @@ def load_nifty500_stocks():
     except Exception:
         pass
 
-    # Exact Nifty 500 Clean Fallback Array
     nifty_500_exact = [
         "3MINDIA.NS", "ABB.NS", "ACC.NS", "AIAENG.NS", "APLAPOLLO.NS", "AUBANK.NS", "AARTIIND.NS", "AAVAS.NS", "ABBOTINDIA.NS", "ACE.NS",
         "ADANIENSOL.NS", "ADANIENT.NS", "ADANIGREEN.NS", "ADANIPORTS.NS", "ADANIPOWER.NS", "ATGL.NS", "AWL.NS", "ABCAPITAL.NS", "ABFRL.NS", "AEGISCHEM.NS",
@@ -275,7 +272,7 @@ def run_market_scanner():
                 latest_trading_date = df_5m.index[-1].date()
                 today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
 
-                if len(today_df) < 2:
+                if len(today_df) < 3: # Need at least C1, C2, and a breakout candle C3
                     continue
 
                 valid_closes = today_df['Close'].dropna()
@@ -283,8 +280,15 @@ def run_market_scanner():
                     continue
                 curr_price = float(valid_closes.iloc[-1])
 
-                valid_daily_closes = df_daily['Close'].dropna()
-                prev_close = float(valid_daily_closes.iloc[-2]) if len(valid_daily_closes) >= 2 else curr_price
+                # --- 🎯 PREVIOUS DAY HIGH & LOW (PDH / PDL) ---
+                valid_daily = df_daily.dropna()
+                if len(valid_daily) >= 2:
+                    prev_day_row = valid_daily.iloc[-2]
+                    pdh = float(prev_day_row['High'])
+                    pdl = float(prev_day_row['Low'])
+                    prev_close = float(prev_day_row['Close'])
+                else:
+                    continue
 
                 if curr_price <= 0:
                     continue
@@ -317,69 +321,61 @@ def run_market_scanner():
                 c2_high, c2_low, c2_open, c2_close = float(c2['High']), float(c2['Low']), float(c2['Open']), float(c2['Close'])
                 c2_range = c2_high - c2_low
 
-                signal_bullish, signal_bearish = False, False
-                status_state, signal_time, vol_multiple = "", "-", 1.0
-
-                # 🟢 EXACT BULLISH SETUP CONDITIONS
+                # 🟢 STRICT BULLISH INITIAL CONDITIONS
                 c1_bull_cond = (
-                    (c1_range_pct <= 1.0) and                                                   # رینج 1% یا کم
-                    (gap_pct <= 1.0) and                                                        # گیپ اپ زیادہ نہ ہو
-                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                  # وِک زیادہ بڑی نہ ہو
+                    (c1_range_pct <= 1.0) and 
+                    (gap_pct <= 1.0) and 
+                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)
                 )
 
                 c2_bull_pause_cond = (
-                    (c2_close < c2_open) and                                                    # پرافٹ بکنگ ریڈ کینڈل
-                    (c2_high <= c1_high) and (c2_low >= c1_low) and                             # C1 کے ہائی/لو کے اندر (Inside Candle)
-                    (c2_range <= c1_range * 0.85)                                               # چھوٹی پاز کینڈل
+                    (c2_close < c2_open) and 
+                    (c2_high <= c1_high) and (c2_low >= c1_low) and 
+                    (c2_range <= c1_range * 0.85)
                 )
 
-                # 🔴 EXACT BEARISH SETUP CONDITIONS
+                # 🔴 STRICT BEARISH INITIAL CONDITIONS
                 c1_bear_cond = (
-                    (c1_range_pct <= 1.0) and                                                   # رینج 1% یا کم
-                    (gap_pct <= 1.0) and                                                        # گیپ ڈاؤن زیادہ نہ ہو
-                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                  # وِک زیادہ بڑی نہ ہو
+                    (c1_range_pct <= 1.0) and 
+                    (gap_pct <= 1.0) and 
+                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)
                 )
 
                 c2_bear_pause_cond = (
-                    (c2_close > c2_open) and                                                    # پرافٹ بکنگ گرین کینڈل
-                    (c2_high <= c1_high) and (c2_low >= c1_low) and                             # C1 کے ہائی/لو کے اندر (Inside Candle)
-                    (c2_range <= c1_range * 0.85)                                               # چھوٹی پاز کینڈل
+                    (c2_close > c2_open) and 
+                    (c2_high <= c1_high) and (c2_low >= c1_low) and 
+                    (c2_range <= c1_range * 0.85)
                 )
 
-                # --- EVALUATE SIGNALS & BREAKOUTS ---
+                # --- 🎯 STRICT EVALUATION (ONLY FULLY QUALIFIED BREAKOUTS ALLOWED) ---
+                signal_bullish, signal_bearish = False, False
+                status_state, signal_time, vol_multiple = "READY", "-", 1.0
+
                 if c1_bull_cond and c2_bull_pause_cond:
-                    signal_bullish = True
-                    status_state, signal_time = "WATCH", "09:20"
-                    
-                    if len(today_df) >= 3:
-                        for i in range(2, len(today_df)):
-                            c_curr = today_df.iloc[i]
-                            curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
-                            
-                            if (curr_close > max(c1_high, c2_high)) and (curr_close > curr_vwap):
-                                status_state = "READY"
-                                signal_time = c_curr.name.strftime("%H:%M")
-                                vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
-                                break
+                    # Check if ANY candle from C3 onwards strictly fulfills the complete breakout condition
+                    for i in range(2, len(today_df)):
+                        c_curr = today_df.iloc[i]
+                        curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
+                        
+                        # 💯 STRICT FULL MATCH: High Breakout + VWAP Cross + Previous Day High (PDH) Breakout
+                        if (curr_close > max(c1_high, c2_high)) and (curr_close > curr_vwap) and (curr_close > pdh):
+                            signal_bullish = True
+                            signal_time = c_curr.name.strftime("%H:%M")
+                            vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
+                            break
 
                 elif c1_bear_cond and c2_bear_pause_cond:
-                    signal_bearish = True
-                    status_state, signal_time = "WATCH", "09:20"
-                    
-                    if len(today_df) >= 3:
-                        for i in range(2, len(today_df)):
-                            c_curr = today_df.iloc[i]
-                            curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
-                            
-                            if (curr_close < min(c1_low, c2_low)) and (curr_close < curr_vwap):
-                                status_state = "READY"
-                                signal_time = c_curr.name.strftime("%H:%M")
-                                vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
-                                break
-
-                latest_vol = float(today_df.iloc[-1]['Volume'])
-                if max_base_vol > 0 and vol_multiple == 1.0:
-                    vol_multiple = float(round(latest_vol / max_base_vol, 2))
+                    # Check if ANY candle from C3 onwards strictly fulfills the complete breakdown condition
+                    for i in range(2, len(today_df)):
+                        c_curr = today_df.iloc[i]
+                        curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
+                        
+                        # 💯 STRICT FULL MATCH: Low Breakdown + VWAP Cross + Previous Day Low (PDL) Breakdown
+                        if (curr_close < min(c1_low, c2_low)) and (curr_close < curr_vwap) and (curr_close < pdl):
+                            signal_bearish = True
+                            signal_time = c_curr.name.strftime("%H:%M")
+                            vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
+                            break
 
                 res = {
                     "Symbol": str(clean_symbol), 
@@ -390,11 +386,13 @@ def run_market_scanner():
                     "VolMultiple": float(vol_multiple),
                     "IsBullish": bool(signal_bullish), 
                     "IsBearish": bool(signal_bearish), 
-                    "StatusState": str(status_state),
+                    "StatusState": "READY",
                     "TVUrl": str(tv_url), 
                     "Qty": int(calc_qty)
                 }
                 all_stocks.append(res)
+                
+                # ONLY Add to Dashboard lists if strictly matched!
                 if signal_bullish: bullish_list.append(res)
                 if signal_bearish: bearish_list.append(res)
             except Exception:
@@ -415,9 +413,9 @@ def run_market_scanner():
         except Exception:
             pass
 
-    # 🚀 SORTING & TOP 10 DISPLAY LIMIT
-    sorted_bullish = sorted(bullish_list, key=lambda x: (x.get('StatusState') == 'READY', x.get('VolMultiple', 0), x.get('ChangePct', 0)), reverse=True)
-    sorted_bearish = sorted(bearish_list, key=lambda x: (x.get('StatusState') == 'READY', x.get('VolMultiple', 0), abs(x.get('ChangePct', 0))), reverse=True)
+    # 🚀 SORTING BY VOLUME SURGE AND PERCENTAGE CHANGE
+    sorted_bullish = sorted(bullish_list, key=lambda x: (x.get('VolMultiple', 0), x.get('ChangePct', 0)), reverse=True)
+    sorted_bearish = sorted(bearish_list, key=lambda x: (x.get('VolMultiple', 0), abs(x.get('ChangePct', 0))), reverse=True)
 
     top_bullish = sorted_bullish[:10]
     top_bearish = sorted_bearish[:10]
@@ -572,7 +570,7 @@ with tb_col1:
     """, unsafe_allow_html=True)
     if bullish_signals:
         for s in bullish_signals[:10]:
-            status_btn = '<span class="status-watch">WATCH</span>' if s.get('StatusState') == 'WATCH' else '<span class="status-ready-bull">READY</span>'
+            status_btn = '<span class="status-ready-bull">READY</span>'
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
                     <div style="width: 20%;"><span class="sym-btn-box">{s.get('Symbol')}</span></div>
@@ -585,7 +583,7 @@ with tb_col1:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bullish breakouts...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">No strict Bullish breakouts right now...</div>', unsafe_allow_html=True)
 
 with tb_col2:
     st.markdown("""
@@ -598,7 +596,7 @@ with tb_col2:
     """, unsafe_allow_html=True)
     if bearish_signals:
         for s in bearish_signals[:10]:
-            status_btn = '<span class="status-watch">WATCH</span>' if s.get('StatusState') == 'WATCH' else '<span class="status-ready-bear">READY</span>'
+            status_btn = '<span class="status-ready-bear">READY</span>'
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
                     <div style="width: 20%;"><span class="sym-btn-box" style="color:#f85149;">{s.get('Symbol')}</span></div>
@@ -611,7 +609,7 @@ with tb_col2:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">No strict Bearish breakdowns right now...</div>', unsafe_allow_html=True)
 
 if is_market_open:
     st.markdown("""<script>setTimeout(function(){ window.location.reload(); }, 30000);</script>""", unsafe_allow_html=True)
