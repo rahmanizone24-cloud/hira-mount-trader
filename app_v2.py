@@ -964,7 +964,6 @@ def run_market_scanner():
       balanced_movers,
       len(bullish_list),
       len(bearish_list),
-      all_stocks,
   )
 
 
@@ -1046,7 +1045,6 @@ st.markdown(
     market_movers,
     total_bull_cnt,
     total_bear_cnt,
-    all_scanned_stocks,
 ) = run_market_scanner()
 sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
 sentiment_label = "Bullish" if total_bull_cnt >= total_bear_cnt else "Bearish"
@@ -1243,110 +1241,6 @@ with tb_col2:
         ' breakdowns...</div>',
         unsafe_allow_html=True,
     )
-
-# --- 🎯 NIFTY 500 EXACT TREEMAP HEATMAP (MATCHING YOUR PHOTO PERFECTLY) ---
-st.markdown(
-    """<div class="box-container"><div class="box-title">🗺️ NIFTY 500 MARKET HEATMAP (TOP 10 GAINERS & TOP 10 LOSERS)</div></div>""",
-    unsafe_allow_html=True,
-)
-
-if all_scanned_stocks:
-  df_hm = pd.DataFrame(all_scanned_stocks)
-  if not df_hm.empty and "ChangePct" in df_hm.columns:
-    top_10_gainers = (
-        df_hm.sort_values(by="ChangePct", ascending=False)
-        .head(10)
-        .to_dict("records")
-    )
-    top_10_losers = (
-        df_hm.sort_values(by="ChangePct", ascending=True)
-        .head(10)
-        .to_dict("records")
-    )
-
-    hm_css_html = """
-        <style>
-            .treemap-grid-box {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-                gap: 6px;
-                background-color: #161b22;
-                padding: 12px;
-                border-radius: 8px;
-                border: 1.5px solid #30363d;
-            }
-            .tm-tile-box {
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                padding: 14px 6px;
-                border-radius: 4px;
-                border: 2px solid #000000;
-                text-decoration: none !important;
-                transition: transform 0.15s ease, filter 0.15s ease;
-                min-height: 80px;
-            }
-            .tm-tile-box:hover {
-                transform: scale(1.04);
-                filter: brightness(1.2);
-                z-index: 10;
-            }
-            .tm-sym-text {
-                font-size: 13px;
-                font-weight: 900;
-                color: #ffffff;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                text-align: center;
-            }
-            .tm-pct-text {
-                font-size: 14px;
-                font-weight: 900;
-                color: #ffffff;
-                margin-top: 4px;
-            }
-        </style>
-        <div class="treemap-grid-box">
-        """
-
-    # Green Tiles (Top Gainers)
-    for g in top_10_gainers:
-      pct = g.get("ChangePct", 0)
-      sym = g.get("Symbol", "")
-      url = g.get("TVUrl", "#")
-      bg_color_tile = (
-          "#00c853" if pct >= 3.0 else "#00e676" if pct >= 1.5 else "#00a843"
-      )
-      hm_css_html += f"""
-            <a href="{url}" target="_blank" class="tm-tile-box" style="background-color: {bg_color_tile};">
-                <span class="tm-sym-text">{sym}</span>
-                <span class="tm-pct-text">+{pct:.2f}%</span>
-            </a>
-            """
-
-    # Red Tiles (Top Losers)
-    for l in top_10_losers:
-      pct = l.get("ChangePct", 0)
-      sym = l.get("Symbol", "")
-      url = l.get("TVUrl", "#")
-      abs_pct = abs(pct)
-      bg_color_tile = (
-          "#ff1744"
-          if abs_pct >= 3.0
-          else "#d50000"
-          if abs_pct >= 1.5
-          else "#c62828"
-      )
-      hm_css_html += f"""
-            <a href="{url}" target="_blank" class="tm-tile-box" style="background-color: {bg_color_tile};">
-                <span class="tm-sym-text">{sym}</span>
-                <span class="tm-pct-text">{pct:.2f}%</span>
-            </a>
-            """
-
-    hm_css_html += "</div>"
-    st.markdown(hm_css_html, unsafe_allow_html=True)
 
 # --- 🚀 POWERFUL LIVE AUTO REFRESH SYSTEM ---
 refresh_time_ms = 15000 if is_market_open else 300000
