@@ -129,7 +129,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# ETF Exclusions only (F&O Filtering removed to allow high-volume F&O stocks)
+# ETF Exclusions
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
 
 @st.cache_data(ttl=86400)
@@ -237,25 +237,6 @@ def run_market_scanner():
                 if len(today_df) < 2:
                     continue
 
-                c1, c2 = today_df.iloc[0], today_df.iloc[1]
-                c1_high, c1_low, c1_open, c1_close = float(c1['High']), float(c1['Low']), float(c1['Open']), float(c1['Close'])
-                c1_range = c1_high - c1_low
-
-                if c1_range == 0:
-                    continue
-
-                c1_range_pct = (c1_range / c1_close) * 100
-                c1_ema20_dist = abs(c1_close - float(c1['EMA20'])) / c1_close * 100
-                c1_ema200_dist = abs(c1_close - float(c1['EMA200'])) / c1_close * 100
-
-                body_ratio = abs(c1_close - c1_open) / c1_range
-                upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
-                lower_wick_ratio = (min(c1_open, c1_close) - c1_low) / c1_range
-
-                max_base_vol = max(float(c1['Volume']), float(c2['Volume']))
-                if max_base_vol < 1000:
-                    continue
-
                 valid_closes = today_df['Close'].dropna()
                 if valid_closes.empty:
                     continue
@@ -270,59 +251,97 @@ def run_market_scanner():
                 day_change_pct = float(((curr_price - prev_close) / prev_close) * 100)
                 change_pts = float(curr_price - prev_close)
                 tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
-                
                 calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
+
+                # --- 🎯 C1 (09:15 CANDLE) ---
+                c1 = today_df.iloc[0]
+                c1_high, c1_low, c1_open, c1_close = float(c1['High']), float(c1['Low']), float(c1['Open']), float(c1['Close'])
+                c1_range = c1_high - c1_low
+
+                if c1_range == 0:
+                    continue
+
+                c1_range_pct = (c1_range / c1_close) * 100
+                c1_ema20_dist = abs(c1_close - float(c1['EMA20'])) / c1_close * 100
+                c1_ema200_dist = abs(c1_close - float(c1['EMA200'])) / c1_close * 100
+                gap_pct = abs(c1_open - prev_close) / prev_close * 100
+
+                body_ratio = abs(c1_close - c1_open) / c1_range
+                upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
+                lower_wick_ratio = (min(c1_open, c1_close) - c1_low) / c1_range
+
+                max_base_vol = max(float(c1['Volume']), float(today_df.iloc[1]['Volume']))
+                if max_base_vol < 1000:
+                    continue
+
+                # --- 🎯 C2 (09:20 PAUSE CANDLE) ---
+                c2 = today_df.iloc[1]
+                c2_high, c2_low, c2_open, c2_close = float(c2['High']), float(c2['Low']), float(c2['Open']), float(c2['Close'])
+                c2_range = c2_high - c2_low
 
                 signal_bullish, signal_bearish = False, False
                 status_state, signal_time, vol_multiple = "", "-", 1.0
 
-                # 🟢 BULLISH CONDITION
+                # 🟢 BULLISH SETUP CONDITIONS
                 c1_bull_cond = (
-                    (c1_close > c1_low) and (c1_range_pct <= 1.5) and
-                    (body_ratio >= 0.55) and (upper_wick_ratio <= 0.30) and (c1_close >= float(c1['VWAP'])) and
-                    (c1_close > float(c1['EMA20'])) and (c1_close > float(c1['EMA200'])) and
-                    (c1_ema20_dist <= 0.3) and (c1_ema200_dist <= 0.3)
+                    (c1_close > float(c1['EMA20'])) and (c1_close > float(c1['EMA200'])) and # 20 اور 200 EMA کے اوپر
+                    (c1_range_pct <= 1.0) and                                                  # رینج 1% یا کم
+                    (c1_ema20_dist <= 0.5) and (c1_ema200_dist <= 0.5) and                     # EMA سے دور نہ ہو
+                    (gap_pct <= 1.0) and                                                       # گیپ اپ زیادہ نہ ہو
+                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                 # وِک بڑی نہ ہو
                 )
 
-                c2_bull_cond = (
-                    (float(c2['High']) <= c1_high) and (float(c2['Low']) >= c1_low) and (float(c2['High']) < c1_high) and
-                    (float(c2['Close']) >= (float(c2['Low']) + (float(c2['High']) - float(c2['Low'])) * 0.3)) and
-                    ((float(c2['High']) - float(c2['Low'])) <= c1_range)
+                c2_bull_pause_cond = (
+                    (c2_high <= c1_high) and (c2_low >= c1_low) and                            # C1 کے ہائی/لو کو بریک نہ کرے (Inside)
+                    (c2_range <= c1_range * 0.8) and                                           # چھوٹی پاز کینڈل
+                    (c2_close >= (c2_low + c2_range * 0.25))                                   # زیادہ بیئرش نہ ہو
                 )
 
-                # 🔴 BEARISH CONDITION
+                # 🔴 BEARISH SETUP CONDITIONS
                 c1_bear_cond = (
-                    (c1_close < c1_high) and (c1_range_pct <= 1.5) and
-                    (body_ratio >= 0.55) and (lower_wick_ratio <= 0.30) and (c1_close <= float(c1['VWAP'])) and
-                    (c1_close < float(c1['EMA20'])) and (c1_close < float(c1['EMA200'])) and
-                    (c1_ema20_dist <= 0.3) and (c1_ema200_dist <= 0.3)
+                    (c1_close < float(c1['EMA20'])) and (c1_close < float(c1['EMA200'])) and # 20 اور 200 EMA کے نیچے
+                    (c1_range_pct <= 1.0) and                                                  # رینج 1% یا کم
+                    (c1_ema20_dist <= 0.5) and (c1_ema200_dist <= 0.5) and                     # EMA سے دور نہ ہو
+                    (gap_pct <= 1.0) and                                                       # گیپ ڈاؤن زیادہ نہ ہو
+                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                 # وِک بڑی نہ ہو
                 )
 
-                c2_bear_cond = (
-                    (float(c2['High']) <= c1_high) and (float(c2['Low']) >= c1_low) and (float(c2['Low']) > c1_low) and
-                    (float(c2['Close']) <= (float(c2['High']) - (float(c2['High']) - float(c2['Low'])) * 0.3)) and
-                    ((float(c2['High']) - float(c2['Low'])) <= c1_range)
+                c2_bear_pause_cond = (
+                    (c2_high <= c1_high) and (c2_low >= c1_low) and                            # C1 کے ہائی/لو کو بریک نہ کرے (Inside)
+                    (c2_range <= c1_range * 0.8) and                                           # چھوٹی پاز کینڈل
+                    (c2_close <= (c2_high - c2_range * 0.25))                                  # زیادہ بلش نہ ہو
                 )
 
-                if c1_bull_cond and c2_bull_cond:
+                # --- EVALUATE SIGNALS ---
+                if c1_bull_cond and c2_bull_pause_cond:
                     signal_bullish = True
                     status_state, signal_time = "WATCH", "09:20"
+                    
+                    # C3, C4... Breakout check
                     if len(today_df) >= 3:
                         for i in range(2, len(today_df)):
                             c_curr = today_df.iloc[i]
-                            if (float(c_curr['High']) > max(c1_high, float(c2['High']))) and (float(c_curr['Close']) > float(c_curr['Open'])) and (float(c_curr['Close']) > float(c_curr['VWAP'])) and (float(c_curr['Volume']) > (max_base_vol * 1.5)):
+                            curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
+                            
+                            # C1 اور C2 دونوں کے ہائی کے اوپر بریک آؤٹ + VWAP کے اوپر کلوز
+                            if (curr_close > max(c1_high, c2_high)) and (curr_close > curr_vwap):
                                 status_state = "READY"
                                 signal_time = c_curr.name.strftime("%H:%M")
                                 vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
                                 break
 
-                elif c1_bear_cond and c2_bear_cond:
+                elif c1_bear_cond and c2_bear_pause_cond:
                     signal_bearish = True
                     status_state, signal_time = "WATCH", "09:20"
+                    
+                    # C3, C4... Breakdown check
                     if len(today_df) >= 3:
                         for i in range(2, len(today_df)):
                             c_curr = today_df.iloc[i]
-                            if (float(c_curr['Low']) < min(c1_low, float(c2['Low']))) and (float(c_curr['Close']) < float(c_curr['Open'])) and (float(c_curr['Close']) < float(c_curr['VWAP'])) and (float(c_curr['Volume']) > (max_base_vol * 1.5)):
+                            curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
+                            
+                            # C1 اور C2 دونوں کے لو کے نیچے بریک ڈاؤن + VWAP کے نیچے کلوز
+                            if (curr_close < min(c1_low, c2_low)) and (curr_close < curr_vwap):
                                 status_state = "READY"
                                 signal_time = c_curr.name.strftime("%H:%M")
                                 vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
