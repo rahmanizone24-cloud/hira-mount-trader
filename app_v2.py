@@ -477,7 +477,7 @@ def calculate_vwap(df):
     vwap = (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
     return vwap
 
-# --- STRICT 5-MINUTE CANDLE SETUP ENGINE ---
+# --- RELAXED & HIGH-PRECISION SETUP ENGINE ---
 def analyze_stock_5m(symbol):
     try:
         clean_symbol = symbol.replace(".NS", "").upper()
@@ -486,14 +486,13 @@ def analyze_stock_5m(symbol):
             return None
 
         ticker = yf.Ticker(symbol)
-        df_5m = ticker.history(period="10d", interval="5m")
+        df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
         
-        if len(df_5m) < 200 or len(df_daily) < 2:
+        if len(df_5m) < 20 or len(df_daily) < 2:
             return None
 
         df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
-        df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
         df_5m['VWAP'] = calculate_vwap(df_5m)
 
         latest_trading_date = df_5m.index[-1].date()
@@ -533,7 +532,7 @@ def analyze_stock_5m(symbol):
 
         c1_range_pct = (c1_range / c1_low) * 100
 
-        # STRICT CONDITION 1: FIRST 5-MIN CANDLE MUST NOT EXCEED 1.0% RANGE
+        # STRICT CONDITION: FIRST 5-MIN CANDLE <= 1.0% RANGE
         if c1_range_pct > 1.00:
             return None
 
@@ -548,35 +547,32 @@ def analyze_stock_5m(symbol):
 
         c1_vwap = c1['VWAP']
         c1_ema20 = c1['EMA20']
-        c1_ema200 = c1['EMA200']
 
-        # STRICT BULLISH SETUP: Solid body, minimal upper wick, breaking above 20 EMA, 200 EMA & VWAP
+        # BULLISH CONDITIONS
         c1_bull_cond = (
-            (c1_range_pct <= 1.00) and 
             (c1_close >= c1_ema20) and 
-            (c1_close >= c1_ema200) and
             (c1_close >= c1_vwap) and 
-            (body_ratio >= 0.65) and 
-            (upper_wick_ratio <= 0.20)
+            (body_ratio >= 0.55) and 
+            (upper_wick_ratio <= 0.30)
         )
-        c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # STRICT BEARISH SETUP: Solid body, minimal lower wick, breaking below 20 EMA, 200 EMA & VWAP
+        # BEARISH CONDITIONS
         c1_bear_cond = (
-            (c1_range_pct <= 1.00) and 
             (c1_close <= c1_ema20) and 
-            (c1_close <= c1_ema200) and
             (c1_close <= c1_vwap) and 
-            (body_ratio >= 0.65) and 
-            (lower_wick_ratio <= 0.20)
+            (body_ratio >= 0.55) and 
+            (lower_wick_ratio <= 0.30)
         )
-        c2_bear_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        if c1_bull_cond and c2_bull_inside:
+        if c1_bull_cond:
             signal_bullish = True
-            status_state = "WATCH"
+            status_state = "READY"
             signal_time = "09:20"
             
+            # Check for Ready / Watch Status
+            if (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low']):
+                status_state = "WATCH"
+
             if len(today_df) >= 3:
                 for i in range(2, len(today_df)):
                     c_curr = today_df.iloc[i]
@@ -587,11 +583,14 @@ def analyze_stock_5m(symbol):
                         vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                         break
 
-        if c1_bear_cond and c2_bear_inside:
+        elif c1_bear_cond:
             signal_bearish = True
-            status_state = "WATCH"
+            status_state = "READY"
             signal_time = "09:20"
             
+            if (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low']):
+                status_state = "WATCH"
+
             if len(today_df) >= 3:
                 for i in range(2, len(today_df)):
                     c_curr = today_df.iloc[i]
