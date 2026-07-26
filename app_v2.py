@@ -68,7 +68,7 @@ st.markdown(f"""
         
         /* CLEAN HEADER ALIGNMENT */
         .brand-logo {{
-            font-size: 18px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.8px;
+            font-size: 16px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.5px;
             font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 32px;
         }}
         .indices-bar-wrapper {{
@@ -83,13 +83,11 @@ st.markdown(f"""
         .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 10px; }}
         .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 10px; }}
         
-        .sub-header-bar {{
-            display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid {border_color};
-            padding-bottom: 6px; margin-bottom: 10px; margin-top: 4px;
-        }}
-        
-        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.4); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; }}
-        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.4); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; }}
+        .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 32px; white-space: nowrap; }}
+        .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 32px; font-size: 10px; color: {text_sub}; font-weight: 700; white-space: nowrap; }}
+
+        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.4); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; }}
+        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.4); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; }}
         
         .metric-container {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 8px; padding: 8px 10px; height: 100%; box-sizing: border-box; }}
         .card-label {{ font-size: 10px; color: {text_sub}; font-weight: 800; text-transform: uppercase; }}
@@ -390,13 +388,14 @@ market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
 market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
 is_market_open = (now_dt.weekday() < 5) and (market_open_time <= now_dt <= market_close_time)
 
-status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> MARKET OPEN</span>' if is_market_open else '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
+status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> OPEN</span>' if is_market_open else '<span class="market-status-closed"><span class="live-blink">🔴</span> CLOSED</span>'
 
 top_idx = fetch_indices()
-now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
+now_time = now_dt.strftime("%d %b | %I:%M %p")
 
-# --- 🎯 PRO TOP HEADER BAR (SINGLE LINE ALIGNMENT) ---
-head_c1, head_c2, head_c3, head_c4 = st.columns([0.22, 0.60, 0.09, 0.09])
+# --- 🎯 ALL-IN-ONE SINGLE LINE TOP HEADER ---
+# 1. Title | 2. Indices | 3. Market Status | 4. Time | 5. Dark/Light | 6. Refresh
+head_c1, head_c2, head_c3, head_c4, head_c5, head_c6 = st.columns([0.18, 0.44, 0.08, 0.12, 0.09, 0.09])
 
 with head_c1:
     st.markdown('<div class="brand-logo">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
@@ -412,23 +411,23 @@ with head_c2:
     st.markdown(idx_pills_html, unsafe_allow_html=True)
 
 with head_c3:
-    if st.button("🔄 Refresh"):
-        st.cache_data.clear()
-        st.rerun()
+    st.markdown(f'<div class="header-status-box">{status_html}</div>', unsafe_allow_html=True)
 
 with head_c4:
+    st.markdown(f'<div class="header-time-box">🕒 {now_time}</div>', unsafe_allow_html=True)
+
+with head_c5:
     if st.button("🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"):
         st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
         st.query_params['theme'] = st.session_state.theme
         st.rerun()
 
-# --- SUB HEADER (STATUS & TIMESTAMP) ---
-st.markdown(f"""
-    <div class="sub-header-bar">
-        <div>{status_html}</div>
-        <div style="font-size: 11px; color: {text_sub}; font-weight: 700;">🕒 {now_time}</div>
-    </div>
-""", unsafe_allow_html=True)
+with head_c6:
+    if st.button("🔄 Refresh"):
+        st.cache_data.clear()
+        st.rerun()
+
+st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 8px; border-color: {border_color}; opacity: 0.5;'>", unsafe_allow_html=True)
 
 # --- EXECUTE SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
