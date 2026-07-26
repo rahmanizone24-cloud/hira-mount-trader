@@ -387,6 +387,7 @@ def run_market_scanner():
         except Exception:
             pass
 
+    # 🚀 SORTING & TOP 10 DISPLAY LIMIT
     sorted_bullish = sorted(bullish_list, key=lambda x: (x.get('StatusState') == 'READY', x.get('VolMultiple', 0), x.get('ChangePct', 0)), reverse=True)
     sorted_bearish = sorted(bearish_list, key=lambda x: (x.get('StatusState') == 'READY', x.get('VolMultiple', 0), abs(x.get('ChangePct', 0))), reverse=True)
 
@@ -401,8 +402,7 @@ status_html = '<span class="market-status-open"><span class="live-blink">🟢</s
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b | %I:%M %p")
 
-# --- 🎯 PERFECT SINGLE LINE TOP HEADER (COMPACT RATIOS TO PREVENT OVERLAP) ---
-# Column Ratios: Logo (16%), Indices (51%), Market Status (7%), Time (10%), Dark Button (8%), Refresh Button (8%)
+# --- 🎯 PERFECT SINGLE LINE TOP HEADER ---
 head_c1, head_c2, head_c3, head_c4, head_c5, head_c6 = st.columns([0.16, 0.51, 0.07, 0.10, 0.08, 0.08])
 
 with head_c1:
@@ -543,7 +543,7 @@ with tb_col1:
         </div>
     """, unsafe_allow_html=True)
     if bullish_signals:
-        for s in bullish_signals:
+        for s in bullish_signals[:10]:
             status_btn = '<span class="status-watch">WATCH</span>' if s.get('StatusState') == 'WATCH' else '<span class="status-ready-bull">READY</span>'
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
@@ -569,7 +569,7 @@ with tb_col2:
         </div>
     """, unsafe_allow_html=True)
     if bearish_signals:
-        for s in bearish_signals:
+        for s in bearish_signals[:10]:
             status_btn = '<span class="status-watch">WATCH</span>' if s.get('StatusState') == 'WATCH' else '<span class="status-ready-bear">READY</span>'
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
