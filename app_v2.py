@@ -41,7 +41,7 @@ else:
     accent_blue = "#0969da"
     btn_bg = "#eaeef2"
 
-# --- CUSTOM CLEAN HEADER & LAYOUT CSS ---
+# --- CUSTOM ENHANCED & LARGER FONTS CSS ---
 st.markdown(f"""
     <style>
         header {{visibility: hidden !important; height: 0px !important;}}
@@ -51,7 +51,7 @@ st.markdown(f"""
             display: none !important; visibility: hidden !important; opacity: 0 !important;
         }}
         .block-container {{
-            padding-top: 0.4rem !important; padding-bottom: 0.1rem !important; padding-left: 0.8rem !important; padding-right: 0.8rem !important; max-width: 100% !important;
+            padding-top: 0.5rem !important; padding-bottom: 0.2rem !important; padding-left: 0.8rem !important; padding-right: 0.8rem !important; max-width: 100% !important;
         }}
         body, .stApp {{
             background-color: {bg_color} !important; color: {text_main} !important; font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
@@ -59,65 +59,70 @@ st.markdown(f"""
         div[data-testid="stSpinner"], .stSpinner {{
             display: none !important; visibility: hidden !important; opacity: 0 !important;
         }}
+        
+        /* LARGER BUTTONS */
         .stButton>button {{
             background-color: {btn_bg} !important; color: {accent_blue} !important; border: 1px solid {border_color} !important;
-            border-radius: 6px !important; font-weight: 800 !important; font-size: 11px !important; padding: 2px 6px !important;
-            transition: all 0.2s !important; min-height: 0px !important; height: 32px !important; width: 100% !important;
+            border-radius: 6px !important; font-weight: 800 !important; font-size: 13px !important; padding: 4px 10px !important;
+            transition: all 0.2s !important; min-height: 0px !important; height: 38px !important; width: 100% !important;
         }}
         .stButton>button:hover {{ border-color: {accent_blue} !important; color: {text_main} !important; }}
         
-        /* CLEAN HEADER ALIGNMENT */
+        /* ENHANCED TOP HEADER ALIGNMENT */
         .brand-logo {{
-            font-size: 16px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.5px;
-            font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 32px;
+            font-size: 19px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.8px;
+            font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 38px;
         }}
         .indices-bar-wrapper {{
-            display: flex; align-items: center; justify-content: flex-start; gap: 6px; width: 100%; height: 32px; overflow-x: auto;
+            display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; height: 38px; overflow-x: auto;
         }}
         .idx-pill {{
-            display: inline-flex; align-items: center; gap: 4px; background-color: {sub_card_bg}; border: 1px solid {border_color};
-            border-radius: 5px; padding: 3px 8px; text-decoration: none !important; font-size: 11px; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 6px; background-color: {sub_card_bg}; border: 1.5px solid {border_color};
+            border-radius: 6px; padding: 5px 10px; text-decoration: none !important; font-size: 12px; white-space: nowrap;
         }}
-        .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 10px; text-transform: uppercase; }}
-        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 11px; }}
-        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 10px; }}
-        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 10px; }}
+        .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 11px; text-transform: uppercase; }}
+        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 13px; }}
+        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 12px; }}
+        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 12px; }}
         
-        .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 32px; white-space: nowrap; }}
-        .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 32px; font-size: 10px; color: {text_sub}; font-weight: 700; white-space: nowrap; }}
+        .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 38px; white-space: nowrap; }}
+        .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 38px; font-size: 12px; color: {text_sub}; font-weight: 800; white-space: nowrap; }}
 
-        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.4); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; }}
-        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.4); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; }}
+        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 900; }}
+        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 900; }}
         
-        .metric-container {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 8px; padding: 8px 10px; height: 100%; box-sizing: border-box; }}
-        .card-label {{ font-size: 10px; color: {text_sub}; font-weight: 800; text-transform: uppercase; }}
-        .card-value-green {{ font-size: 15px; font-weight: 900; color: #3fb950; margin-top: 2px; }}
-        .card-value-red {{ font-size: 15px; font-weight: 900; color: #f85149; margin-top: 2px; }}
+        /* LARGER TOP 4 METRIC CARDS */
+        .metric-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 12px 14px; height: 100%; box-sizing: border-box; }}
+        .card-label {{ font-size: 11px; color: {text_sub}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }}
+        .card-value-green {{ font-size: 18px; font-weight: 900; color: #3fb950; margin-top: 4px; }}
+        .card-value-red {{ font-size: 18px; font-weight: 900; color: #f85149; margin-top: 4px; }}
         
-        .box-container {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 6px 10px; margin-top: 8px; margin-bottom: 6px; }}
-        .box-title {{ font-size: 12px; font-weight: 800; color: {text_main}; letter-spacing: 0.5px; }}
+        .box-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 8px 12px; margin-top: 10px; margin-bottom: 8px; }}
+        .box-title {{ font-size: 14px; font-weight: 900; color: {text_main}; letter-spacing: 0.5px; }}
         
-        .stock-card {{ background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 6px 8px; text-align: left; }}
+        /* LARGER MARKET MOVERS CARDS */
+        .stock-card {{ background-color: {sub_card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 10px 12px; text-align: left; }}
         .stock-card-top {{ display: flex; justify-content: space-between; align-items: center; }}
-        .stock-symbol {{ font-size: 12px; font-weight: 800; color: {accent_blue}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-        .stock-card-body {{ display: flex; justify-content: space-between; align-items: center; margin-top: 3px; }}
-        .stock-price-up {{ font-size: 13px; font-weight: 900; color: #3fb950; }}
-        .stock-price-down {{ font-size: 13px; font-weight: 900; color: #f85149; }}
-        .stock-meta {{ font-size: 9px; color: {text_sub}; font-weight: 600; text-align: right; }}
+        .stock-symbol {{ font-size: 14px; font-weight: 900; color: {accent_blue}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+        .stock-card-body {{ display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }}
+        .stock-price-up {{ font-size: 15px; font-weight: 900; color: #3fb950; }}
+        .stock-price-down {{ font-size: 15px; font-weight: 900; color: #f85149; }}
+        .stock-meta {{ font-size: 11px; color: {text_sub}; font-weight: 700; text-align: right; }}
         
-        .setup-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 8px; padding: 10px; }}
-        .setup-header-bull {{ font-size: 14px; font-weight: 900; color: #3fb950; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }}
-        .setup-header-bear {{ font-size: 14px; font-weight: 900; color: #f85149; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }}
+        /* LARGER TABLES & ROWS */
+        .setup-box {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 10px; padding: 12px; }}
+        .setup-header-bull {{ font-size: 16px; font-weight: 900; color: #3fb950; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
+        .setup-header-bear {{ font-size: 16px; font-weight: 900; color: #f85149; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
         
-        .row-header {{ display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; font-size: 10px; font-weight: 800; color: {text_sub}; text-transform: uppercase; border-bottom: 1px solid {border_color}; margin-bottom: 6px; }}
-        .stock-row-item {{ display: flex; justify-content: space-between; align-items: center; background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 5px; padding: 5px 8px; margin-bottom: 5px; text-decoration: none !important; }}
-        .sym-btn-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 4px; padding: 2px 6px; color: {accent_blue}; font-weight: 800; font-size: 11px; display: inline-block; }}
+        .row-header {{ display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; font-size: 11px; font-weight: 900; color: {text_sub}; text-transform: uppercase; border-bottom: 1px solid {border_color}; margin-bottom: 8px; }}
+        .stock-row-item {{ display: flex; justify-content: space-between; align-items: center; background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; text-decoration: none !important; }}
+        .sym-btn-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 5px; padding: 3px 8px; color: {accent_blue}; font-weight: 900; font-size: 13px; display: inline-block; }}
         
-        .status-watch {{ background-color: #C0C0C0; color: #000000; border: 1px solid #A9A9A9; border-radius: 4px; padding: 2px 6px; font-weight: 900; font-size: 10px; display: inline-block; }}
-        .status-ready-bull {{ background-color: #006400; color: #FFFFFF; border: 1px solid #004d00; border-radius: 4px; padding: 2px 6px; font-weight: 900; font-size: 10px; display: inline-block; }}
-        .status-ready-bear {{ background-color: #8B0000; color: #FFFFFF; border: 1px solid #660000; border-radius: 4px; padding: 2px 6px; font-weight: 900; font-size: 10px; display: inline-block; }}
-        .vol-box {{ background-color: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.4); border-radius: 4px; padding: 1px 4px; font-weight: 900; font-size: 9px; display: inline-block; }}
-        .qty-box {{ background-color: rgba(88, 166, 255, 0.15); color: {accent_blue}; border: 1px solid rgba(88, 166, 255, 0.4); border-radius: 4px; padding: 1px 4px; font-weight: 900; font-size: 9px; display: inline-block; }}
+        .status-watch {{ background-color: #C0C0C0; color: #000000; border: 1px solid #A9A9A9; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
+        .status-ready-bull {{ background-color: #006400; color: #FFFFFF; border: 1px solid #004d00; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
+        .status-ready-bear {{ background-color: #8B0000; color: #FFFFFF; border: 1px solid #660000; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
+        .vol-box {{ background-color: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.4); border-radius: 5px; padding: 2px 6px; font-weight: 900; font-size: 11px; display: inline-block; }}
+        .qty-box {{ background-color: rgba(88, 166, 255, 0.15); color: {accent_blue}; border: 1px solid rgba(88, 166, 255, 0.4); border-radius: 5px; padding: 2px 6px; font-weight: 900; font-size: 11px; display: inline-block; }}
 
         .live-blink {{ animation: pulseBlink 6.0s ease-in-out infinite; display: inline-block; }}
         @keyframes pulseBlink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
@@ -177,7 +182,6 @@ market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
 market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
 is_market_open = (now_dt.weekday() < 5) and (market_open_time <= now_dt <= market_close_time)
 
-# Dynamic TTL: 60 seconds during market hours, 1 Hour during Off-Hours for Lightning Performance
 cache_ttl_seconds = 60 if is_market_open else 3600
 
 @st.cache_data(ttl=cache_ttl_seconds)
@@ -216,19 +220,16 @@ def calculate_vwap(df):
     tp = (df['High'] + df['Low'] + df['Close']) / 3
     return (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
 
-# 🚀 ULTRA-FAST DYNAMICALLY CACHED SCANNER ENGINE
 @st.cache_data(ttl=cache_ttl_seconds)
 def run_market_scanner():
     bullish_list, bearish_list, all_stocks = [], [], []
     per_trade_cap = 10000
 
-    # Optimized Chunk Size for Faster Parallel Fetching
     chunk_size = 100
     symbol_chunks = [ALL_HIRA_SYMBOLS[i:i + chunk_size] for i in range(0, len(ALL_HIRA_SYMBOLS), chunk_size)]
 
     for chunk in symbol_chunks:
         try:
-            # period="2d" reduces payload size by 60% compared to 5d
             bulk_5m = yf.download(chunk, period="2d", interval="5m", progress=False, group_by="ticker", threads=True)
             bulk_1d = yf.download(chunk, period="5d", interval="1d", progress=False, group_by="ticker", threads=True)
         except Exception:
@@ -400,7 +401,7 @@ status_html = '<span class="market-status-open"><span class="live-blink">🟢</s
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b | %I:%M %p")
 
-# --- 🎯 ALL-IN-ONE SINGLE LINE TOP HEADER ---
+# --- 🎯 PRO ENHANCED SINGLE LINE TOP HEADER ---
 head_c1, head_c2, head_c3, head_c4, head_c5, head_c6 = st.columns([0.18, 0.44, 0.08, 0.12, 0.09, 0.09])
 
 with head_c1:
@@ -433,7 +434,7 @@ with head_c6:
         st.cache_data.clear()
         st.rerun()
 
-st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 8px; border-color: {border_color}; opacity: 0.5;'>", unsafe_allow_html=True)
+st.markdown(f"<hr style='margin-top: 6px; margin-bottom: 12px; border-color: {border_color}; opacity: 0.6;'>", unsafe_allow_html=True)
 
 # --- EXECUTE SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
@@ -451,8 +452,8 @@ with c1:
             <div class="metric-container">
                 <div class="card-label">TOP GAINER</div>
                 <a href="{top_gainer.get('TVUrl', '#')}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 13px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer.get('Symbol', '-')}</div>
-                    <div class="card-value-green">+{top_gainer.get('ChangePct', 0):.2f}% <span style="font-size:10px; font-weight:normal;">(+₹{top_gainer.get('ChangePts', 0)})</span></div>
+                    <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:3px; overflow:hidden; text-overflow:ellipsis;">{top_gainer.get('Symbol', '-')}</div>
+                    <div class="card-value-green">+{top_gainer.get('ChangePct', 0):.2f}% <span style="font-size:12px; font-weight:700;">(+₹{top_gainer.get('ChangePts', 0)})</span></div>
                 </a>
             </div>
         """, unsafe_allow_html=True)
@@ -463,8 +464,8 @@ with c2:
             <div class="metric-container">
                 <div class="card-label">TOP LOSER</div>
                 <a href="{top_loser.get('TVUrl', '#')}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 13px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser.get('Symbol', '-')}</div>
-                    <div class="card-value-red">{top_loser.get('ChangePct', 0):.2f}% <span style="font-size:10px; font-weight:normal;">(₹{top_loser.get('ChangePts', 0)})</span></div>
+                    <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:3px; overflow:hidden; text-overflow:ellipsis;">{top_loser.get('Symbol', '-')}</div>
+                    <div class="card-value-red">{top_loser.get('ChangePct', 0):.2f}% <span style="font-size:12px; font-weight:700;">(₹{top_loser.get('ChangePts', 0)})</span></div>
                 </a>
             </div>
         """, unsafe_allow_html=True)
@@ -473,12 +474,12 @@ with c3:
     st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">MARKET SENTIMENT</div>
-            <div style="font-size: 14px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:4px;">
+            <div style="font-size: 17px; font-weight: 900; color: {sentiment_color}; margin-top:3px; display:flex; align-items:center; gap:6px;">
                 <span class="live-blink">{sentiment_blink}</span>
                 <span>{sentiment_label}</span>
-                <span style="font-size:11px;">{sentiment_arrow}</span>
+                <span style="font-size:13px;">{sentiment_arrow}</span>
             </div>
-            <div style="font-size: 9px; color: {text_sub}; margin-top: 2px; font-weight: 700;">
+            <div style="font-size: 11px; color: {text_sub}; margin-top: 3px; font-weight: 800;">
                 <span style="color:#3fb950;">▲ {total_bull_cnt}</span> | 
                 <span style="color:#f85149;">▼ {total_bear_cnt}</span> | 
                 <span>⚪ {sideways_cnt}</span>
@@ -490,10 +491,10 @@ with c4:
     st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
-            <div style="font-size: 14px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
+            <div style="font-size: 17px; font-weight: 900; color: {accent_blue}; margin-top:3px;">
                 {TOTAL_SCANNED_STOCKS} Stocks
             </div>
-            <div style="font-size: 9px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active: {total_bull_cnt + total_bear_cnt}</div>
+            <div style="font-size: 11px; color: #3fb950; font-weight: 800; margin-top: 3px;">Active: {total_bull_cnt + total_bear_cnt}</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -511,7 +512,7 @@ if market_movers:
                     <div class="stock-card">
                         <div class="stock-card-top">
                             <span class="stock-symbol">{m.get('Symbol', '-')}</span>
-                            <div style="display:flex; gap:2px;">
+                            <div style="display:flex; gap:3px;">
                                 <span class="qty-box">{m.get('Qty', 1)}</span>
                                 <span class="vol-box">{m.get('VolMultiple', 1.0):.1f}x</span>
                             </div>
@@ -519,7 +520,7 @@ if market_movers:
                         <div class="stock-card-body">
                             <div>
                                 <span class="{p_class} live-blink">₹{m.get('Price', 0):.2f}</span>
-                                <span style="font-size: 10px; font-weight: 800; color: {'#3fb950' if m.get('ChangePct', 0)>=0 else '#f85149'};">{sign}{m.get('ChangePct', 0):.2f}%</span>
+                                <span style="font-size: 12px; font-weight: 900; color: {'#3fb950' if m.get('ChangePct', 0)>=0 else '#f85149'};">{sign}{m.get('ChangePct', 0):.2f}%</span>
                             </div>
                             <div class="stock-meta">🕒 {time_str}</div>
                         </div>
@@ -527,7 +528,7 @@ if market_movers:
                 </a>
             """, unsafe_allow_html=True)
 
-st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
 tb_col1, tb_col2 = st.columns(2)
 
@@ -547,15 +548,15 @@ with tb_col1:
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
                     <div style="width: 20%;"><span class="sym-btn-box">{s.get('Symbol')}</span></div>
                     <div style="width: 15%;">{status_btn}</div>
-                    <div style="width: 15%; font-size:10px; color:{text_sub}; font-weight:700;">🕒 {s.get('SignalTime')}</div>
+                    <div style="width: 15%; font-size:12px; color:{text_sub}; font-weight:800;">🕒 {s.get('SignalTime')}</div>
                     <div style="width: 15%;"><span class="vol-box">{s.get('VolMultiple', 1.0):.2f}x</span></div>
                     <div style="width: 12%;"><span class="qty-box">{s.get('Qty', 1)}</span></div>
-                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:12px;" class="live-blink">₹{s.get('Price', 0):.2f}</div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:11px;">▲{s.get('ChangePct', 0):.2f}%</div>
+                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:14px;" class="live-blink">₹{s.get('Price', 0):.2f}</div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:13px;">▲{s.get('ChangePct', 0):.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:20px; font-weight:600; font-size:12px;">Searching for High-Volume Bullish breakouts...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bullish breakouts...</div>', unsafe_allow_html=True)
 
 with tb_col2:
     st.markdown("""
@@ -573,15 +574,15 @@ with tb_col2:
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
                     <div style="width: 20%;"><span class="sym-btn-box" style="color:#f85149;">{s.get('Symbol')}</span></div>
                     <div style="width: 15%;">{status_btn}</div>
-                    <div style="width: 15%; font-size:10px; color:{text_sub}; font-weight:700;">🕒 {s.get('SignalTime')}</div>
+                    <div style="width: 15%; font-size:12px; color:{text_sub}; font-weight:800;">🕒 {s.get('SignalTime')}</div>
                     <div style="width: 15%;"><span class="vol-box">{s.get('VolMultiple', 1.0):.2f}x</span></div>
                     <div style="width: 12%;"><span class="qty-box">{s.get('Qty', 1)}</span></div>
-                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:12px;" class="live-blink">₹{s.get('Price', 0):.2f}</div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:11px;">▼{s.get('ChangePct', 0):.2f}%</div>
+                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:14px;" class="live-blink">₹{s.get('Price', 0):.2f}</div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:13px;">▼{s.get('ChangePct', 0):.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:20px; font-weight:600; font-size:12px;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
 if is_market_open:
     st.markdown("""<script>setTimeout(function(){ window.location.reload(); }, 30000);</script>""", unsafe_allow_html=True)
