@@ -788,6 +788,21 @@ st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 # --- EXECUTE SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
 
+# --- CALCULATE SIDEWAYS STOCKS FOR ACCURATE SENTIMENT ---
+sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
+
+# --- DYNAMIC SENTIMENT LOGIC (BLINKER, COLOR & ARROW) ---
+if total_bull_cnt >= total_bear_cnt:
+    sentiment_label = "Bullish"
+    sentiment_color = "#3fb950"
+    sentiment_blink = "🟢"
+    sentiment_arrow = "▲"
+else:
+    sentiment_label = "Bearish"
+    sentiment_color = "#f85149"
+    sentiment_blink = "🔴"
+    sentiment_arrow = "▼"
+
 # --- METRIC CARDS ROW ---
 c1, c2, c3, c4 = st.columns(4)
 
@@ -819,10 +834,16 @@ with c3:
     st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">MARKET SENTIMENT</div>
-            <div style="font-size: 16px; font-weight: 900; color: {text_main}; margin-top:2px;">
-                <span class="live-blink">🟢</span> {'Bullish' if total_bull_cnt >= total_bear_cnt else 'Bearish'}
+            <div style="font-size: 16px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:6px;">
+                <span class="live-blink">{sentiment_blink}</span>
+                <span>{sentiment_label}</span>
+                <span style="font-size:14px;">{sentiment_arrow}</span>
             </div>
-            <div style="font-size: 11px; color: {text_sub}; margin-top: 2px;">Bullish: {total_bull_cnt} | Bearish: {total_bear_cnt}</div>
+            <div style="font-size: 10px; color: {text_sub}; margin-top: 3px; font-weight: 700;">
+                <span style="color:#3fb950;">▲ Bullish: {total_bull_cnt}</span> | 
+                <span style="color:#f85149;">▼ Bearish: {total_bear_cnt}</span> | 
+                <span>⚪ Sideways: {sideways_cnt}</span>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
