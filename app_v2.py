@@ -123,13 +123,6 @@ st.markdown(f"""
         .vol-box {{ background-color: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.4); border-radius: 5px; padding: 2px 6px; font-weight: 900; font-size: 11px; display: inline-block; }}
         .qty-box {{ background-color: rgba(88, 166, 255, 0.15); color: {accent_blue}; border: 1px solid rgba(88, 166, 255, 0.4); border-radius: 5px; padding: 2px 6px; font-weight: 900; font-size: 11px; display: inline-block; }}
 
-        /* HEATMAP STYLING */
-        .heatmap-grid {{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; max-height: 420px; overflow-y: auto; padding-right: 4px; }}
-        .hm-tile {{ flex: 1 1 calc(10% - 6px); min-width: 90px; padding: 6px; border-radius: 6px; text-align: center; text-decoration: none !important; box-sizing: border-box; transition: transform 0.15s ease; }}
-        .hm-tile:hover {{ transform: scale(1.04); z-index: 10; }}
-        .hm-symbol {{ font-size: 11px; font-weight: 900; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ffffff; }}
-        .hm-pct {{ font-size: 12px; font-weight: 900; margin-top: 2px; display: block; color: #ffffff; }}
-
         .live-blink {{ animation: pulseBlink 6.0s ease-in-out infinite; display: inline-block; }}
         @keyframes pulseBlink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
     </style>
@@ -434,7 +427,7 @@ def run_market_scanner():
     top_bullish = sorted_bullish[:10]
     top_bearish = sorted_bearish[:10]
 
-    return top_bullish, top_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list), all_stocks
+    return top_bullish, top_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
 # --- MARKET STATUS & HEADER HTML ---
 status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> OPEN</span>' if is_market_open else '<span class="market-status-closed"><span class="live-blink">🔴</span> CLOSED</span>'
@@ -478,7 +471,7 @@ with head_c6:
 st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 10px; border-color: {border_color}; opacity: 0.5;'>", unsafe_allow_html=True)
 
 # --- EXECUTE SCANNER ---
-bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt, all_scanned_stocks = run_market_scanner()
+bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
 sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
 sentiment_label = "Bullish" if total_bull_cnt >= total_bear_cnt else "Bearish"
 sentiment_color = "#3fb950" if total_bull_cnt >= total_bear_cnt else "#f85149"
@@ -627,45 +620,34 @@ with tb_col2:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
-# --- 🎯 NIFTY 500 LIVE HEATMAP SECTION (SORTED TOP GAINERS TO LOSERS) ---
+# --- 🎯 TRADINGVIEW OFFICIAL NIFTY 500 LIVE HEATMAP WIDGET ---
 st.markdown("""<div class="box-container"><div class="box-title">🗺️ NIFTY 500 MARKET HEATMAP (TOP GAINERS ➔ TOP LOSERS)</div></div>""", unsafe_allow_html=True)
 
-if all_scanned_stocks:
-    # Sort all scanned stocks from highest gainers to lowest losers
-    sorted_heatmap = sorted(all_scanned_stocks, key=lambda x: x.get('ChangePct', 0), reverse=True)
-    
-    hm_html = '<div class="heatmap-grid">'
-    for st_item in sorted_heatmap:
-        pct = st_item.get('ChangePct', 0)
-        sym = st_item.get('Symbol', '')
-        url = st_item.get('TVUrl', '#')
-        
-        # Color coding based on percentage performance
-        if pct >= 3.0:
-            bg_tile = "#006400"  # Dark Green
-            border_tile = "#004d00"
-        elif pct > 0:
-            bg_tile = "#1e4620"  # Mild Green
-            border_tile = "#2e6f32"
-        elif pct == 0:
-            bg_tile = "#30363d"  # Grey
-            border_tile = "#484f58"
-        elif pct > -3.0:
-            bg_tile = "#5a1e1e"  # Mild Red
-            border_tile = "#8b2626"
-        else:
-            bg_tile = "#8B0000"  # Dark Red
-            border_tile = "#660000"
-
-        sign = "+" if pct > 0 else ""
-        hm_html += f"""
-            <a href="{url}" target="_blank" class="hm-tile" style="background-color: {bg_tile}; border: 1px solid {border_tile};">
-                <span class="hm-symbol">{sym}</span>
-                <span class="hm-pct">{sign}{pct:.2f}%</span>
-            </a>
-        """
-    hm_html += '</div>'
-    st.markdown(hm_html, unsafe_allow_html=True)
+tv_theme = "dark" if st.session_state.theme == "dark" else "light"
+tv_heatmap_code = f"""
+<div class="tradingview-widget-container" style="height: 520px; width: 100%;">
+  <div class="tradingview-widget-container__widget" style="height:100%; width:100%;"></div>
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
+  {{
+  "exchanges": [],
+  "dataSource": "NIFTY500",
+  "grouping": "sector",
+  "blockSize": "market_cap_basic",
+  "blockColor": "change",
+  "locale": "en",
+  "symbolUrl": "https://www.tradingview.com/chart/?symbol=NSE:",
+  "colorTheme": "{tv_theme}",
+  "hasTopBar": false,
+  "isDataSetEnabled": false,
+  "isZoomEnabled": true,
+  "hasSymbolTooltip": true,
+  "width": "100%",
+  "height": "100%"
+}}
+  </script>
+</div>
+"""
+st.components.v1.html(tv_heatmap_code, height=530)
 
 # --- 🚀 POWERFUL LIVE AUTO REFRESH SYSTEM ---
 refresh_time_ms = 15000 if is_market_open else 300000
