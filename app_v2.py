@@ -298,7 +298,7 @@ def run_market_scanner():
                 tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
                 calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
-                # --- 🎯 C1 (09:15 CANDLE) ---
+                # --- 🎯 C1 (09:15 CANDLE) - STRICT 1.0% MAX RANGE ---
                 c1 = today_df.iloc[0]
                 c1_high, c1_low, c1_open, c1_close = float(c1['High']), float(c1['Low']), float(c1['Open']), float(c1['Close'])
                 c1_range = c1_high - c1_low
@@ -307,6 +307,11 @@ def run_market_scanner():
                     continue
 
                 c1_range_pct = (c1_range / c1_close) * 100
+                
+                # STRICT FILTER: Reject C1 if candle range is greater than 1.0%
+                if c1_range_pct > 1.0:
+                    continue
+
                 gap_pct = abs(c1_open - prev_close) / prev_close * 100
 
                 upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
@@ -347,34 +352,36 @@ def run_market_scanner():
                     (c2_range <= c1_range * 0.85)
                 )
 
-                # --- 🎯 STRICT EVALUATION (ONLY FULLY QUALIFIED BREAKOUTS ALLOWED) ---
+                # --- 🎯 ULTRA-STRICT EVALUATION (100% MATCH WITH VOLUME SURGE >= 1.2x REQUIRED) ---
                 signal_bullish, signal_bearish = False, False
                 status_state, signal_time, vol_multiple = "READY", "-", 1.0
 
                 if c1_bull_cond and c2_bull_pause_cond:
-                    # Check if ANY candle from C3 onwards strictly fulfills the complete breakout condition
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
                         curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
-                        
-                        # 💯 STRICT FULL MATCH: High Breakout + VWAP Cross + Previous Day High (PDH) Breakout
-                        if (curr_close > max(c1_high, c2_high)) and (curr_close > curr_vwap) and (curr_close > pdh):
+                        curr_vol = float(c_curr['Volume'])
+                        calc_vol_mult = float(round(curr_vol / max_base_vol, 2)) if max_base_vol > 0 else 1.0
+
+                        # 💯 STRICT MATCH: High Breakout + VWAP Cross + PDH Break + VOLUME SURGE (>= 1.2x)
+                        if (curr_close > max(c1_high, c2_high)) and (curr_close > curr_vwap) and (curr_close > pdh) and (calc_vol_mult >= 1.2):
                             signal_bullish = True
                             signal_time = c_curr.name.strftime("%H:%M")
-                            vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
+                            vol_multiple = calc_vol_mult
                             break
 
                 elif c1_bear_cond and c2_bear_pause_cond:
-                    # Check if ANY candle from C3 onwards strictly fulfills the complete breakdown condition
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
                         curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
-                        
-                        # 💯 STRICT FULL MATCH: Low Breakdown + VWAP Cross + Previous Day Low (PDL) Breakdown
-                        if (curr_close < min(c1_low, c2_low)) and (curr_close < curr_vwap) and (curr_close < pdl):
+                        curr_vol = float(c_curr['Volume'])
+                        calc_vol_mult = float(round(curr_vol / max_base_vol, 2)) if max_base_vol > 0 else 1.0
+
+                        # 💯 STRICT MATCH: Low Breakdown + VWAP Cross + PDL Break + VOLUME SURGE (>= 1.2x)
+                        if (curr_close < min(c1_low, c2_low)) and (curr_close < curr_vwap) and (curr_close < pdl) and (calc_vol_mult >= 1.2):
                             signal_bearish = True
                             signal_time = c_curr.name.strftime("%H:%M")
-                            vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
+                            vol_multiple = calc_vol_mult
                             break
 
                 res = {
@@ -392,7 +399,7 @@ def run_market_scanner():
                 }
                 all_stocks.append(res)
                 
-                # ONLY Add to Dashboard lists if strictly matched!
+                # ONLY Add to Dashboard lists if strictly and completely matched!
                 if signal_bullish: bullish_list.append(res)
                 if signal_bearish: bearish_list.append(res)
             except Exception:
@@ -583,7 +590,7 @@ with tb_col1:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">No strict Bullish breakouts right now...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bullish breakouts...</div>', unsafe_allow_html=True)
 
 with tb_col2:
     st.markdown("""
@@ -609,7 +616,7 @@ with tb_col2:
                 </a>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">No strict Bearish breakdowns right now...</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
 if is_market_open:
     st.markdown("""<script>setTimeout(function(){ window.location.reload(); }, 30000);</script>""", unsafe_allow_html=True)
