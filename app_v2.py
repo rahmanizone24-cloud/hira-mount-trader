@@ -123,6 +123,19 @@ st.markdown(f"""
         .vol-box {{ background-color: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.4); border-radius: 5px; padding: 2px 6px; font-weight: 900; font-size: 11px; display: inline-block; }}
         .qty-box {{ background-color: rgba(88, 166, 255, 0.15); color: {accent_blue}; border: 1px solid rgba(88, 166, 255, 0.4); border-radius: 5px; padding: 2px 6px; font-weight: 900; font-size: 11px; display: inline-block; }}
 
+        /* CUSTOM NIFTY 500 TREEMAP HEATMAP STYLING */
+        .tm-wrapper {{ display: flex; gap: 8px; width: 100%; background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 10px; padding: 10px; box-sizing: border-box; }}
+        .tm-col {{ flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }}
+        .tm-tile {{
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            border-radius: 4px; border: 2px solid #000000; text-decoration: none !important;
+            color: #ffffff !important; box-sizing: border-box; padding: 8px 4px;
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }}
+        .tm-tile:hover {{ transform: scale(1.03); filter: brightness(1.15); z-index: 5; }}
+        .tm-sym {{ font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3px; text-shadow: 0px 1px 2px rgba(0,0,0,0.8); word-break: break-all; text-align: center; }}
+        .tm-pct {{ font-size: 13px; font-weight: 900; margin-top: 3px; text-shadow: 0px 1px 2px rgba(0,0,0,0.8); }}
+
         .live-blink {{ animation: pulseBlink 6.0s ease-in-out infinite; display: inline-block; }}
         @keyframes pulseBlink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
     </style>
@@ -427,7 +440,7 @@ def run_market_scanner():
     top_bullish = sorted_bullish[:10]
     top_bearish = sorted_bearish[:10]
 
-    return top_bullish, top_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
+    return top_bullish, top_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list), all_stocks
 
 # --- MARKET STATUS & HEADER HTML ---
 status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> OPEN</span>' if is_market_open else '<span class="market-status-closed"><span class="live-blink">🔴</span> CLOSED</span>'
@@ -471,7 +484,7 @@ with head_c6:
 st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 10px; border-color: {border_color}; opacity: 0.5;'>", unsafe_allow_html=True)
 
 # --- EXECUTE SCANNER ---
-bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
+bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt, all_scanned_stocks = run_market_scanner()
 sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
 sentiment_label = "Bullish" if total_bull_cnt >= total_bear_cnt else "Bearish"
 sentiment_color = "#3fb950" if total_bull_cnt >= total_bear_cnt else "#f85149"
@@ -620,45 +633,63 @@ with tb_col2:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
-# --- 🎯 OFFICIAL TRADINGVIEW NIFTY 500 TREEMAP HEATMAP ---
-st.markdown("""<div class="box-container"><div class="box-title">🗺️ NIFTY 500 MARKET HEATMAP</div></div>""", unsafe_allow_html=True)
+# --- 🎯 CUSTOM HIGH-PERFORMANCE NIFTY 500 TREEMAP HEATMAP (MATCHING YOUR IMAGE EXACTLY) ---
+st.markdown("""<div class="box-container"><div class="box-title">🗺️ NIFTY 500 MARKET HEATMAP (TOP 10 GAINERS & TOP 10 LOSERS)</div></div>""", unsafe_allow_html=True)
 
-tv_theme = "dark" if st.session_state.theme == "dark" else "light"
-tv_heatmap_code = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: transparent; }}
-        .tradingview-widget-container {{ width: 100%; height: 100%; }}
-    </style>
-</head>
-<body>
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
-  {{
-  "exchanges": [],
-  "dataSource": "NIFTY500",
-  "grouping": "sector",
-  "blockSize": "market_cap_basic",
-  "blockColor": "change",
-  "locale": "en",
-  "symbolUrl": "https://www.tradingview.com/chart/?symbol=NSE:",
-  "colorTheme": "{tv_theme}",
-  "hasTopBar": false,
-  "isDataSetEnabled": false,
-  "isZoomEnabled": true,
-  "hasSymbolTooltip": true,
-  "width": "100%",
-  "height": "100%"
-}}
-  </script>
-</div>
-</body>
-</html>
-"""
-st.components.v1.html(tv_heatmap_code, height=580)
+if all_scanned_stocks:
+    df_hm = pd.DataFrame(all_scanned_stocks)
+    
+    # Top 10 Gainers & Top 10 Losers
+    top_10_gainers = df_hm.sort_values(by="ChangePct", ascending=False).head(10).to_dict('records')
+    top_10_losers = df_hm.sort_values(by="ChangePct", ascending=True).head(10).to_dict('records')
+    
+    # Calculate Max Absolute Values for Sizing
+    max_gainer_pct = max([abs(g['ChangePct']) for g in top_10_gainers] + [1.0])
+    max_loser_pct = max([abs(l['ChangePct']) for l in top_10_losers] + [1.0])
+
+    tm_html = '<div class="tm-wrapper">'
+    
+    # --- GREEN BLOCK (TOP GAINERS) ---
+    tm_html += '<div class="tm-col">'
+    for stock in top_10_gainers:
+        pct = stock.get('ChangePct', 0)
+        sym = stock.get('Symbol', '')
+        url = stock.get('TVUrl', '#')
+        
+        # Calculate dynamic flex sizing and color intensity
+        flex_basis = max(18, min(45, int((pct / max_gainer_pct) * 40)))
+        bg_green = "#00c853" if pct >= 3.0 else "#00e676" if pct >= 1.5 else "#00b0ff"
+        if pct < 1.5: bg_green = "#00a843"
+        
+        tm_html += f"""
+            <a href="{url}" target="_blank" class="tm-tile" style="flex: 1 1 {flex_basis}%; min-height: 85px; background-color: {bg_green};">
+                <span class="tm-sym">{sym}</span>
+                <span class="tm-pct">+{pct:.2f}%</span>
+            </a>
+        """
+    tm_html += '</div>'
+    
+    # --- RED BLOCK (TOP LOSERS) ---
+    tm_html += '<div class="tm-col">'
+    for stock in top_10_losers:
+        pct = stock.get('ChangePct', 0)
+        sym = stock.get('Symbol', '')
+        url = stock.get('TVUrl', '#')
+        
+        abs_pct = abs(pct)
+        flex_basis = max(18, min(45, int((abs_pct / max_loser_pct) * 40)))
+        bg_red = "#ff1744" if abs_pct >= 3.0 else "#d50000" if abs_pct >= 1.5 else "#c62828"
+        
+        tm_html += f"""
+            <a href="{url}" target="_blank" class="tm-tile" style="flex: 1 1 {flex_basis}%; min-height: 85px; background-color: {bg_red};">
+                <span class="tm-sym">{sym}</span>
+                <span class="tm-pct">{pct:.2f}%</span>
+            </a>
+        """
+    tm_html += '</div>'
+    
+    tm_html += '</div>'
+    st.markdown(tm_html, unsafe_allow_html=True)
 
 # --- 🚀 POWERFUL LIVE AUTO REFRESH SYSTEM ---
 refresh_time_ms = 15000 if is_market_open else 300000
