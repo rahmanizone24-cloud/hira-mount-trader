@@ -559,7 +559,7 @@ def calculate_vwap(df):
     return vwap
 
 # -------------------------------------------------------------
-# 🔥 ALL-IN-ONE ULTRA-FAST & ULTRA-STRICT SCANNER ENGINE (ROBUST QUANTITY FIX)
+# 🔥 ALL-IN-ONE SCANNER ENGINE (EXACT QTY BUG FIX)
 # -------------------------------------------------------------
 @st.cache_data(ttl=15)
 def run_market_scanner():
@@ -577,7 +577,7 @@ def run_market_scanner():
     if bulk_5m is None or bulk_1d is None:
         return [], [], None, None, [], 0, 0
 
-    per_trade_cap = 10000  # Rs. 10,000 Risk/Capital Base
+    per_trade_cap = 10000  # Capital Base
 
     for symbol in ALL_HIRA_SYMBOLS:
         try:
@@ -632,10 +632,13 @@ def run_market_scanner():
 
             latest = today_df.iloc[-1]
             
-            # --- ROBUST CURRENT PRICE FETCH FOR ACCURATE QTY ---
-            curr_price = float(latest['Close']) if not pd.isna(latest['Close']) else float(today_df['Close'].iloc[-1])
-            prev_close = float(df_daily['Close'].iloc[-2]) if not pd.isna(df_daily['Close'].iloc[-2]) else curr_price
+            # 🔥 STRICT SAFE FETCH FOR CURRENT PRICE & PREV CLOSE (BDL QTY FIX) 🔥
+            valid_close_series = today_df['Close'].dropna()
+            curr_price = float(valid_close_series.iloc[-1]) if not valid_close_series.empty else 0.0
             
+            valid_prev_close = df_daily['Close'].dropna()
+            prev_close = float(valid_prev_close.iloc[-2]) if len(valid_prev_close) >= 2 else curr_price
+
             if curr_price <= 0:
                 continue
 
@@ -644,7 +647,7 @@ def run_market_scanner():
 
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
             
-            # 🔥 ROBUST & ERROR-PROOF QUANTITY CALCULATION FIX 🔥
+            # 🔥 QUANTITY CALCULATION (ERROR-PROOF & ACCURATE) 🔥
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
             signal_bullish = False
