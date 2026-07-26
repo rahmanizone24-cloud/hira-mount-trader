@@ -46,13 +46,18 @@ else:
 
 st.markdown(f"""
     <style>
-        /* HIDE DEFAULT STREAMLIT CHROME */
+        /* HIDE DEFAULT STREAMLIT CHROME & BOTTOM MANAGE APP TOOLBAR */
         header {{visibility: hidden !important; height: 0px !important;}}
         footer {{visibility: hidden !important; display: none !important;}}
         #MainMenu {{visibility: hidden !important;}}
         
-        div[data-testid="stStatusWidget"] {{
+        div[data-testid="stStatusWidget"], 
+        div[data-testid="stDecoration"], 
+        div[class*="viewerBadge"], 
+        div[data-testid="stToolbar"] {{
             display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
         }}
 
         /* Remove Page Padding Entirely to Keep Layout Compact */
@@ -141,14 +146,14 @@ st.markdown(f"""
         .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 11px; }}
         .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 11px; }}
 
-        /* LIVE BLINKING ANIMATION */
+        /* SMOOTH SLOW BLINKING ANIMATION (6 SECONDS PULSE) */
         .live-blink {{
-            animation: pulseBlink 1.2s ease-in-out infinite;
+            animation: pulseBlink 6.0s ease-in-out infinite;
             display: inline-block;
         }}
         @keyframes pulseBlink {{
             0% {{ opacity: 1; transform: scale(1); }}
-            50% {{ opacity: 0.25; transform: scale(0.95); }}
+            50% {{ opacity: 0.40; transform: scale(0.98); }}
             100% {{ opacity: 1; transform: scale(1); }}
         }}
 
@@ -472,6 +477,7 @@ def calculate_vwap(df):
     vwap = (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
     return vwap
 
+# --- STRICT 5-MINUTE CANDLE SETUP ENGINE ---
 def analyze_stock_5m(symbol):
     try:
         clean_symbol = symbol.replace(".NS", "").upper()
@@ -480,13 +486,14 @@ def analyze_stock_5m(symbol):
             return None
 
         ticker = yf.Ticker(symbol)
-        df_5m = ticker.history(period="5d", interval="5m")
+        df_5m = ticker.history(period="10d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
         
-        if len(df_5m) < 20 or len(df_daily) < 2:
+        if len(df_5m) < 200 or len(df_daily) < 2:
             return None
 
         df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
+        df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
         df_5m['VWAP'] = calculate_vwap(df_5m)
 
         latest_trading_date = df_5m.index[-1].date()
@@ -499,7 +506,7 @@ def analyze_stock_5m(symbol):
         c2 = today_df.iloc[1]
 
         max_base_vol = max(c1['Volume'], c2['Volume'])
-        if max_base_vol < 1000:  # Enhanced sensitivity for liquidity
+        if max_base_vol < 1000:
             return None
 
         latest = today_df.iloc[-1]
@@ -526,7 +533,8 @@ def analyze_stock_5m(symbol):
 
         c1_range_pct = (c1_range / c1_low) * 100
 
-        if c1_range_pct > 1.50:  # Relaxed range cap slightly for wider bullish setup detection
+        # STRICT CONDITION 1: FIRST 5-MIN CANDLE MUST NOT EXCEED 1.0% RANGE
+        if c1_range_pct > 1.00:
             return None
 
         c1_body = abs(c1_close - c1_open)
@@ -539,22 +547,28 @@ def analyze_stock_5m(symbol):
         lower_wick_ratio = lower_wick / c1_range
 
         c1_vwap = c1['VWAP']
+        c1_ema20 = c1['EMA20']
+        c1_ema200 = c1['EMA200']
 
-        # BULLISH CONDITION
+        # STRICT BULLISH SETUP: Solid body, minimal upper wick, breaking above 20 EMA, 200 EMA & VWAP
         c1_bull_cond = (
-            (c1_close >= c1['EMA20']) and 
+            (c1_range_pct <= 1.00) and 
+            (c1_close >= c1_ema20) and 
+            (c1_close >= c1_ema200) and
             (c1_close >= c1_vwap) and 
-            (body_ratio >= 0.60) and 
-            (upper_wick_ratio <= 0.25)
+            (body_ratio >= 0.65) and 
+            (upper_wick_ratio <= 0.20)
         )
         c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # BEARISH CONDITION
+        # STRICT BEARISH SETUP: Solid body, minimal lower wick, breaking below 20 EMA, 200 EMA & VWAP
         c1_bear_cond = (
-            (c1_close <= c1['EMA20']) and 
+            (c1_range_pct <= 1.00) and 
+            (c1_close <= c1_ema20) and 
+            (c1_close <= c1_ema200) and
             (c1_close <= c1_vwap) and 
-            (body_ratio >= 0.60) and 
-            (lower_wick_ratio <= 0.25)
+            (body_ratio >= 0.65) and 
+            (lower_wick_ratio <= 0.20)
         )
         c2_bear_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
