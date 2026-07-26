@@ -132,27 +132,55 @@ st.markdown(f"""
 # ETF Exclusions
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
 
+# --- 🚀 AUTOMATIC NIFTY 500 LOADER ---
 @st.cache_data(ttl=86400)
-def load_hira_stocks():
-    csv_candidates = ["Hira Stocks (2).csv", "Hira Stocks (1).csv", "Hira Stocks.csv"]
+def load_nifty500_stocks():
+    # 1. Try local CSV first if available
+    csv_candidates = ["nifty500.csv", "ind_nifty500list.csv", "Hira Stocks (2).csv", "Hira Stocks (1).csv", "Hira Stocks.csv"]
     for file_candidate in csv_candidates:
         if os.path.exists(file_candidate):
             try:
                 df = pd.read_csv(file_candidate)
-                col = 'symbol' if 'symbol' in df.columns else df.columns[0]
-                syms = df[col].dropna().astype(str).str.strip().unique().tolist()
+                col = [c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower()]
+                target_col = col[0] if col else df.columns[0]
+                syms = df[target_col].dropna().astype(str).str.strip().unique().tolist()
                 filtered_syms = []
                 for s in syms:
                     clean_s = s.upper().replace(".NS", "")
                     if not any(kw in clean_s for kw in ETF_KEYWORDS):
-                        filtered_syms.append(f"{s}.NS" if not s.endswith(".NS") else s)
-                if len(filtered_syms) > 0:
+                        filtered_syms.append(f"{clean_s}.NS")
+                if len(filtered_syms) >= 100:
                     return filtered_syms
             except Exception:
                 pass
-    return ['ALOKINDS.NS', 'TRIDENT.NS', 'SUZLON.NS', 'BDL.NS', 'SJVN.NS', 'RELIANCE.NS', 'TATAMOTORS.NS', 'INFY.NS', 'BAJFINANCE.NS']
 
-ALL_HIRA_SYMBOLS = load_hira_stocks()
+    # 2. Direct Web Fetch Nifty 500 List
+    try:
+        url = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
+        df_web = pd.read_csv(url)
+        if 'Symbol' in df_web.columns:
+            syms = df_web['Symbol'].dropna().astype(str).str.strip().unique().tolist()
+            filtered_syms = [f"{s.upper()}.NS" for s in syms if not any(kw in s.upper() for kw in ETF_KEYWORDS)]
+            if len(filtered_syms) >= 100:
+                return filtered_syms
+    except Exception:
+        pass
+
+    # 3. Robust Nifty 500 Fallback List
+    default_nifty500 = [
+        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS", "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "LTIM.NS",
+        "KOTAKBANK.NS", "LT.NS", "AXISBANK.NS", "HCLTECH.NS", "ASIANPAINT.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS", "TITAN.NS", "DMART.NS",
+        "ULTRACEMCO.NS", "NTPC.NS", "ONGC.NS", "TATAMOTORS.NS", "POWERGRID.NS", "NESTLEIND.NS", "BAJAJFINSV.NS", "JSWSTEEL.NS", "ADANIENT.NS", "M&M.NS",
+        "TATASTEEL.NS", "COALINDIA.NS", "LTIM.NS", "ADANIPORTS.NS", "IOC.NS", "PIDILITIND.NS", "SIEMENS.NS", "GRASIM.NS", "VEDL.NS", "BEL.NS",
+        "HAL.NS", "DLF.NS", "VBL.NS", "TRENT.NS", "ABB.NS", "INDIGO.NS", "SBILIFE.NS", "BPCL.NS", "GAIL.NS", "GODREJCP.NS",
+        "TATAPOWER.NS", "AMBUJACEM.NS", "HDFCLIFE.NS", "SHREECEM.NS", "DIVISLAB.NS", "EICHERMOT.NS", "BAJAJ-AUTO.NS", "CHOLAFIN.NS", "TORNTPHARM.NS", "BANKBARODA.NS",
+        "DABUR.NS", "HAVELLS.NS", "MCDOWELL-N.NS", "BERGEPAINT.NS", "PFC.NS", "RECLTD.NS", "ICICIPRULI.NS", "INDUSINDBK.NS", "HEROMOTOCO.NS", "CIPLA.NS",
+        "LUPIN.NS", "DRREDDY.NS", "APOLLOHOSP.NS", "TATACOMM.NS", "IRCTC.NS", "POLYCAB.NS", "OBEROIRLTY.NS", "JISLJALEQS.NS", "MOTHERSON.NS", "ASHOKLEY.NS",
+        "SJVN.NS", "BDL.NS", "SUZLON.NS", "TRIDENT.NS", "ALOKINDS.NS", "NHPC.NS", "IRFC.NS", "RVNL.NS", "MAZDOCK.NS", "IDEA.NS"
+    ]
+    return default_nifty500
+
+ALL_HIRA_SYMBOLS = load_nifty500_stocks()
 TOTAL_SCANNED_STOCKS = len(ALL_HIRA_SYMBOLS)
 
 # --- MARKET TIME DETECTOR ---
@@ -274,7 +302,7 @@ def run_market_scanner():
                 signal_bullish, signal_bearish = False, False
                 status_state, signal_time, vol_multiple = "", "-", 1.0
 
-                # 🟢 EXACT BULLISH SETUP CONDITIONS (EMA Condition Removed)
+                # 🟢 EXACT BULLISH SETUP CONDITIONS
                 c1_bull_cond = (
                     (c1_range_pct <= 1.0) and                                                   # رینج 1% یا کم
                     (gap_pct <= 1.0) and                                                        # گیپ اپ زیادہ نہ ہو
@@ -287,7 +315,7 @@ def run_market_scanner():
                     (c2_range <= c1_range * 0.85)                                               # چھوٹی پاز کینڈل
                 )
 
-                # 🔴 EXACT BEARISH SETUP CONDITIONS (EMA Condition Removed)
+                # 🔴 EXACT BEARISH SETUP CONDITIONS
                 c1_bear_cond = (
                     (c1_range_pct <= 1.0) and                                                   # رینج 1% یا کم
                     (gap_pct <= 1.0) and                                                        # گیپ ڈاؤن زیادہ نہ ہو
