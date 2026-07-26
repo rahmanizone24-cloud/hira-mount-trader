@@ -193,9 +193,6 @@ def fetch_indices():
             res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": f"https://www.tradingview.com/chart/?symbol={tv_sym}"}
     return res
 
-def calculate_ema(series, length):
-    return series.ewm(span=length, adjust=False).mean()
-
 def calculate_vwap(df):
     tp = (df['High'] + df['Low'] + df['Close']) / 3
     return (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
@@ -227,8 +224,6 @@ def run_market_scanner():
                 if len(df_5m) < 15 or len(df_daily) < 2:
                     continue
 
-                df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
-                df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
                 df_5m['VWAP'] = calculate_vwap(df_5m)
 
                 latest_trading_date = df_5m.index[-1].date()
@@ -262,8 +257,6 @@ def run_market_scanner():
                     continue
 
                 c1_range_pct = (c1_range / c1_close) * 100
-                c1_ema20 = float(c1['EMA20'])
-                c1_ema200 = float(c1['EMA200'])
                 gap_pct = abs(c1_open - prev_close) / prev_close * 100
 
                 upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
@@ -281,9 +274,8 @@ def run_market_scanner():
                 signal_bullish, signal_bearish = False, False
                 status_state, signal_time, vol_multiple = "", "-", 1.0
 
-                # 🟢 EXACT BULLISH SETUP CONDITIONS
+                # 🟢 EXACT BULLISH SETUP CONDITIONS (EMA Condition Removed)
                 c1_bull_cond = (
-                    (c1_close > c1_ema20) and (c1_close > c1_ema200) and                       # 20 اور 200 EMA کے اوپر کلوز
                     (c1_range_pct <= 1.0) and                                                   # رینج 1% یا کم
                     (gap_pct <= 1.0) and                                                        # گیپ اپ زیادہ نہ ہو
                     (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                  # وِک زیادہ بڑی نہ ہو
@@ -295,9 +287,8 @@ def run_market_scanner():
                     (c2_range <= c1_range * 0.85)                                               # چھوٹی پاز کینڈل
                 )
 
-                # 🔴 EXACT BEARISH SETUP CONDITIONS
+                # 🔴 EXACT BEARISH SETUP CONDITIONS (EMA Condition Removed)
                 c1_bear_cond = (
-                    (c1_close < c1_ema20) and (c1_close < c1_ema200) and                       # 20 اور 200 EMA کے نیچے کلوز
                     (c1_range_pct <= 1.0) and                                                   # رینج 1% یا کم
                     (gap_pct <= 1.0) and                                                        # گیپ ڈاؤن زیادہ نہ ہو
                     (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                  # وِک زیادہ بڑی نہ ہو
