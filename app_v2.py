@@ -186,7 +186,7 @@ def fetch_indices():
                 if len(df) >= 2:
                     curr, prev = df['Close'].iloc[-1], df['Close'].iloc[-2]
                     change = curr - prev
-                    res[name] = {"val": round(curr, 2), "change": round(change, 2), "pct": round((change/prev)*100, 2), "url": tv_url}
+                    res[name] = {"val": round(float(curr), 2), "change": round(float(change), 2), "pct": round(float((change/prev)*100), 2), "url": tv_url}
                 else:
                     res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": tv_url}
             except Exception:
@@ -203,13 +203,12 @@ def calculate_vwap(df):
     tp = (df['High'] + df['Low'] + df['Close']) / 3
     return (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
 
-# 🚀 MEMORY-SAFE CHUNKED SCANNER ENGINE
+# 🚀 MEMORY-SAFE & TYPE-SAFE CHUNKED SCANNER ENGINE
 @st.cache_data(ttl=120)
 def run_market_scanner():
     bullish_list, bearish_list, all_stocks = [], [], []
     per_trade_cap = 10000
 
-    # Batching to prevent Memory Crash (50 stocks per chunk)
     chunk_size = 50
     symbol_chunks = [ALL_HIRA_SYMBOLS[i:i + chunk_size] for i in range(0, len(ALL_HIRA_SYMBOLS), chunk_size)]
 
@@ -246,21 +245,21 @@ def run_market_scanner():
                 is_prev_day_sideways = (((prev_day['High'] - prev_day['Low']) / prev_day['Close']) * 100) <= 1.5
 
                 c1, c2 = today_df.iloc[0], today_df.iloc[1]
-                c1_high, c1_low, c1_open, c1_close = c1['High'], c1['Low'], c1['Open'], c1['Close']
+                c1_high, c1_low, c1_open, c1_close = float(c1['High']), float(c1['Low']), float(c1['Open']), float(c1['Close'])
                 c1_range = c1_high - c1_low
 
                 if c1_range == 0:
                     continue
 
                 c1_range_pct = (c1_range / c1_close) * 100
-                c1_ema20_dist = abs(c1_close - c1['EMA20']) / c1_close * 100
-                c1_ema200_dist = abs(c1_close - c1['EMA200']) / c1_close * 100
+                c1_ema20_dist = abs(c1_close - float(c1['EMA20'])) / c1_close * 100
+                c1_ema200_dist = abs(c1_close - float(c1['EMA200'])) / c1_close * 100
 
                 body_ratio = abs(c1_close - c1_open) / c1_range
                 upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
                 lower_wick_ratio = (min(c1_open, c1_close) - c1_low) / c1_range
 
-                max_base_vol = max(c1['Volume'], c2['Volume'])
+                max_base_vol = max(float(c1['Volume']), float(c2['Volume']))
                 if max_base_vol < 1000:
                     continue
 
@@ -275,8 +274,8 @@ def run_market_scanner():
                 if curr_price <= 0:
                     continue
 
-                day_change_pct = ((curr_price - prev_close) / prev_close) * 100
-                change_pts = curr_price - prev_close
+                day_change_pct = float(((curr_price - prev_close) / prev_close) * 100)
+                change_pts = float(curr_price - prev_close)
                 tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
                 
                 calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
@@ -286,28 +285,28 @@ def run_market_scanner():
 
                 c1_bull_cond = (
                     is_prev_day_sideways and (c1_close > c1_low) and (c1_range_pct <= 1.5) and
-                    (body_ratio >= 0.55) and (upper_wick_ratio <= 0.30) and (c1_close >= c1['VWAP']) and
-                    (c1_close > c1['EMA20']) and (c1_close > c1['EMA200']) and
+                    (body_ratio >= 0.55) and (upper_wick_ratio <= 0.30) and (c1_close >= float(c1['VWAP'])) and
+                    (c1_close > float(c1['EMA20'])) and (c1_close > float(c1['EMA200'])) and
                     (c1_ema20_dist <= 0.3) and (c1_ema200_dist <= 0.3)
                 )
 
                 c2_bull_cond = (
-                    (c2['High'] <= c1_high) and (c2['Low'] >= c1_low) and (c2['High'] < c1_high) and
-                    (c2['Close'] >= (c2['Low'] + (c2['High'] - c2['Low']) * 0.3)) and
-                    ((c2['High'] - c2['Low']) <= c1_range)
+                    (float(c2['High']) <= c1_high) and (float(c2['Low']) >= c1_low) and (float(c2['High']) < c1_high) and
+                    (float(c2['Close']) >= (float(c2['Low']) + (float(c2['High']) - float(c2['Low'])) * 0.3)) and
+                    ((float(c2['High']) - float(c2['Low'])) <= c1_range)
                 )
 
                 c1_bear_cond = (
                     is_prev_day_sideways and (c1_close < c1_high) and (c1_range_pct <= 1.5) and
-                    (body_ratio >= 0.55) and (lower_wick_ratio <= 0.30) and (c1_close <= c1['VWAP']) and
-                    (c1_close < c1['EMA20']) and (c1_close < c1['EMA200']) and
+                    (body_ratio >= 0.55) and (lower_wick_ratio <= 0.30) and (c1_close <= float(c1['VWAP'])) and
+                    (c1_close < float(c1['EMA20'])) and (c1_close < float(c1['EMA200'])) and
                     (c1_ema20_dist <= 0.3) and (c1_ema200_dist <= 0.3)
                 )
 
                 c2_bear_cond = (
-                    (c2['High'] <= c1_high) and (c2['Low'] >= c1_low) and (c2['Low'] > c1_low) and
-                    (c2['Close'] <= (c2['High'] - (c2['High'] - c2['Low']) * 0.3)) and
-                    ((c2['High'] - c2['Low']) <= c1_range)
+                    (float(c2['High']) <= c1_high) and (float(c2['Low']) >= c1_low) and (float(c2['Low']) > c1_low) and
+                    (float(c2['Close']) <= (float(c2['High']) - (float(c2['High']) - float(c2['Low'])) * 0.3)) and
+                    ((float(c2['High']) - float(c2['Low'])) <= c1_range)
                 )
 
                 if c1_bull_cond and c2_bull_cond:
@@ -316,10 +315,10 @@ def run_market_scanner():
                     if len(today_df) >= 3:
                         for i in range(2, len(today_df)):
                             c_curr = today_df.iloc[i]
-                            if (c_curr['High'] > max(c1_high, c2['High'])) and (c_curr['Close'] > c_curr['Open']) and (c_curr['Close'] > c_curr['VWAP']) and (c_curr['Volume'] > (max_base_vol * 1.5)):
+                            if (float(c_curr['High']) > max(c1_high, float(c2['High']))) and (float(c_curr['Close']) > float(c_curr['Open'])) and (float(c_curr['Close']) > float(c_curr['VWAP'])) and (float(c_curr['Volume']) > (max_base_vol * 1.5)):
                                 status_state = "READY"
                                 signal_time = c_curr.name.strftime("%H:%M")
-                                vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
+                                vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
                                 break
 
                 elif c1_bear_cond and c2_bear_cond:
@@ -328,21 +327,28 @@ def run_market_scanner():
                     if len(today_df) >= 3:
                         for i in range(2, len(today_df)):
                             c_curr = today_df.iloc[i]
-                            if (c_curr['Low'] < min(c1_low, c2['Low'])) and (c_curr['Close'] < c_curr['Open']) and (c_curr['Close'] < c_curr['VWAP']) and (c_curr['Volume'] > (max_base_vol * 1.5)):
+                            if (float(c_curr['Low']) < min(c1_low, float(c2['Low']))) and (float(c_curr['Close']) < float(c_curr['Open'])) and (float(c_curr['Close']) < float(c_curr['VWAP'])) and (float(c_curr['Volume']) > (max_base_vol * 1.5)):
                                 status_state = "READY"
                                 signal_time = c_curr.name.strftime("%H:%M")
-                                vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
+                                vol_multiple = float(round(float(c_curr['Volume']) / max_base_vol, 2)) if max_base_vol > 0 else 1.5
                                 break
 
-                latest_vol = today_df.iloc[-1]['Volume']
+                latest_vol = float(today_df.iloc[-1]['Volume'])
                 if max_base_vol > 0 and vol_multiple == 1.0:
-                    vol_multiple = round(latest_vol / max_base_vol, 2)
+                    vol_multiple = float(round(latest_vol / max_base_vol, 2))
 
                 res = {
-                    "Symbol": clean_symbol, "Price": curr_price, "ChangePct": day_change_pct,
-                    "ChangePts": round(change_pts, 2), "SignalTime": signal_time, "VolMultiple": vol_multiple,
-                    "IsBullish": signal_bullish, "IsBearish": signal_bearish, "StatusState": status_state,
-                    "TVUrl": tv_url, "Qty": calc_qty
+                    "Symbol": str(clean_symbol), 
+                    "Price": float(curr_price), 
+                    "ChangePct": float(day_change_pct),
+                    "ChangePts": float(round(change_pts, 2)), 
+                    "SignalTime": str(signal_time), 
+                    "VolMultiple": float(vol_multiple),
+                    "IsBullish": bool(signal_bullish), 
+                    "IsBearish": bool(signal_bearish), 
+                    "StatusState": str(status_state),
+                    "TVUrl": str(tv_url), 
+                    "Qty": int(calc_qty)
                 }
                 all_stocks.append(res)
                 if signal_bullish: bullish_list.append(res)
@@ -351,18 +357,28 @@ def run_market_scanner():
                 continue
 
     all_df = pd.DataFrame(all_stocks)
-    top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict() if not all_df.empty else None
-    top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict() if not all_df.empty else None
+    
+    # TYPE-SAFE METRIC CALCULATIONS
+    top_gainer = None
+    top_loser = None
+    balanced_movers = []
 
-    sorted_bullish = sorted(bullish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], x['ChangePct']), reverse=True)
-    sorted_bearish = sorted(bearish_list, key=lambda x: (x['StatusState'] == 'READY', x['VolMultiple'], abs(x['ChangePct'])), reverse=True)
+    if not all_df.empty:
+        try:
+            top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
+            top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
+
+            gainers_4 = all_df.sort_values(by="ChangePct", ascending=False).head(4).to_dict('records')
+            losers_4 = all_df.sort_values(by="ChangePct", ascending=True).head(4).to_dict('records')
+            balanced_movers = gainers_4 + losers_4
+        except Exception:
+            pass
+
+    sorted_bullish = sorted(bullish_list, key=lambda x: (x.get('StatusState') == 'READY', x.get('VolMultiple', 0), x.get('ChangePct', 0)), reverse=True)
+    sorted_bearish = sorted(bearish_list, key=lambda x: (x.get('StatusState') == 'READY', x.get('VolMultiple', 0), abs(x.get('ChangePct', 0))), reverse=True)
 
     top_bullish = sorted_bullish[:10]
     top_bearish = sorted_bearish[:10]
-
-    gainers_4 = all_df.sort_values(by="ChangePct", ascending=False).head(4).to_dict('records') if not all_df.empty else []
-    losers_4 = all_df.sort_values(by="ChangePct", ascending=True).head(4).to_dict('records') if not all_df.empty else []
-    balanced_movers = gainers_4 + losers_4
 
     return top_bullish, top_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
@@ -424,25 +440,25 @@ sentiment_arrow = "▲" if total_bull_cnt >= total_bear_cnt else "▼"
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
-    if top_gainer:
+    if top_gainer and isinstance(top_gainer, dict):
         st.markdown(f"""
             <div class="metric-container">
                 <div class="card-label">TOP GAINER</div>
-                <a href="{top_gainer['TVUrl']}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer['Symbol']}</div>
-                    <div class="card-value-green">+{top_gainer['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(+₹{top_gainer['ChangePts']})</span></div>
+                <a href="{top_gainer.get('TVUrl', '#')}" target="_blank" style="text-decoration:none;">
+                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer.get('Symbol', '-')}</div>
+                    <div class="card-value-green">+{top_gainer.get('ChangePct', 0):.2f}% <span style="font-size:10px; font-weight:normal;">(+₹{top_gainer.get('ChangePts', 0)})</span></div>
                 </a>
             </div>
         """, unsafe_allow_html=True)
 
 with c2:
-    if top_loser:
+    if top_loser and isinstance(top_loser, dict):
         st.markdown(f"""
             <div class="metric-container">
                 <div class="card-label">TOP LOSER</div>
-                <a href="{top_loser['TVUrl']}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser['Symbol']}</div>
-                    <div class="card-value-red">{top_loser['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(₹{top_loser['ChangePts']})</span></div>
+                <a href="{top_loser.get('TVUrl', '#')}" target="_blank" style="text-decoration:none;">
+                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser.get('Symbol', '-')}</div>
+                    <div class="card-value-red">{top_loser.get('ChangePct', 0):.2f}% <span style="font-size:10px; font-weight:normal;">(₹{top_loser.get('ChangePts', 0)})</span></div>
                 </a>
             </div>
         """, unsafe_allow_html=True)
@@ -481,23 +497,23 @@ if market_movers:
     m_cols = st.columns(len(market_movers))
     for i, m in enumerate(market_movers):
         with m_cols[i]:
-            p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
-            sign = "+" if m['ChangePct'] >= 0 else ""
-            time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
+            p_class = "stock-price-up" if m.get('ChangePct', 0) >= 0 else "stock-price-down"
+            sign = "+" if m.get('ChangePct', 0) >= 0 else ""
+            time_str = m.get('SignalTime', '09:20') if m.get('SignalTime') != "-" else "09:20"
             st.markdown(f"""
-                <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
+                <a href="{m.get('TVUrl', '#')}" target="_blank" style="text-decoration:none;">
                     <div class="stock-card">
                         <div class="stock-card-top">
-                            <span class="stock-symbol">{m['Symbol']}</span>
+                            <span class="stock-symbol">{m.get('Symbol', '-')}</span>
                             <div style="display:flex; gap:3px;">
-                                <span class="qty-box">{m['Qty']}</span>
-                                <span class="vol-box">{m['VolMultiple']:.1f}x</span>
+                                <span class="qty-box">{m.get('Qty', 1)}</span>
+                                <span class="vol-box">{m.get('VolMultiple', 1.0):.1f}x</span>
                             </div>
                         </div>
                         <div class="stock-card-body">
                             <div>
-                                <span class="{p_class} live-blink">₹{m['Price']:.2f}</span>
-                                <span style="font-size: 11px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'};">{sign}{m['ChangePct']:.2f}%</span>
+                                <span class="{p_class} live-blink">₹{m.get('Price', 0):.2f}</span>
+                                <span style="font-size: 11px; font-weight: 800; color: {'#3fb950' if m.get('ChangePct', 0)>=0 else '#f85149'};">{sign}{m.get('ChangePct', 0):.2f}%</span>
                             </div>
                             <div class="stock-meta">🕒 {time_str}</div>
                         </div>
@@ -520,16 +536,16 @@ with tb_col1:
     """, unsafe_allow_html=True)
     if bullish_signals:
         for s in bullish_signals:
-            status_btn = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bull">READY</span>'
+            status_btn = '<span class="status-watch">WATCH</span>' if s.get('StatusState') == 'WATCH' else '<span class="status-ready-bull">READY</span>'
             st.markdown(f"""
-                <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 20%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
+                <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
+                    <div style="width: 20%;"><span class="sym-btn-box">{s.get('Symbol')}</span></div>
                     <div style="width: 15%;">{status_btn}</div>
-                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
-                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
+                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s.get('SignalTime')}</div>
+                    <div style="width: 15%;"><span class="vol-box">{s.get('VolMultiple', 1.0):.2f}x</span></div>
+                    <div style="width: 12%;"><span class="qty-box">{s.get('Qty', 1)}</span></div>
+                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s.get('Price', 0):.2f}</div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s.get('ChangePct', 0):.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
     else:
@@ -543,19 +559,19 @@ with tb_col2:
                 <span style="width: 20%;">SYMBOL</span><span style="width: 15%;">STATUS</span><span style="width: 15%;">ALERT TIME</span><span style="width: 15%;">VOL SURGE</span><span style="width: 12%;">QTY</span><span style="width: 11%; text-align:right;">PRICE</span><span style="width: 11%; text-align:right;">CHANGE</span>
             </div>
         </div>
-    """, unsafe_allow_header=True)
+    """, unsafe_allow_html=True)
     if bearish_signals:
         for s in bearish_signals:
-            status_btn = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bear">READY</span>'
+            status_btn = '<span class="status-watch">WATCH</span>' if s.get('StatusState') == 'WATCH' else '<span class="status-ready-bear">READY</span>'
             st.markdown(f"""
-                <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 20%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
+                <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
+                    <div style="width: 20%;"><span class="sym-btn-box" style="color:#f85149;">{s.get('Symbol')}</span></div>
                     <div style="width: 15%;">{status_btn}</div>
-                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
-                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
+                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s.get('SignalTime')}</div>
+                    <div style="width: 15%;"><span class="vol-box">{s.get('VolMultiple', 1.0):.2f}x</span></div>
+                    <div style="width: 12%;"><span class="qty-box">{s.get('Qty', 1)}</span></div>
+                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s.get('Price', 0):.2f}</div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s.get('ChangePct', 0):.2f}%</div>
                 </a>
             """, unsafe_allow_html=True)
     else:
