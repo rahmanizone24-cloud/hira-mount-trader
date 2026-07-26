@@ -262,11 +262,10 @@ def run_market_scanner():
                     continue
 
                 c1_range_pct = (c1_range / c1_close) * 100
-                c1_ema20_dist = abs(c1_close - float(c1['EMA20'])) / c1_close * 100
-                c1_ema200_dist = abs(c1_close - float(c1['EMA200'])) / c1_close * 100
+                c1_ema20 = float(c1['EMA20'])
+                c1_ema200 = float(c1['EMA200'])
                 gap_pct = abs(c1_open - prev_close) / prev_close * 100
 
-                body_ratio = abs(c1_close - c1_open) / c1_range
                 upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
                 lower_wick_ratio = (min(c1_open, c1_close) - c1_low) / c1_range
 
@@ -282,37 +281,35 @@ def run_market_scanner():
                 signal_bullish, signal_bearish = False, False
                 status_state, signal_time, vol_multiple = "", "-", 1.0
 
-                # 🟢 BULLISH SETUP CONDITIONS
+                # 🟢 EXACT BULLISH SETUP CONDITIONS
                 c1_bull_cond = (
-                    (c1_close > float(c1['EMA20'])) and (c1_close > float(c1['EMA200'])) and # 20 اور 200 EMA کے اوپر
-                    (c1_range_pct <= 1.0) and                                                  # رینج 1% یا کم
-                    (c1_ema20_dist <= 0.5) and (c1_ema200_dist <= 0.5) and                     # EMA سے دور نہ ہو
-                    (gap_pct <= 1.0) and                                                       # گیپ اپ زیادہ نہ ہو
-                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                 # وِک بڑی نہ ہو
+                    (c1_close > c1_ema20) and (c1_close > c1_ema200) and                       # 20 اور 200 EMA کے اوپر کلوز
+                    (c1_range_pct <= 1.0) and                                                   # رینج 1% یا کم
+                    (gap_pct <= 1.0) and                                                        # گیپ اپ زیادہ نہ ہو
+                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                  # وِک زیادہ بڑی نہ ہو
                 )
 
                 c2_bull_pause_cond = (
-                    (c2_high <= c1_high) and (c2_low >= c1_low) and                            # C1 کے ہائی/لو کو بریک نہ کرے (Inside)
-                    (c2_range <= c1_range * 0.8) and                                           # چھوٹی پاز کینڈل
-                    (c2_close >= (c2_low + c2_range * 0.25))                                   # زیادہ بیئرش نہ ہو
+                    (c2_close < c2_open) and                                                    # پرافٹ بکنگ ریڈ کینڈل
+                    (c2_high <= c1_high) and (c2_low >= c1_low) and                             # C1 کے ہائی/لو کے اندر (Inside Candle)
+                    (c2_range <= c1_range * 0.85)                                               # چھوٹی پاز کینڈل
                 )
 
-                # 🔴 BEARISH SETUP CONDITIONS
+                # 🔴 EXACT BEARISH SETUP CONDITIONS
                 c1_bear_cond = (
-                    (c1_close < float(c1['EMA20'])) and (c1_close < float(c1['EMA200'])) and # 20 اور 200 EMA کے نیچے
-                    (c1_range_pct <= 1.0) and                                                  # رینج 1% یا کم
-                    (c1_ema20_dist <= 0.5) and (c1_ema200_dist <= 0.5) and                     # EMA سے دور نہ ہو
-                    (gap_pct <= 1.0) and                                                       # گیپ ڈاؤن زیادہ نہ ہو
-                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                 # وِک بڑی نہ ہو
+                    (c1_close < c1_ema20) and (c1_close < c1_ema200) and                       # 20 اور 200 EMA کے نیچے کلوز
+                    (c1_range_pct <= 1.0) and                                                   # رینج 1% یا کم
+                    (gap_pct <= 1.0) and                                                        # گیپ ڈاؤن زیادہ نہ ہو
+                    (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)                  # وِک زیادہ بڑی نہ ہو
                 )
 
                 c2_bear_pause_cond = (
-                    (c2_high <= c1_high) and (c2_low >= c1_low) and                            # C1 کے ہائی/لو کو بریک نہ کرے (Inside)
-                    (c2_range <= c1_range * 0.8) and                                           # چھوٹی پاز کینڈل
-                    (c2_close <= (c2_high - c2_range * 0.25))                                  # زیادہ بلش نہ ہو
+                    (c2_close > c2_open) and                                                    # پرافٹ بکنگ گرین کینڈل
+                    (c2_high <= c1_high) and (c2_low >= c1_low) and                             # C1 کے ہائی/لو کے اندر (Inside Candle)
+                    (c2_range <= c1_range * 0.85)                                               # چھوٹی پاز کینڈل
                 )
 
-                # --- EVALUATE SIGNALS ---
+                # --- EVALUATE SIGNALS & BREAKOUTS ---
                 if c1_bull_cond and c2_bull_pause_cond:
                     signal_bullish = True
                     status_state, signal_time = "WATCH", "09:20"
@@ -323,7 +320,7 @@ def run_market_scanner():
                             c_curr = today_df.iloc[i]
                             curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
                             
-                            # C1 اور C2 دونوں کے ہائی کے اوپر بریک آؤٹ + VWAP کے اوپر کلوز
+                            # C1 اور C2 کے ہائی کے اوپر بریک آؤٹ + VWAP کے اوپر کلوز
                             if (curr_close > max(c1_high, c2_high)) and (curr_close > curr_vwap):
                                 status_state = "READY"
                                 signal_time = c_curr.name.strftime("%H:%M")
@@ -340,7 +337,7 @@ def run_market_scanner():
                             c_curr = today_df.iloc[i]
                             curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
                             
-                            # C1 اور C2 دونوں کے لو کے نیچے بریک ڈاؤن + VWAP کے نیچے کلوز
+                            # C1 اور C2 کے لو کے نیچے بریک ڈاؤن + VWAP کے نیچے کلوز
                             if (curr_close < min(c1_low, c2_low)) and (curr_close < curr_vwap):
                                 status_state = "READY"
                                 signal_time = c_curr.name.strftime("%H:%M")
