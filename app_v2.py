@@ -68,34 +68,34 @@ st.markdown(f"""
         }}
         .stButton>button:hover {{ border-color: {accent_blue} !important; color: {text_main} !important; }}
         
-        /* TOP HEADER COMPACT & CLEAN ALIGNMENT */
+        /* TOP HEADER ENHANCED ALIGNMENT & BIGGER TEXT */
         .brand-logo {{
-            font-size: 18px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.5px;
+            font-size: 19px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.5px;
             font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 36px;
         }}
         .indices-bar-wrapper {{
-            display: flex; align-items: center; justify-content: flex-start; gap: 4px; width: 100%; height: 36px; overflow-x: auto;
+            display: flex; align-items: center; justify-content: flex-start; gap: 6px; width: 100%; height: 36px; overflow-x: auto;
         }}
         .idx-pill {{
-            display: inline-flex; align-items: center; gap: 4px; background-color: {sub_card_bg}; border: 1.5px solid {border_color};
-            border-radius: 6px; padding: 4px 6px; text-decoration: none !important; font-size: 11px; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 5px; background-color: {sub_card_bg}; border: 1.5px solid {border_color};
+            border-radius: 6px; padding: 4px 8px; text-decoration: none !important; font-size: 12px; white-space: nowrap;
         }}
-        .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 10px; text-transform: uppercase; }}
-        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 12px; }}
-        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 11px; }}
-        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 11px; }}
+        .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 11px; text-transform: uppercase; }}
+        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 13px; }}
+        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 12px; }}
+        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 12px; }}
         
         .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 36px; white-space: nowrap; }}
         .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 36px; font-size: 11px; color: {text_sub}; font-weight: 800; white-space: nowrap; }}
 
-        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.4); padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 900; }}
-        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.4); padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 900; }}
+        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 900; }}
+        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 900; }}
         
-        /* TOP 4 METRIC CARDS */
-        .metric-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 12px 14px; height: 100%; box-sizing: border-box; }}
+        /* EQUAL 4 TOP METRIC CARDS */
+        .metric-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 12px 14px; height: 100%; box-sizing: border-box; min-height: 82px; display: flex; flex-direction: column; justify-content: center; }}
         .card-label {{ font-size: 11px; color: {text_sub}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }}
-        .card-value-green {{ font-size: 18px; font-weight: 900; color: #3fb950; margin-top: 4px; }}
-        .card-value-red {{ font-size: 18px; font-weight: 900; color: #f85149; margin-top: 4px; }}
+        .card-value-green {{ font-size: 18px; font-weight: 900; color: #3fb950; margin-top: 3px; }}
+        .card-value-red {{ font-size: 18px; font-weight: 900; color: #f85149; margin-top: 3px; }}
         
         .box-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 8px 12px; margin-top: 10px; margin-bottom: 8px; }}
         .box-title {{ font-size: 14px; font-weight: 900; color: {text_main}; letter-spacing: 0.5px; }}
@@ -205,7 +205,7 @@ market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
 market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
 is_market_open = (now_dt.weekday() < 5) and (market_open_time <= now_dt <= market_close_time)
 
-cache_ttl_seconds = 60 if is_market_open else 3600
+cache_ttl_seconds = 15 if is_market_open else 300
 
 @st.cache_data(ttl=cache_ttl_seconds)
 def fetch_indices():
@@ -435,7 +435,7 @@ status_html = '<span class="market-status-open"><span class="live-blink">🟢</s
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b | %I:%M %p")
 
-# --- 🎯 PERFECT SINGLE LINE TOP HEADER ---
+# --- 🎯 PERFECT BALANCED TOP HEADER ---
 head_c1, head_c2, head_c3, head_c4, head_c5, head_c6 = st.columns([0.16, 0.51, 0.07, 0.10, 0.08, 0.08])
 
 with head_c1:
@@ -478,6 +478,7 @@ sentiment_color = "#3fb950" if total_bull_cnt >= total_bear_cnt else "#f85149"
 sentiment_blink = "🟢" if total_bull_cnt >= total_bear_cnt else "🔴"
 sentiment_arrow = "▲" if total_bull_cnt >= total_bear_cnt else "▼"
 
+# --- 🎯 EQUAL SIZE 4 METRIC CARDS ---
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
@@ -486,7 +487,7 @@ with c1:
             <div class="metric-container">
                 <div class="card-label">TOP GAINER</div>
                 <a href="{top_gainer.get('TVUrl', '#')}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:3px; overflow:hidden; text-overflow:ellipsis;">{top_gainer.get('Symbol', '-')}</div>
+                    <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer.get('Symbol', '-')}</div>
                     <div class="card-value-green">+{top_gainer.get('ChangePct', 0):.2f}% <span style="font-size:12px; font-weight:700;">(+₹{top_gainer.get('ChangePts', 0)})</span></div>
                 </a>
             </div>
@@ -498,7 +499,7 @@ with c2:
             <div class="metric-container">
                 <div class="card-label">TOP LOSER</div>
                 <a href="{top_loser.get('TVUrl', '#')}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:3px; overflow:hidden; text-overflow:ellipsis;">{top_loser.get('Symbol', '-')}</div>
+                    <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser.get('Symbol', '-')}</div>
                     <div class="card-value-red">{top_loser.get('ChangePct', 0):.2f}% <span style="font-size:12px; font-weight:700;">(₹{top_loser.get('ChangePts', 0)})</span></div>
                 </a>
             </div>
@@ -508,12 +509,12 @@ with c3:
     st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">MARKET SENTIMENT</div>
-            <div style="font-size: 17px; font-weight: 900; color: {sentiment_color}; margin-top:3px; display:flex; align-items:center; gap:6px;">
+            <div style="font-size: 17px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:6px;">
                 <span class="live-blink">{sentiment_blink}</span>
                 <span>{sentiment_label}</span>
                 <span style="font-size:13px;">{sentiment_arrow}</span>
             </div>
-            <div style="font-size: 11px; color: {text_sub}; margin-top: 3px; font-weight: 800;">
+            <div style="font-size: 11px; color: {text_sub}; margin-top: 2px; font-weight: 800;">
                 <span style="color:#3fb950;">▲ {total_bull_cnt}</span> | 
                 <span style="color:#f85149;">▼ {total_bear_cnt}</span> | 
                 <span>⚪ {sideways_cnt}</span>
@@ -525,10 +526,10 @@ with c4:
     st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
-            <div style="font-size: 17px; font-weight: 900; color: {accent_blue}; margin-top:3px;">
+            <div style="font-size: 17px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
                 {TOTAL_SCANNED_STOCKS} Stocks
             </div>
-            <div style="font-size: 11px; color: #3fb950; font-weight: 800; margin-top: 3px;">Active: {total_bull_cnt + total_bear_cnt}</div>
+            <div style="font-size: 11px; color: #3fb950; font-weight: 800; margin-top: 2px;">Active: {total_bull_cnt + total_bear_cnt}</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -564,6 +565,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
+# --- 🎯 CORRECTED BULLISH & BEARISH SETUP HEADINGS ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -618,5 +620,6 @@ with tb_col2:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
-if is_market_open:
-    st.markdown("""<script>setTimeout(function(){ window.location.reload(); }, 30000);</script>""", unsafe_allow_html=True)
+# --- 🚀 POWERFUL LIVE AUTO REFRESH SYSTEM ---
+refresh_time_ms = 15000 if is_market_open else 300000
+st.markdown(f"""<script>setTimeout(function(){{ window.location.reload(); }}, {refresh_time_ms});</script>""", unsafe_allow_html=True)
