@@ -375,6 +375,24 @@ st.markdown(f"""
             font-size: 10px;
             display: inline-block;
         }}
+
+        /* 📱 RESPONSIVE MOBILE MEDIA QUERY (PC: SIDE-BY-SIDE | MOBILE: TOP-BOTTOM) */
+        @media screen and (max-width: 768px) {{
+            /* Force Streamlit Columns to Stack Vertically on Mobile */
+            div[data-testid="column"] {{
+                width: 100% !important;
+                flex: 1 1 100% !important;
+                margin-bottom: 12px !important;
+            }}
+            
+            /* Enable Horizontal Scroll for Stock Row Bar in Mobile */
+            .row-header, .stock-row-item {{
+                min-width: 380px !important;
+            }}
+            .setup-box {{
+                overflow-x: auto !important;
+            }}
+        }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -477,7 +495,7 @@ def calculate_vwap(df):
     vwap = (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
     return vwap
 
-# --- RELAXED & HIGH-PRECISION SETUP ENGINE ---
+# --- SETUP ENGINE ---
 def analyze_stock_5m(symbol):
     try:
         clean_symbol = symbol.replace(".NS", "").upper()
@@ -532,7 +550,7 @@ def analyze_stock_5m(symbol):
 
         c1_range_pct = (c1_range / c1_low) * 100
 
-        # STRICT CONDITION: FIRST 5-MIN CANDLE <= 1.0% RANGE
+        # FIRST 5-MIN CANDLE <= 1.0% RANGE
         if c1_range_pct > 1.00:
             return None
 
@@ -569,7 +587,6 @@ def analyze_stock_5m(symbol):
             status_state = "READY"
             signal_time = "09:20"
             
-            # Check for Ready / Watch Status
             if (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low']):
                 status_state = "WATCH"
 
@@ -723,7 +740,7 @@ bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bu
 # --- CALCULATE SIDEWAYS STOCKS FOR ACCURATE SENTIMENT ---
 sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
 
-# --- DYNAMIC SENTIMENT LOGIC (BLINKER, COLOR & ARROW) ---
+# --- DYNAMIC SENTIMENT LOGIC ---
 if total_bull_cnt >= total_bear_cnt:
     sentiment_label = "Bullish"
     sentiment_color = "#3fb950"
@@ -830,7 +847,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (BULLISH & BEARISH SETUPS) ---
+# --- ROW LIST (BULLISH & BEARISH SETUPS - RESPONSIVE LAYOUT) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -878,7 +895,7 @@ with tb_col2:
                 <span style="width: 15%;">VOL SURGE</span>
                 <span style="width: 12%;">QTY</span>
                 <span style="width: 11%; text-align:right;">PRICE</span>
-                <span style="width: 11%; text-align:right;">CHANGE</span>
+                <span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
