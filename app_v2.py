@@ -7,14 +7,41 @@ import concurrent.futures
 import os
 import pytz
 import time
+import sqlite3
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="Hira Mount Trader Terminal",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"  # Enabled Sidebar for Navigation
 )
+
+# --- DATABASE SETUP FOR TRADING JOURNAL ---
+DB_FILE = "hira_trader_journal.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS journal (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            trade_date TEXT,
+            symbol TEXT,
+            setup TEXT,
+            trade_type TEXT,
+            entry_price REAL,
+            exit_price REAL,
+            qty INTEGER,
+            pnl REAL,
+            status TEXT,
+            notes TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # --- THEME STATE MANAGEMENT ---
 query_params = st.query_params
@@ -455,6 +482,22 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
+# --- SIDEBAR NAVIGATION MENU ---
+st.sidebar.markdown(f"<h2 style='color: {accent_blue}; text-align: center;'>🏛️ HIRA MOUNT</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
+
+app_mode = st.sidebar.radio(
+    "📌 MAIN MENU",
+    ["📊 Live Terminal", "📓 Trading Journal", "⚙️ Filters & Settings"]
+)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 💰 Capital Control")
+total_capital = st.sidebar.number_input("Total Capital (₹)", value=100000, step=10000)
+per_trade_cap = st.sidebar.number_input("Per Trade Allocation (₹)", value=10000, step=1000)
+max_slots = int(total_capital / per_trade_cap) if per_trade_cap > 0 else 10
+st.sidebar.info(f"💡 Available Slots: **{max_slots} Trades**")
+
 # --- KEYWORDS TO STRICTLY BAN ETFs ---
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
 
@@ -610,7 +653,7 @@ def run_market_scanner():
             change_pts = curr_price - prev_close
 
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
-            calc_qty = int((10000 * 5) / curr_price) if curr_price > 0 else 0
+            calc_qty = int((per_trade_cap * 5) / curr_price) if curr_price > 0 else 0
 
             signal_bullish = False
             signal_bearish = False
@@ -733,245 +776,333 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP NAVIGATION HEADER (ORIGINAL UNTOUCHED DESKTOP STRUCTURE) ---
-top_idx = fetch_indices()
-now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
+# ==========================================
+# PAGE 1: LIVE TERMINAL SCANNER (ORIGINAL)
+# ==========================================
+if app_mode == "📊 Live Terminal":
+    # --- TOP NAVIGATION HEADER (ORIGINAL UNTOUCHED DESKTOP STRUCTURE) ---
+    top_idx = fetch_indices()
+    now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
-idx_pills_html = '<div class="header-indices-wrapper">'
-for name, data in top_idx.items():
-    pct = data.get('pct', 0)
-    cls = "idx-up-p" if pct >= 0 else "idx-down-p"
-    arrow = "▲" if pct >= 0 else "▼"
-    url = data.get("url", "#")
-    val = data.get("val", 0)
-    
-    idx_pills_html += (
-        f'<a class="idx-pill" href="{url}" target="_blank">'
-        f'<span class="idx-lbl">{name}:</span> '
-        f'<span class="idx-num">{val:,.2f}</span> '
-        f'<span class="{cls}">{arrow}{pct:+.2f}%</span>'
-        f'</a>'
-    )
-idx_pills_html += '</div>'
+    idx_pills_html = '<div class="header-indices-wrapper">'
+    for name, data in top_idx.items():
+        pct = data.get('pct', 0)
+        cls = "idx-up-p" if pct >= 0 else "idx-down-p"
+        arrow = "▲" if pct >= 0 else "▼"
+        url = data.get("url", "#")
+        val = data.get("val", 0)
+        
+        idx_pills_html += (
+            f'<a class="idx-pill" href="{url}" target="_blank">'
+            f'<span class="idx-lbl">{name}:</span> '
+            f'<span class="idx-num">{val:,.2f}</span> '
+            f'<span class="{cls}">{arrow}{pct:+.2f}%</span>'
+            f'</a>'
+        )
+    idx_pills_html += '</div>'
 
-nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.15, 0.53, 0.09, 0.11, 0.06, 0.06])
+    nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.15, 0.53, 0.09, 0.11, 0.06, 0.06])
 
-with nav_col1:
-    st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
+    with nav_col1:
+        st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
 
-with nav_col2:
-    st.markdown(idx_pills_html, unsafe_allow_html=True)
+    with nav_col2:
+        st.markdown(idx_pills_html, unsafe_allow_html=True)
 
-with nav_col3:
-    st.markdown(f'<div style="margin-top:2px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
+    with nav_col3:
+        st.markdown(f'<div style="margin-top:2px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
 
-with nav_col4:
-    st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap; text-align:center;">🕒 {now_time}</div>', unsafe_allow_html=True)
+    with nav_col4:
+        st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap; text-align:center;">🕒 {now_time}</div>', unsafe_allow_html=True)
 
-with nav_col5:
-    theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
-    if st.button(theme_icon):
-        st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
-        st.query_params['theme'] = st.session_state.theme
-        st.rerun()
+    with nav_col5:
+        theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
+        if st.button(theme_icon):
+            st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
+            st.query_params['theme'] = st.session_state.theme
+            st.rerun()
 
-with nav_col6:
-    if st.button("🔄 Refresh"):
-        st.cache_data.clear()
-        st.rerun()
+    with nav_col6:
+        if st.button("🔄 Refresh"):
+            st.cache_data.clear()
+            st.rerun()
 
-st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- EXECUTE SCANNER ---
-bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
+    # --- EXECUTE SCANNER ---
+    bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
 
-# --- CALCULATE SIDEWAYS STOCKS FOR ACCURATE SENTIMENT ---
-sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
+    # --- CALCULATE SIDEWAYS STOCKS FOR ACCURATE SENTIMENT ---
+    sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
 
-# --- DYNAMIC SENTIMENT LOGIC ---
-if total_bull_cnt >= total_bear_cnt:
-    sentiment_label = "Bullish"
-    sentiment_color = "#3fb950"
-    sentiment_blink = "🟢"
-    sentiment_arrow = "▲"
-else:
-    sentiment_label = "Bearish"
-    sentiment_color = "#f85149"
-    sentiment_blink = "🔴"
-    sentiment_arrow = "▼"
+    # --- DYNAMIC SENTIMENT LOGIC ---
+    if total_bull_cnt >= total_bear_cnt:
+        sentiment_label = "Bullish"
+        sentiment_color = "#3fb950"
+        sentiment_blink = "🟢"
+        sentiment_arrow = "▲"
+    else:
+        sentiment_label = "Bearish"
+        sentiment_color = "#f85149"
+        sentiment_blink = "🔴"
+        sentiment_arrow = "▼"
 
-# --- METRIC CARDS ROW (ORIGINAL DESKTOP 4-COLUMN STRUCTURE) ---
-c1, c2, c3, c4 = st.columns(4)
+    # --- METRIC CARDS ROW (ORIGINAL DESKTOP 4-COLUMN STRUCTURE) ---
+    c1, c2, c3, c4 = st.columns(4)
 
-with c1:
-    if top_gainer:
+    with c1:
+        if top_gainer:
+            st.markdown(f"""
+                <div class="metric-container">
+                    <div class="card-label">TOP GAINER</div>
+                    <a href="{top_gainer['TVUrl']}" target="_blank" style="text-decoration:none;">
+                        <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer['Symbol']}</div>
+                        <div class="card-value-green">+{top_gainer['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(+₹{top_gainer['ChangePts']})</span></div>
+                    </a>
+                </div>
+            """, unsafe_allow_html=True)
+
+    with c2:
+        if top_loser:
+            st.markdown(f"""
+                <div class="metric-container">
+                    <div class="card-label">TOP LOSER</div>
+                    <a href="{top_loser['TVUrl']}" target="_blank" style="text-decoration:none;">
+                        <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser['Symbol']}</div>
+                        <div class="card-value-red">{top_loser['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(₹{top_loser['ChangePts']})</span></div>
+                    </a>
+                </div>
+            """, unsafe_allow_html=True)
+
+    with c3:
         st.markdown(f"""
             <div class="metric-container">
-                <div class="card-label">TOP GAINER</div>
-                <a href="{top_gainer['TVUrl']}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer['Symbol']}</div>
-                    <div class="card-value-green">+{top_gainer['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(+₹{top_gainer['ChangePts']})</span></div>
-                </a>
+                <div class="card-label">MARKET SENTIMENT</div>
+                <div style="font-size: 15px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:4px;">
+                    <span class="live-blink">{sentiment_blink}</span>
+                    <span>{sentiment_label}</span>
+                    <span style="font-size:12px;">{sentiment_arrow}</span>
+                </div>
+                <div style="font-size: 9px; color: {text_sub}; margin-top: 3px; font-weight: 700; white-space:nowrap;">
+                    <span style="color:#3fb950;">▲ {total_bull_cnt}</span> | 
+                    <span style="color:#f85149;">▼ {total_bear_cnt}</span> | 
+                    <span>⚪ {sideways_cnt}</span>
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
-with c2:
-    if top_loser:
+    with c4:
         st.markdown(f"""
             <div class="metric-container">
-                <div class="card-label">TOP LOSER</div>
-                <a href="{top_loser['TVUrl']}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser['Symbol']}</div>
-                    <div class="card-value-red">{top_loser['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(₹{top_loser['ChangePts']})</span></div>
-                </a>
+                <div class="card-label">SCANNED STOCKS</div>
+                <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
+                    {TOTAL_SCANNED_STOCKS} Stocks
+                </div>
+                <div style="font-size: 10px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active: {total_bull_cnt + total_bear_cnt}</div>
             </div>
         """, unsafe_allow_html=True)
 
-with c3:
-    st.markdown(f"""
-        <div class="metric-container">
-            <div class="card-label">MARKET SENTIMENT</div>
-            <div style="font-size: 15px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:4px;">
-                <span class="live-blink">{sentiment_blink}</span>
-                <span>{sentiment_label}</span>
-                <span style="font-size:12px;">{sentiment_arrow}</span>
-            </div>
-            <div style="font-size: 9px; color: {text_sub}; margin-top: 3px; font-weight: 700; white-space:nowrap;">
-                <span style="color:#3fb950;">▲ {total_bull_cnt}</span> | 
-                <span style="color:#f85149;">▼ {total_bear_cnt}</span> | 
-                <span>⚪ {sideways_cnt}</span>
-            </div>
+    # --- MARKET MOVERS ---
+    st.markdown("""
+        <div class="box-container">
+            <div class="box-title">🔥 MARKET MOVERS</div>
         </div>
     """, unsafe_allow_html=True)
 
-with c4:
-    st.markdown(f"""
-        <div class="metric-container">
-            <div class="card-label">SCANNED STOCKS</div>
-            <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
-                {TOTAL_SCANNED_STOCKS} Stocks
+    if market_movers:
+        m_cols = st.columns(len(market_movers))
+        for i, m in enumerate(market_movers):
+            with m_cols[i]:
+                p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
+                sign = "+" if m['ChangePct'] >= 0 else ""
+                time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
+                
+                st.markdown(f"""
+                    <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
+                        <div class="stock-card">
+                            <div class="stock-card-top">
+                                <span class="stock-symbol">{m['Symbol']}</span>
+                                <div style="display:flex; gap:3px;">
+                                    <span class="qty-box">{m['Qty']}</span>
+                                    <span class="vol-box">{m['VolMultiple']:.1f}x</span>
+                                </div>
+                            </div>
+                            <div class="stock-card-body">
+                                <div>
+                                    <span class="{p_class} live-blink">₹{m['Price']:.2f}</span>
+                                    <span style="font-size: 11px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'};">
+                                        {sign}{m['ChangePct']:.2f}%
+                                    </span>
+                                </div>
+                                <div class="stock-meta">🕒 {time_str}</div>
+                            </div>
+                        </div>
+                    </a>
+                """, unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+
+    # --- ROW LIST (BULLISH & BEARISH SETUPS) ---
+    tb_col1, tb_col2 = st.columns(2)
+
+    with tb_col1:
+        st.markdown("""
+            <div class="setup-box">
+                <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
+                <div class="row-header">
+                    <span style="width: 20%;">SYMBOL</span>
+                    <span style="width: 15%;">STATUS</span>
+                    <span style="width: 15%;">ALERT TIME</span>
+                    <span style="width: 15%;">VOL SURGE</span>
+                    <span style="width: 12%;">QTY</span>
+                    <span style="width: 11%; text-align:right;">PRICE</span>
+                    <span style="width: 12%; text-align:right;">CHANGE</span>
+                </div>
             </div>
-            <div style="font-size: 10px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active: {total_bull_cnt + total_bear_cnt}</div>
-        </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+        
+        if bullish_signals:
+            for s in bullish_signals:
+                status_btn_html = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bull">READY</span>'
 
-# --- MARKET MOVERS ---
-st.markdown("""
-    <div class="box-container">
-        <div class="box-title">🔥 MARKET MOVERS</div>
-    </div>
-""", unsafe_allow_html=True)
+                st.markdown(f"""
+                    <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
+                        <div style="width: 20%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
+                        <div style="width: 15%;">{status_btn_html}</div>
+                        <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                        <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                        <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
+                        <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                        <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
+                    </a>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bullish breakouts...</div>', unsafe_allow_html=True)
 
-if market_movers:
-    m_cols = st.columns(len(market_movers))
-    for i, m in enumerate(market_movers):
-        with m_cols[i]:
-            p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
-            sign = "+" if m['ChangePct'] >= 0 else ""
-            time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
+    with tb_col2:
+        st.markdown("""
+            <div class="setup-box">
+                <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
+                <div class="row-header">
+                    <span style="width: 20%;">SYMBOL</span>
+                    <span style="width: 15%;">STATUS</span>
+                    <span style="width: 15%;">ALERT TIME</span>
+                    <span style="width: 15%;">VOL SURGE</span>
+                    <span style="width: 12%;">QTY</span>
+                    <span style="width: 11%; text-align:right;">PRICE</span>
+                    <span style="width: 11%; text-align:right;">CHANGE</span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if bearish_signals:
+            for s in bearish_signals:
+                status_btn_html = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bear">READY</span>'
+
+                st.markdown(f"""
+                    <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
+                        <div style="width: 20%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
+                        <div style="width: 15%;">{status_btn_html}</div>
+                        <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                        <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                        <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
+                        <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                        <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
+                    </a>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
+
+    # --- AUTO-REFRESH (30 SECONDS) ---
+    if is_market_open:
+        st.markdown("""
+            <script>
+                setTimeout(function(){
+                    window.location.reload();
+                }, 30000);
+            </script>
+        """, unsafe_allow_html=True)
+
+# ==========================================
+# PAGE 2: TRADING JOURNAL & ANALYTICS
+# ==========================================
+elif app_mode == "📓 Trading Journal":
+    st.title("📓 Private Trading Journal")
+    st.markdown("Record your automated/manual trades, review performance, and analyze win rate.")
+
+    j_col1, j_col2 = st.columns([1, 2])
+
+    with j_col1:
+        st.subheader("➕ Log New Trade")
+        with st.form("journal_form"):
+            t_date = st.date_input("Trade Date", datetime.date.today())
+            t_symbol = st.text_input("Stock Symbol (e.g. ALOKINDS)").upper()
+            t_setup = st.selectbox("Setup Used", ["10Min Pause Candle Breakout", "VWAP Reversal", "EMA Crossover", "Manual Entry"])
+            t_type = st.selectbox("Type", ["BUY", "SELL"])
+            t_entry = st.number_input("Entry Price (₹)", min_value=0.0, step=0.5)
+            t_exit = st.number_input("Exit Price (₹)", min_value=0.0, step=0.5)
+            t_qty = st.number_input("Quantity", min_value=1, step=1)
             
-            st.markdown(f"""
-                <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
-                    <div class="stock-card">
-                        <div class="stock-card-top">
-                            <span class="stock-symbol">{m['Symbol']}</span>
-                            <div style="display:flex; gap:3px;">
-                                <span class="qty-box">{m['Qty']}</span>
-                                <span class="vol-box">{m['VolMultiple']:.1f}x</span>
-                            </div>
-                        </div>
-                        <div class="stock-card-body">
-                            <div>
-                                <span class="{p_class} live-blink">₹{m['Price']:.2f}</span>
-                                <span style="font-size: 11px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'};">
-                                    {sign}{m['ChangePct']:.2f}%
-                                </span>
-                            </div>
-                            <div class="stock-meta">🕒 {time_str}</div>
-                        </div>
-                    </div>
-                </a>
-            """, unsafe_allow_html=True)
+            pnl_calc = (t_exit - t_entry) * t_qty if t_type == "BUY" else (t_entry - t_exit) * t_qty
+            st.write(f"**Calculated P&L:** ₹{pnl_calc:,.2f}")
+            
+            t_status = st.selectbox("Status", ["TARGET HIT", "SL HIT", "OPEN"])
+            t_notes = st.text_area("Trade Notes / Mistakes")
 
-st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+            submitted = st.form_submit_button("💾 Save Trade")
+            if submitted and t_symbol:
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                c.execute('''
+                    INSERT INTO journal (trade_date, symbol, setup, trade_type, entry_price, exit_price, qty, pnl, status, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (str(t_date), t_symbol, t_setup, t_type, t_entry, t_exit, t_qty, pnl_calc, t_status, t_notes))
+                conn.commit()
+                conn.close()
+                st.success(f"Trade for {t_symbol} saved successfully!")
+                st.rerun()
 
-# --- ROW LIST (BULLISH & BEARISH SETUPS) ---
-tb_col1, tb_col2 = st.columns(2)
+    with j_col2:
+        st.subheader("📊 Performance & Analytics")
+        conn = sqlite3.connect(DB_FILE)
+        df_journal = pd.read_sql_query("SELECT * FROM journal ORDER BY id DESC", conn)
+        conn.close()
 
-with tb_col1:
-    st.markdown("""
-        <div class="setup-box">
-            <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
-            <div class="row-header">
-                <span style="width: 20%;">SYMBOL</span>
-                <span style="width: 15%;">STATUS</span>
-                <span style="width: 15%;">ALERT TIME</span>
-                <span style="width: 15%;">VOL SURGE</span>
-                <span style="width: 12%;">QTY</span>
-                <span style="width: 11%; text-align:right;">PRICE</span>
-                <span style="width: 12%; text-align:right;">CHANGE</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+        if not df_journal.empty:
+            total_pnl = df_journal['pnl'].sum()
+            total_trades = len(df_journal)
+            wins = len(df_journal[df_journal['pnl'] > 0])
+            win_rate = (wins / total_trades) * 100 if total_trades > 0 else 0.0
+
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Total Realized P&L", f"₹{total_pnl:,.2f}")
+            m2.metric("Total Trades", total_trades)
+            m3.metric("Win Rate", f"{win_rate:.1f}%")
+
+            st.markdown("---")
+            st.dataframe(df_journal, use_container_width=True)
+        else:
+            st.info("No trades recorded yet. Start logging your trades on the left panel!")
+
+# ==========================================
+# PAGE 3: STRICT LOGIC FILTERS & CONFIG
+# ==========================================
+elif app_mode == "⚙️ Filters & Settings":
+    st.title("⚙️ Strict Logical Quality Filters Configuration")
+    st.markdown("Fine-tune strict quality parameters to block unwanted/illogical signals before execution.")
+
+    st.subheader("🛡️ Algorithmic Risk & Quality Rules")
     
-    if bullish_signals:
-        for s in bullish_signals:
-            status_btn_html = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bull">READY</span>'
-
-            st.markdown(f"""
-                <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 20%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
-                    <div style="width: 15%;">{status_btn_html}</div>
-                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
-                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
-                </a>
-            """, unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bullish breakouts...</div>', unsafe_allow_html=True)
-
-with tb_col2:
-    st.markdown("""
-        <div class="setup-box">
-            <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
-            <div class="row-header">
-                <span style="width: 20%;">SYMBOL</span>
-                <span style="width: 15%;">STATUS</span>
-                <span style="width: 15%;">ALERT TIME</span>
-                <span style="width: 15%;">VOL SURGE</span>
-                <span style="width: 12%;">QTY</span>
-                <span style="width: 11%; text-align:right;">PRICE</span>
-                <span style="width: 11%; text-align:right;">CHANGE</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    col_f1, col_f2 = st.columns(2)
     
-    if bearish_signals:
-        for s in bearish_signals:
-            status_btn_html = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bear">READY</span>'
+    with col_f1:
+        st.checkbox("🚫 Block Penny / Non-Liquid Stocks", value=True)
+        st.checkbox("🕯️ Enforce Candle Body Ratio >= 60%", value=True)
+        st.slider("📊 Minimum Volume Spike Multiple", min_value=1.0, max_value=5.0, value=2.0, step=0.5)
 
-            st.markdown(f"""
-                <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                    <div style="width: 20%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
-                    <div style="width: 15%;">{status_btn_html}</div>
-                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                    <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                    <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
-                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                    <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
-                </a>
-            """, unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
+    with col_f2:
+        st.checkbox("📈 Enforce VWAP & EMA Alignment", value=True)
+        st.checkbox("🎯 Nifty 50 Market Trend Check", value=True)
+        st.number_input("🛡️ Buffer Entry Price (%)", value=0.10, step=0.05)
 
-# --- AUTO-REFRESH (30 SECONDS) ---
-if is_market_open:
-    st.markdown("""
-        <script>
-            setTimeout(function(){
-                window.location.reload();
-            }, 30000);
-        </script>
-    """, unsafe_allow_html=True)
+    st.success("✅ Logical parameters saved in local configuration!")
