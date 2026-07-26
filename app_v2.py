@@ -371,22 +371,22 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* FIXED SUPERHERO FLOATING WIDGET (BOTTOM RIGHT - INTRASTOCKS STYLE) */
+        /* FIXED SUPERHERO FLOATING WIDGET (MOVED TO BOTTOM LEFT) */
         .krrish-fixed-float {{
             position: fixed !important;
             bottom: 25px !important;
-            right: 25px !important;
+            left: 25px !important;
             z-index: 9999999 !important;
             cursor: pointer;
         }}
 
         .krrish-avatar-glow {{
-            width: 54px;
-            height: 54px;
+            width: 58px;
+            height: 58px;
             border-radius: 50%;
             border: 2px solid #00d2ff;
-            background: #031528;
-            box-shadow: 0 0 18px rgba(0, 210, 255, 0.8);
+            background: linear-gradient(135deg, #021B2A 0%, #08304B 100%);
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.85);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -397,20 +397,20 @@ st.markdown(f"""
 
         .krrish-avatar-glow:hover {{
             transform: scale(1.12);
-            box-shadow: 0 0 28px rgba(0, 210, 255, 1);
+            box-shadow: 0 0 30px rgba(0, 210, 255, 1);
         }}
 
         @keyframes superheroPulse {{
             0% {{ box-shadow: 0 0 10px rgba(0, 210, 255, 0.5); transform: scale(0.98); }}
-            100% {{ box-shadow: 0 0 24px rgba(0, 210, 255, 1); transform: scale(1.05); }}
+            100% {{ box-shadow: 0 0 25px rgba(0, 210, 255, 1); transform: scale(1.05); }}
         }}
 
-        /* ALERT HISTORY PANEL POPUP */
+        /* ALERT HISTORY PANEL POPUP (LEFT SIDE) */
         .alerts-history-panel {{
             display: none;
             position: fixed !important;
-            bottom: 90px !important;
-            right: 25px !important;
+            bottom: 95px !important;
+            left: 25px !important;
             width: 290px;
             max-height: 380px;
             background-color: {card_bg};
@@ -422,18 +422,19 @@ st.markdown(f"""
             overflow-y: auto;
         }}
 
-        /* AUTO-DISMISS TOAST BUBBLE */
+        /* AUTO-DISMISS TOAST BUBBLE (LEFT SIDE) */
         .toast-bubble {{
             position: fixed !important;
-            bottom: 90px !important;
-            right: 25px !important;
+            bottom: 95px !important;
+            left: 25px !important;
             background-color: {card_bg};
             border: 2px solid #00d2ff;
             border-radius: 10px;
             padding: 10px 14px;
             max-width: 270px;
-            box-shadow: 0px 8px 24px rgba(0,0,0,0.7);
+            box-shadow: 0px 8px 24px rgba(0,0,0,0.8);
             z-index: 9999998 !important;
+            transition: opacity 0.5s ease;
         }}
 
         .clear-btn {{
@@ -972,8 +973,8 @@ for stock in all_ready_stocks:
 if not alert_items_html:
     alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">No active breakouts yet</div>'
 
-# --- HIGH-QUALITY AVATAR WIDGET (INTRASTOCKS STYLE) ---
-AVATAR_IMG_URL = "https://api.dicebear.com/7.x/bottts/svg?seed=KrrishHero&backgroundColor=031528&textureChance=100"
+# --- NEW SUPERHERO AVATAR (LEFT SIDE POSITIONED) ---
+AVATAR_IMG_URL = "https://api.dicebear.com/7.x/bottts/svg?seed=KrrishHeroMask&backgroundColor=021B2A&textureChance=100"
 
 latest_sym = latest_ready_stock['Symbol'] if latest_ready_stock else ''
 latest_type = ('Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown') if latest_ready_stock else ''
@@ -986,7 +987,7 @@ toast_display = 'block' if latest_ready_stock else 'none'
 part1 = f'''
 <div class="krrish-fixed-float" id="krrishTriggerBtn">
     <div class="krrish-avatar-glow" title="Click to view Alert History">
-        <img src="{AVATAR_IMG_URL}" width="42" height="42" alt="Krrish Trader" style="object-fit:cover; border-radius:50%;" />
+        <img src="{AVATAR_IMG_URL}" width="46" height="46" alt="Krrish Superhero" style="object-fit:cover; border-radius:50%;" />
     </div>
 </div>
 '''
@@ -1014,10 +1015,14 @@ part3 = f'''
 
 script_js = """
 <script>
+    // AUTO-DISMISS POPUP TOAST AFTER EXACTLY 5 SECONDS
     setTimeout(function() {
         var toast = document.getElementById('toastNotification');
-        if(toast) { toast.style.display = 'none'; }
-    }, 6000);
+        if(toast) { 
+            toast.style.opacity = '0';
+            setTimeout(function(){ toast.style.display = 'none'; }, 500);
+        }
+    }, 5000);
 
     var triggerBtn = document.getElementById('krrishTriggerBtn');
     var closeBtn = document.getElementById('closePanelBtn');
