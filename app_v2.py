@@ -370,98 +370,6 @@ st.markdown(f"""
             font-size: 10px;
             display: inline-block;
         }}
-
-        /* FIXED SUPERHERO FLOATING WIDGET (EXACT BOTTOM RIGHT POSITION) */
-        .krrish-fixed-float {{
-            position: fixed !important;
-            bottom: 15px !important;
-            right: 20px !important;
-            z-index: 9999999 !important;
-            cursor: pointer;
-        }}
-
-        .krrish-avatar-glow {{
-            width: 62px;
-            height: 62px;
-            border-radius: 12px;
-            background: radial-gradient(circle, rgba(0, 210, 255, 0.35) 0%, rgba(3, 21, 40, 0.95) 80%);
-            box-shadow: 0 0 25px rgba(0, 210, 255, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-            animation: superheroPulse 1.8s infinite alternate;
-        }}
-
-        .krrish-avatar-glow:hover {{
-            transform: scale(1.1);
-            box-shadow: 0 0 35px rgba(0, 210, 255, 1);
-        }}
-
-        @keyframes superheroPulse {{
-            0% {{ box-shadow: 0 0 12px rgba(0, 210, 255, 0.5); transform: scale(0.96); }}
-            100% {{ box-shadow: 0 0 28px rgba(0, 210, 255, 1); transform: scale(1.05); }}
-        }}
-
-        /* ALERT HISTORY PANEL POPUP (EXACT MATCH TO PHOTO) */
-        .alerts-history-panel {{
-            display: none;
-            position: fixed !important;
-            bottom: 88px !important;
-            right: 20px !important;
-            width: 280px;
-            max-height: 420px;
-            background-color: #121820;
-            border: 1px solid #232d3f;
-            border-radius: 10px;
-            padding: 12px;
-            box-shadow: 0px 12px 35px rgba(0,0,0,0.95);
-            z-index: 9999999 !important;
-            overflow-y: auto;
-        }}
-
-        /* AUTO-DISMISS TOAST BUBBLE */
-        .toast-bubble {{
-            position: fixed !important;
-            bottom: 88px !important;
-            right: 20px !important;
-            background-color: #121820;
-            border: 2px solid #00d2ff;
-            border-radius: 10px;
-            padding: 10px 14px;
-            max-width: 270px;
-            box-shadow: 0px 8px 24px rgba(0,0,0,0.85);
-            z-index: 9999998 !important;
-            transition: opacity 0.5s ease;
-        }}
-
-        .btn-clear-orange {{
-            background-color: #ff5500 !important;
-            color: #ffffff !important;
-            border: none !important;
-            border-radius: 6px !important;
-            font-size: 11px !important;
-            font-weight: 800 !important;
-            padding: 3px 10px !important;
-            cursor: pointer;
-        }}
-
-        /* PHOTO MATCHED ALERT CARD ITEM */
-        .alert-card-photo-match {{
-            background-color: #1a222d;
-            border: 1px solid #283344;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 8px;
-            position: relative;
-        }}
-        .alert-card-photo-match.bull-border {{
-            border-left: 4px solid #3fb950;
-        }}
-        .alert-card-photo-match.bear-border {{
-            border-left: 4px solid #f85149;
-        }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -564,7 +472,6 @@ def calculate_vwap(df):
     vwap = (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
     return vwap
 
-# --- POWERFUL HIGH-ACCURACY 20 EMA + 200 EMA + VWAP ENGINE ---
 def analyze_stock_5m(symbol):
     try:
         clean_symbol = symbol.replace(".NS", "").upper()
@@ -573,15 +480,13 @@ def analyze_stock_5m(symbol):
             return None
 
         ticker = yf.Ticker(symbol)
-        df_5m = ticker.history(period="10d", interval="5m")
+        df_5m = ticker.history(period="5d", interval="5m")
         df_daily = ticker.history(period="5d", interval="1d")
         
-        if len(df_5m) < 200 or len(df_daily) < 2:
+        if len(df_5m) < 20 or len(df_daily) < 2:
             return None
 
-        # EMA & VWAP CALCULATIONS
         df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
-        df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
         df_5m['VWAP'] = calculate_vwap(df_5m)
 
         latest_trading_date = df_5m.index[-1].date()
@@ -594,7 +499,7 @@ def analyze_stock_5m(symbol):
         c2 = today_df.iloc[1]
 
         max_base_vol = max(c1['Volume'], c2['Volume'])
-        if max_base_vol < 5000:
+        if max_base_vol < 1000:  # Enhanced sensitivity for liquidity
             return None
 
         latest = today_df.iloc[-1]
@@ -621,7 +526,7 @@ def analyze_stock_5m(symbol):
 
         c1_range_pct = (c1_range / c1_low) * 100
 
-        if c1_range_pct > 1.25:
+        if c1_range_pct > 1.50:  # Relaxed range cap slightly for wider bullish setup detection
             return None
 
         c1_body = abs(c1_close - c1_open)
@@ -634,28 +539,22 @@ def analyze_stock_5m(symbol):
         lower_wick_ratio = lower_wick / c1_range
 
         c1_vwap = c1['VWAP']
-        c1_ema20 = c1['EMA20']
-        c1_ema200 = c1['EMA200']
 
-        # POWERFUL SUPER BULLISH SETUP (BREAKING 20 EMA + 200 EMA + VWAP)
+        # BULLISH CONDITION
         c1_bull_cond = (
-            (c1_range_pct <= 1.25) and 
-            (c1_close > c1_ema20) and 
-            (c1_close > c1_ema200) and
-            (c1_close > c1_vwap) and 
-            (body_ratio >= 0.70) and 
-            (upper_wick_ratio <= 0.20)
+            (c1_close >= c1['EMA20']) and 
+            (c1_close >= c1_vwap) and 
+            (body_ratio >= 0.60) and 
+            (upper_wick_ratio <= 0.25)
         )
         c2_bull_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
-        # POWERFUL SUPER BEARISH SETUP (BREAKING BELOW 20 EMA + 200 EMA + VWAP)
+        # BEARISH CONDITION
         c1_bear_cond = (
-            (c1_range_pct <= 1.25) and 
-            (c1_close < c1_ema20) and 
-            (c1_close < c1_ema200) and
-            (c1_close < c1_vwap) and 
-            (body_ratio >= 0.70) and 
-            (lower_wick_ratio <= 0.20)
+            (c1_close <= c1['EMA20']) and 
+            (c1_close <= c1_vwap) and 
+            (body_ratio >= 0.60) and 
+            (lower_wick_ratio <= 0.25)
         )
         c2_bear_inside = (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low'])
 
@@ -988,140 +887,6 @@ with tb_col2:
             """, unsafe_allow_html=True)
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
-
-# --- COLLECT ALL READY STOCKS FOR HISTORY PANEL ---
-all_ready_stocks = [s for s in (bullish_signals + bearish_signals) if s['StatusState'] == 'READY']
-latest_ready_stock = all_ready_stocks[0] if all_ready_stocks else None
-
-# --- GENERATE HTML LIST FOR ALERT HISTORY PANEL (MATCHING PHOTO EXACTLY) ---
-alert_items_html = ""
-for stock in all_ready_stocks:
-    s_type = "Bull" if stock['IsBullish'] else "Bear"
-    s_color = "#3fb950" if stock['IsBullish'] else "#f85149"
-    s_border_cls = "bull-border" if stock['IsBullish'] else "bear-border"
-    s_dot = "🔴" if not stock['IsBullish'] else "🟢"
-
-    alert_items_html += f"""
-        <div class="alert-card-photo-match {s_border_cls}">
-            <div style="font-weight:900; font-size:14px; color:#3fb950; letter-spacing:0.5px;">{stock['Symbol']}</div>
-            <div style="font-size:15px; font-weight:900; color:#ffffff; margin-top:2px;">₹{stock['Price']:.1f}</div>
-            <div style="display:flex; align-items:center; gap:5px; margin-top:3px;">
-                <span style="font-size:10px;">{s_dot}</span>
-                <span style="font-weight:900; font-size:12px; color:{s_color};">{s_type}</span>
-            </div>
-            <div style="font-size:11px; color:#8b949e; font-weight:700; margin-top:4px;">{stock['SignalTime']}</div>
-        </div>
-    """
-
-if not alert_items_html:
-    alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:20px;">No power breakout alerts yet</div>'
-
-# --- IS-MAN SUPERHERO AVATAR & PANEL (PHOTO PERFECT MATCH) ---
-SUPERHERO_SVG = """
-<svg viewBox="0 0 100 100" width="56" height="56" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#021a2e" />
-      <stop offset="100%" stop-color="#083854" />
-    </linearGradient>
-  </defs>
-  <rect width="100" height="100" rx="14" fill="url(#bgGrad)" />
-  <!-- Hair & Head -->
-  <path d="M 32,42 C 32,25 68,25 68,42 L 68,60 C 68,72 32,72 32,60 Z" fill="#3a2312" />
-  <path d="M 35,45 C 35,32 65,32 65,45 L 65,58 C 65,68 35,68 35,58 Z" fill="#e5aa82" />
-  <!-- Blue Goggles/Mask -->
-  <path d="M 33,42 Q 50,37 67,42 L 66,50 Q 50,45 34,50 Z" fill="#00d2ff" />
-  <path d="M 36,44 Q 50,40 64,44 L 63,48 Q 50,44 37,48 Z" fill="#ffffff" opacity="0.6" />
-  <!-- Body Suit -->
-  <path d="M 20,100 L 25,72 Q 50,68 75,72 L 80,100 Z" fill="#0c1824" />
-  <path d="M 32,74 L 50,92 L 68,74 Z" fill="#00d2ff" opacity="0.3" />
-  <!-- Emblem IS -->
-  <polygon points="50,75 62,83 50,93 38,83" fill="#00d2ff" stroke="#ffffff" stroke-width="1.5" />
-  <text x="50" y="87" font-size="9" font-weight="900" fill="#ffffff" text-anchor="middle" font-family="Arial">IS</text>
-</svg>
-"""
-
-latest_sym = latest_ready_stock['Symbol'] if latest_ready_stock else ''
-latest_type = ('Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown') if latest_ready_stock else ''
-latest_time = latest_ready_stock['SignalTime'] if latest_ready_stock else ''
-latest_price = f"₹{latest_ready_stock['Price']:.2f}" if latest_ready_stock else ''
-latest_change = f"{latest_ready_stock['ChangePct']:+.2f}%" if latest_ready_stock else ''
-latest_color = ("#3fb950" if latest_ready_stock and latest_ready_stock['IsBullish'] else "#f85149") if latest_ready_stock else "#58a6ff"
-toast_display = 'block' if latest_ready_stock else 'none'
-
-part1 = f'''
-<div class="krrish-fixed-float" id="krrishTriggerBtn">
-    <div class="krrish-avatar-glow" title="Click to view IS-Man Alerts">
-        {SUPERHERO_SVG}
-    </div>
-</div>
-'''
-
-part2 = f'''
-<div id="alertHistoryPanel" class="alerts-history-panel">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #283344; padding-bottom:8px; margin-bottom:10px;">
-        <div style="display:flex; align-items:center; gap:6px;">
-            <span style="color:#00d2ff; font-weight:900; font-size:12px;">IS</span>
-            <span style="font-weight:900; font-size:14px; color:#ffffff;">IS-Man Alerts</span>
-            <span style="font-size:14px;">🔊</span>
-        </div>
-        <div>
-            <button class="btn-clear-orange" id="clearBtnId">Clear</button>
-        </div>
-    </div>
-    <div id="alertListContainer">{alert_items_html}</div>
-</div>
-'''
-
-part3 = f'''
-<div id="toastNotification" class="toast-bubble" style="display:{toast_display};">
-    <div style="font-weight:900; color:{latest_color}; font-size:12px; margin-bottom:2px;">🚨 POWER ALERT!</div>
-    <div style="font-size:11px; color:{text_main};"><b>{latest_sym}</b> gave <b>{latest_type}</b> at <b>{latest_time}</b></div>
-    <div style="font-size:10px; color:{text_sub}; margin-top:3px;">Price: {latest_price} ({latest_change})</div>
-</div>
-'''
-
-script_js = """
-<script>
-    // AUTO-DISMISS POPUP TOAST AFTER EXACTLY 5 SECONDS
-    setTimeout(function() {
-        var toast = document.getElementById('toastNotification');
-        if(toast) { 
-            toast.style.opacity = '0';
-            setTimeout(function(){ toast.style.display = 'none'; }, 500);
-        }
-    }, 5000);
-
-    var triggerBtn = document.getElementById('krrishTriggerBtn');
-    var clearBtn = document.getElementById('clearBtnId');
-
-    if(triggerBtn) {
-        triggerBtn.addEventListener('click', function() {
-            var panel = document.getElementById('alertHistoryPanel');
-            var toast = document.getElementById('toastNotification');
-            if(toast) toast.style.display = 'none';
-            if (panel) {
-                if (panel.style.display === "block") {
-                    panel.style.display = "none";
-                } else {
-                    panel.style.display = "block";
-                }
-            }
-        });
-    }
-
-    if(clearBtn) {
-        clearBtn.addEventListener('click', function() {
-            var container = document.getElementById('alertListContainer');
-            if(container) {
-                container.innerHTML = '<div style="text-align:center; color:#8b949e; font-size:11px; padding:20px;">Cleared all IS-Man alerts</div>';
-            }
-        });
-    }
-</script>
-"""
-
-st.markdown(part1 + part2 + part3 + script_js, unsafe_allow_html=True)
 
 # --- AUTO-REFRESH (30 SECONDS) ---
 if is_market_open:
