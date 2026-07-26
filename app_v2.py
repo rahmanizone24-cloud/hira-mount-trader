@@ -620,7 +620,7 @@ with tb_col2:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
-# --- 🎯 EXACT TREEMAP HEATMAP (MATCHING YOUR IMAGE DESIGN) ---
+# --- 🎯 OFFICIAL TRADINGVIEW NIFTY 500 TREEMAP HEATMAP ---
 st.markdown("""<div class="box-container"><div class="box-title">🗺️ NIFTY 500 MARKET HEATMAP</div></div>""", unsafe_allow_html=True)
 
 tv_theme = "dark" if st.session_state.theme == "dark" else "light"
@@ -638,9 +638,9 @@ tv_heatmap_code = f"""
   <div class="tradingview-widget-container__widget"></div>
   <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
   {{
-  "exchanges": ["NSE"],
+  "exchanges": [],
   "dataSource": "NIFTY500",
-  "grouping": "no_group",
+  "grouping": "sector",
   "blockSize": "market_cap_basic",
   "blockColor": "change",
   "locale": "en",
