@@ -41,7 +41,7 @@ else:
     accent_blue = "#0969da"
     btn_bg = "#eaeef2"
 
-# --- CUSTOM ENHANCED & LARGER FONTS CSS ---
+# --- CUSTOM ENHANCED CSS WITH PERFECT TOP HEADER COMPACT SPACING ---
 st.markdown(f"""
     <style>
         header {{visibility: hidden !important; height: 0px !important;}}
@@ -51,7 +51,7 @@ st.markdown(f"""
             display: none !important; visibility: hidden !important; opacity: 0 !important;
         }}
         .block-container {{
-            padding-top: 0.5rem !important; padding-bottom: 0.2rem !important; padding-left: 0.8rem !important; padding-right: 0.8rem !important; max-width: 100% !important;
+            padding-top: 0.4rem !important; padding-bottom: 0.2rem !important; padding-left: 0.6rem !important; padding-right: 0.6rem !important; max-width: 100% !important;
         }}
         body, .stApp {{
             background-color: {bg_color} !important; color: {text_main} !important; font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
@@ -60,38 +60,38 @@ st.markdown(f"""
             display: none !important; visibility: hidden !important; opacity: 0 !important;
         }}
         
-        /* LARGER BUTTONS */
+        /* BUTTONS */
         .stButton>button {{
             background-color: {btn_bg} !important; color: {accent_blue} !important; border: 1px solid {border_color} !important;
-            border-radius: 6px !important; font-weight: 800 !important; font-size: 13px !important; padding: 4px 10px !important;
-            transition: all 0.2s !important; min-height: 0px !important; height: 38px !important; width: 100% !important;
+            border-radius: 6px !important; font-weight: 800 !important; font-size: 12px !important; padding: 2px 6px !important;
+            transition: all 0.2s !important; min-height: 0px !important; height: 36px !important; width: 100% !important;
         }}
         .stButton>button:hover {{ border-color: {accent_blue} !important; color: {text_main} !important; }}
         
-        /* ENHANCED TOP HEADER ALIGNMENT */
+        /* TOP HEADER COMPACT & CLEAN ALIGNMENT */
         .brand-logo {{
-            font-size: 19px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.8px;
-            font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 38px;
+            font-size: 18px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.5px;
+            font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 36px;
         }}
         .indices-bar-wrapper {{
-            display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; height: 38px; overflow-x: auto;
+            display: flex; align-items: center; justify-content: flex-start; gap: 4px; width: 100%; height: 36px; overflow-x: auto;
         }}
         .idx-pill {{
-            display: inline-flex; align-items: center; gap: 6px; background-color: {sub_card_bg}; border: 1.5px solid {border_color};
-            border-radius: 6px; padding: 5px 10px; text-decoration: none !important; font-size: 12px; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 4px; background-color: {sub_card_bg}; border: 1.5px solid {border_color};
+            border-radius: 6px; padding: 4px 6px; text-decoration: none !important; font-size: 11px; white-space: nowrap;
         }}
-        .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 11px; text-transform: uppercase; }}
-        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 13px; }}
-        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 12px; }}
-        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 12px; }}
+        .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 10px; text-transform: uppercase; }}
+        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 12px; }}
+        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 11px; }}
+        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 11px; }}
         
-        .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 38px; white-space: nowrap; }}
-        .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 38px; font-size: 12px; color: {text_sub}; font-weight: 800; white-space: nowrap; }}
+        .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 36px; white-space: nowrap; }}
+        .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 36px; font-size: 11px; color: {text_sub}; font-weight: 800; white-space: nowrap; }}
 
-        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 900; }}
-        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 900; }}
+        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.4); padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 900; }}
+        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.4); padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 900; }}
         
-        /* LARGER TOP 4 METRIC CARDS */
+        /* TOP 4 METRIC CARDS */
         .metric-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 12px 14px; height: 100%; box-sizing: border-box; }}
         .card-label {{ font-size: 11px; color: {text_sub}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }}
         .card-value-green {{ font-size: 18px; font-weight: 900; color: #3fb950; margin-top: 4px; }}
@@ -100,7 +100,7 @@ st.markdown(f"""
         .box-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 8px 12px; margin-top: 10px; margin-bottom: 8px; }}
         .box-title {{ font-size: 14px; font-weight: 900; color: {text_main}; letter-spacing: 0.5px; }}
         
-        /* LARGER MARKET MOVERS CARDS */
+        /* MARKET MOVERS CARDS */
         .stock-card {{ background-color: {sub_card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 10px 12px; text-align: left; }}
         .stock-card-top {{ display: flex; justify-content: space-between; align-items: center; }}
         .stock-symbol {{ font-size: 14px; font-weight: 900; color: {accent_blue}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
@@ -109,7 +109,7 @@ st.markdown(f"""
         .stock-price-down {{ font-size: 15px; font-weight: 900; color: #f85149; }}
         .stock-meta {{ font-size: 11px; color: {text_sub}; font-weight: 700; text-align: right; }}
         
-        /* LARGER TABLES & ROWS */
+        /* TABLES & ROWS */
         .setup-box {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 10px; padding: 12px; }}
         .setup-header-bull {{ font-size: 16px; font-weight: 900; color: #3fb950; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
         .setup-header-bear {{ font-size: 16px; font-weight: 900; color: #f85149; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
@@ -145,7 +145,7 @@ FNO_STOCKS = [
     "JKCEMENT", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "LALPATHLAB", "LT", "LTIM", "LTF", "LTI", "LTTS", 
     "LUPIN", "M&M", "M&MFIN", "MANAPPURAM", "MARICO", "MARUTI", "MCDOWELL-N", "MCX", "METROPOLIS", "MFSL", 
     "MGL", "MOTHERSON", "MPHASIS", "MRF", "MUTHOOTFIN", "NATIONALUM", "NAUKRI", "NAVINFLUOR", "NESTLEIND", "NMDC", 
-    "NTPC", "OBEROIRLTY", "OFSS", "ONGC", "PAGEIND", "PERSISTENT", "PETRONET", "PFC", "PIDILITIND", "PIIND", 
+    "NTPC", "OBEROIRLTY", "OFFS", "ONGC", "PAGEIND", "PERSISTENT", "PETRONET", "PFC", "PIDILITIND", "PIIND", 
     "PNB", "POLYCAB", "POWERGRID", "PVRINOX", "RAMCOCEM", "RBLBANK", "RECLTD", "RELIANCE", "SAIL", "SBICARD", 
     "SBILIFE", "SBIN", "SHREECEM", "SHRIRAMFIN", "SIEMENS", "SRF", "SUNPHARMA", "SUNTV", "SYNGENE", "TATACHEMICALS", 
     "TATACOMM", "TATACONSUM", "TATAMOTORS", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TITAN", "TORNTPHARM", "TRENT", 
@@ -401,8 +401,9 @@ status_html = '<span class="market-status-open"><span class="live-blink">🟢</s
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b | %I:%M %p")
 
-# --- 🎯 PRO ENHANCED SINGLE LINE TOP HEADER ---
-head_c1, head_c2, head_c3, head_c4, head_c5, head_c6 = st.columns([0.18, 0.44, 0.08, 0.12, 0.09, 0.09])
+# --- 🎯 PERFECT SINGLE LINE TOP HEADER (COMPACT RATIOS TO PREVENT OVERLAP) ---
+# Column Ratios: Logo (16%), Indices (51%), Market Status (7%), Time (10%), Dark Button (8%), Refresh Button (8%)
+head_c1, head_c2, head_c3, head_c4, head_c5, head_c6 = st.columns([0.16, 0.51, 0.07, 0.10, 0.08, 0.08])
 
 with head_c1:
     st.markdown('<div class="brand-logo">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
@@ -434,7 +435,7 @@ with head_c6:
         st.cache_data.clear()
         st.rerun()
 
-st.markdown(f"<hr style='margin-top: 6px; margin-bottom: 12px; border-color: {border_color}; opacity: 0.6;'>", unsafe_allow_html=True)
+st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 10px; border-color: {border_color}; opacity: 0.5;'>", unsafe_allow_html=True)
 
 # --- EXECUTE SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
