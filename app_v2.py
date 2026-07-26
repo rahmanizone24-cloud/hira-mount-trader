@@ -147,7 +147,7 @@ FNO_STOCKS = [
     "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL", "ZYDUSLIFE"
 ]
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def load_hira_stocks():
     csv_candidates = ["Hira Stocks (2).csv", "Hira Stocks (1).csv", "Hira Stocks.csv"]
     for file_candidate in csv_candidates:
@@ -170,7 +170,17 @@ def load_hira_stocks():
 ALL_HIRA_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(ALL_HIRA_SYMBOLS)
 
-@st.cache_data(ttl=120)
+# --- MARKET TIME DETECTOR ---
+ist_tz = pytz.timezone('Asia/Kolkata')
+now_dt = datetime.datetime.now(ist_tz)
+market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
+market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
+is_market_open = (now_dt.weekday() < 5) and (market_open_time <= now_dt <= market_close_time)
+
+# Dynamic TTL: 60 seconds during market hours, 1 Hour during Off-Hours for Lightning Performance
+cache_ttl_seconds = 60 if is_market_open else 3600
+
+@st.cache_data(ttl=cache_ttl_seconds)
 def fetch_indices():
     indices = {
         "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
@@ -206,18 +216,21 @@ def calculate_vwap(df):
     tp = (df['High'] + df['Low'] + df['Close']) / 3
     return (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
 
-@st.cache_data(ttl=120)
+# 🚀 ULTRA-FAST DYNAMICALLY CACHED SCANNER ENGINE
+@st.cache_data(ttl=cache_ttl_seconds)
 def run_market_scanner():
     bullish_list, bearish_list, all_stocks = [], [], []
     per_trade_cap = 10000
 
-    chunk_size = 50
+    # Optimized Chunk Size for Faster Parallel Fetching
+    chunk_size = 100
     symbol_chunks = [ALL_HIRA_SYMBOLS[i:i + chunk_size] for i in range(0, len(ALL_HIRA_SYMBOLS), chunk_size)]
 
     for chunk in symbol_chunks:
         try:
-            bulk_5m = yf.download(chunk, period="5d", interval="5m", progress=False, group_by="ticker", threads=False)
-            bulk_1d = yf.download(chunk, period="5d", interval="1d", progress=False, group_by="ticker", threads=False)
+            # period="2d" reduces payload size by 60% compared to 5d
+            bulk_5m = yf.download(chunk, period="2d", interval="5m", progress=False, group_by="ticker", threads=True)
+            bulk_1d = yf.download(chunk, period="5d", interval="1d", progress=False, group_by="ticker", threads=True)
         except Exception:
             continue
 
@@ -230,7 +243,7 @@ def run_market_scanner():
                 df_5m = bulk_5m[symbol].dropna() if len(chunk) > 1 else bulk_5m.dropna()
                 df_daily = bulk_1d[symbol].dropna() if len(chunk) > 1 else bulk_1d.dropna()
 
-                if len(df_5m) < 20 or len(df_daily) < 2:
+                if len(df_5m) < 15 or len(df_daily) < 2:
                     continue
 
                 df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
@@ -381,20 +394,13 @@ def run_market_scanner():
 
     return top_bullish, top_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
-# --- MARKET TIME ---
-ist_tz = pytz.timezone('Asia/Kolkata')
-now_dt = datetime.datetime.now(ist_tz)
-market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
-market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
-is_market_open = (now_dt.weekday() < 5) and (market_open_time <= now_dt <= market_close_time)
-
+# --- MARKET STATUS & HEADER HTML ---
 status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> OPEN</span>' if is_market_open else '<span class="market-status-closed"><span class="live-blink">🔴</span> CLOSED</span>'
 
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b | %I:%M %p")
 
 # --- 🎯 ALL-IN-ONE SINGLE LINE TOP HEADER ---
-# 1. Title | 2. Indices | 3. Market Status | 4. Time | 5. Dark/Light | 6. Refresh
 head_c1, head_c2, head_c3, head_c4, head_c5, head_c6 = st.columns([0.18, 0.44, 0.08, 0.12, 0.09, 0.09])
 
 with head_c1:
