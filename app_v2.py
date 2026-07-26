@@ -123,6 +123,7 @@ st.markdown(f"""
             width: 100%;
             height: 38px;
             white-space: nowrap;
+            overflow-x: auto;
         }}
         
         .idx-pill {{
@@ -376,16 +377,37 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* 📱 RESPONSIVE MOBILE MEDIA QUERY (PC: SIDE-BY-SIDE | MOBILE: TOP-BOTTOM) */
+        /* 📱 ADVANCED MOBILE RESPONSIVE MEDIA QUERY */
         @media screen and (max-width: 768px) {{
-            /* Force Streamlit Columns to Stack Vertically on Mobile */
-            div[data-testid="column"] {{
+            /* 1. Header Indices Pill Horizontal Scroll */
+            .header-indices-wrapper {{
+                overflow-x: auto !important;
+                padding-bottom: 4px;
+            }}
+
+            /* 2. Top Metric Cards Grid 2-by-2 */
+            div[data-testid="column"]:has(div.metric-container) {{
+                width: 48% !important;
+                flex: 1 1 48% !important;
+                display: inline-block !important;
+                margin-bottom: 8px !important;
+            }}
+
+            /* 3. Action Buttons (Theme & Refresh) Side-by-Side */
+            div[data-testid="column"]:has(button) {{
+                width: 48% !important;
+                flex: 1 1 48% !important;
+                display: inline-block !important;
+            }}
+
+            /* 4. Setup Tables Stack Vertically */
+            div[data-testid="column"]:has(div.setup-box) {{
                 width: 100% !important;
                 flex: 1 1 100% !important;
                 margin-bottom: 12px !important;
             }}
             
-            /* Enable Horizontal Scroll for Stock Row Bar in Mobile */
+            /* Horizontal Scroll for Tables in Mobile */
             .row-header, .stock-row-item {{
                 min-width: 380px !important;
             }}
