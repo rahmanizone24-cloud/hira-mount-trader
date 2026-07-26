@@ -123,7 +123,6 @@ st.markdown(f"""
             width: 100%;
             height: 38px;
             white-space: nowrap;
-            overflow-x: auto;
         }}
         
         .idx-pill {{
@@ -377,37 +376,54 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* 📱 ADVANCED MOBILE RESPONSIVE MEDIA QUERY */
+        /* 📱 ADVANCED MOBILE RESPONSIVE MEDIA QUERY (EXACT CUSTOM REQUEST) */
         @media screen and (max-width: 768px) {{
-            /* 1. Header Indices Pill Horizontal Scroll */
-            .header-indices-wrapper {{
-                overflow-x: auto !important;
-                padding-bottom: 4px;
+            /* 1. Center Title in Mobile */
+            .nav-title-clean {{
+                text-align: center !important;
+                display: block !important;
+                width: 100% !important;
+                margin-bottom: 5px !important;
             }}
 
-            /* 2. Top Metric Cards Grid 2-by-2 */
+            /* 2. Index Pills Grid (2x2 Boxes) */
+            .header-indices-wrapper {{
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 6px !important;
+                height: auto !important;
+                white-space: normal !important;
+            }}
+            .idx-pill {{
+                width: 100% !important;
+                justify-content: space-between !important;
+                padding: 5px 8px !important;
+            }}
+
+            /* 3. Action Buttons & Time Row Grid (50% - 50%) */
+            div[data-testid="column"]:has(button) {{
+                width: 48% !important;
+                display: inline-block !important;
+                float: left !important;
+            }}
+            
+            /* 4. Top Metric Cards Side-by-Side (50% - 50% Grid) */
             div[data-testid="column"]:has(div.metric-container) {{
                 width: 48% !important;
-                flex: 1 1 48% !important;
                 display: inline-block !important;
+                float: left !important;
                 margin-bottom: 8px !important;
             }}
 
-            /* 3. Action Buttons (Theme & Refresh) Side-by-Side */
-            div[data-testid="column"]:has(button) {{
-                width: 48% !important;
-                flex: 1 1 48% !important;
-                display: inline-block !important;
-            }}
-
-            /* 4. Setup Tables Stack Vertically */
+            /* 5. Setup Tables Stack Vertically (Bullish Top, Bearish Bottom) */
             div[data-testid="column"]:has(div.setup-box) {{
                 width: 100% !important;
-                flex: 1 1 100% !important;
+                display: block !important;
+                clear: both !important;
                 margin-bottom: 12px !important;
             }}
             
-            /* Horizontal Scroll for Tables in Mobile */
+            /* Horizontal Scroll for Data Rows inside Tables */
             .row-header, .stock-row-item {{
                 min-width: 380px !important;
             }}
