@@ -620,25 +620,25 @@ with tb_col2:
     else:
         st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:700; font-size:13px;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
-# --- 🎯 TRADINGVIEW OFFICIAL NIFTY 500 LIVE HEATMAP WIDGET ---
-st.markdown("""<div class="box-container"><div class="box-title">🗺️ NIFTY 500 MARKET HEATMAP (TOP GAINERS ➔ TOP LOSERS)</div></div>""", unsafe_allow_html=True)
+# --- 🎯 OFFICIAL INDIAN NSE NIFTY 500 HEATMAP WIDGET ---
+st.markdown("""<div class="box-container"><div class="box-title">🗺️ INDIAN NSE NIFTY 500 MARKET HEATMAP (HIGH TO LOW)</div></div>""", unsafe_allow_html=True)
 
 tv_theme = "dark" if st.session_state.theme == "dark" else "light"
 tv_heatmap_code = f"""
-<div class="tradingview-widget-container" style="height: 520px; width: 100%;">
+<div class="tradingview-widget-container" style="height: 550px; width: 100%;">
   <div class="tradingview-widget-container__widget" style="height:100%; width:100%;"></div>
   <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
   {{
-  "exchanges": [],
-  "dataSource": "NIFTY500",
+  "exchanges": ["NSE"],
+  "dataSource": "SENSEX",
   "grouping": "sector",
   "blockSize": "market_cap_basic",
   "blockColor": "change",
-  "locale": "en",
+  "locale": "in",
   "symbolUrl": "https://www.tradingview.com/chart/?symbol=NSE:",
   "colorTheme": "{tv_theme}",
-  "hasTopBar": false,
-  "isDataSetEnabled": false,
+  "hasTopBar": true,
+  "isDataSetEnabled": true,
   "isZoomEnabled": true,
   "hasSymbolTooltip": true,
   "width": "100%",
@@ -647,7 +647,7 @@ tv_heatmap_code = f"""
   </script>
 </div>
 """
-st.components.v1.html(tv_heatmap_code, height=530)
+st.components.v1.html(tv_heatmap_code, height=560)
 
 # --- 🚀 POWERFUL LIVE AUTO REFRESH SYSTEM ---
 refresh_time_ms = 15000 if is_market_open else 300000
