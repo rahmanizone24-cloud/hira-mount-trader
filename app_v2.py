@@ -162,24 +162,26 @@ st.markdown(f"""
             background-color: rgba(63, 185, 80, 0.15);
             color: #3fb950;
             border: 1px solid rgba(63, 185, 80, 0.4);
-            padding: 3px 6px;
-            border-radius: 5px;
-            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 800;
             white-space: nowrap;
             display: inline-block;
+            text-align: center;
         }}
         
         .market-status-closed {{
             background-color: rgba(248, 81, 73, 0.15);
             color: #f85149;
             border: 1px solid rgba(248, 81, 73, 0.4);
-            padding: 3px 6px;
-            border-radius: 5px;
-            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 800;
             white-space: nowrap;
             display: inline-block;
+            text-align: center;
         }}
 
         /* Metric Summary Cards */
@@ -187,23 +189,24 @@ st.markdown(f"""
             background-color: {card_bg};
             border: 1px solid {border_color};
             border-radius: 8px;
-            padding: 10px 14px;
+            padding: 10px 12px;
             height: 100%;
+            box-sizing: border-box;
         }}
         .card-label {{
-            font-size: 11px;
+            font-size: 10px;
             color: {text_sub};
             font-weight: 800;
             text-transform: uppercase;
         }}
         .card-value-green {{
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 900;
             color: #3fb950;
             margin-top: 2px;
         }}
         .card-value-red {{
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 900;
             color: #f85149;
             margin-top: 2px;
@@ -376,17 +379,36 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* 📱 ADVANCED MOBILE RESPONSIVE MEDIA QUERY (EXACT CUSTOM REQUEST) */
+        /* MOBILE FLEX GRID LAYOUT CONTAINER */
+        .mobile-controls-wrapper {{
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }}
+        .mobile-row-2col {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }}
+        .mobile-col-half {{
+            flex: 1;
+            width: 50%;
+        }}
+
+        /* 📱 MOBILE RESPONSIVE MEDIA QUERY */
         @media screen and (max-width: 768px) {{
-            /* 1. Center Title in Mobile */
+            /* Title Center in Mobile */
             .nav-title-clean {{
                 text-align: center !important;
                 display: block !important;
                 width: 100% !important;
-                margin-bottom: 5px !important;
+                margin-bottom: 4px !important;
             }}
 
-            /* 2. Index Pills Grid (2x2 Boxes) */
+            /* Index Pills Grid 2x2 */
             .header-indices-wrapper {{
                 display: grid !important;
                 grid-template-columns: 1fr 1fr !important;
@@ -397,25 +419,25 @@ st.markdown(f"""
             .idx-pill {{
                 width: 100% !important;
                 justify-content: space-between !important;
-                padding: 5px 8px !important;
+                padding: 4px 6px !important;
             }}
 
-            /* 3. Action Buttons & Time Row Grid (50% - 50%) */
-            div[data-testid="column"]:has(button) {{
-                width: 48% !important;
-                display: inline-block !important;
-                float: left !important;
-            }}
-            
-            /* 4. Top Metric Cards Side-by-Side (50% - 50% Grid) */
+            /* Top Metric Cards Side-by-Side (50% - 50% Grid) */
             div[data-testid="column"]:has(div.metric-container) {{
-                width: 48% !important;
+                width: 48.5% !important;
                 display: inline-block !important;
                 float: left !important;
                 margin-bottom: 8px !important;
             }}
 
-            /* 5. Setup Tables Stack Vertically (Bullish Top, Bearish Bottom) */
+            /* Action Buttons Side-by-Side (50% - 50% Grid) */
+            div[data-testid="column"]:has(button) {{
+                width: 48.5% !important;
+                display: inline-block !important;
+                float: left !important;
+            }}
+
+            /* Setup Tables Stack Vertically */
             div[data-testid="column"]:has(div.setup-box) {{
                 width: 100% !important;
                 display: block !important;
@@ -423,7 +445,7 @@ st.markdown(f"""
                 margin-bottom: 12px !important;
             }}
             
-            /* Horizontal Scroll for Data Rows inside Tables */
+            /* Horizontal Scroll for Table Rows */
             .row-header, .stock-row-item {{
                 min-width: 380px !important;
             }}
@@ -799,8 +821,8 @@ with c1:
             <div class="metric-container">
                 <div class="card-label">TOP GAINER</div>
                 <a href="{top_gainer['TVUrl']}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 15px; font-weight: 800; color: {accent_blue}; margin-top:2px;">{top_gainer['Symbol']}</div>
-                    <div class="card-value-green">+{top_gainer['ChangePct']:.2f}% <span style="font-size:12px; font-weight:normal;">(+₹{top_gainer['ChangePts']})</span></div>
+                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer['Symbol']}</div>
+                    <div class="card-value-green">+{top_gainer['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(+₹{top_gainer['ChangePts']})</span></div>
                 </a>
             </div>
         """, unsafe_allow_html=True)
@@ -811,8 +833,8 @@ with c2:
             <div class="metric-container">
                 <div class="card-label">TOP LOSER</div>
                 <a href="{top_loser['TVUrl']}" target="_blank" style="text-decoration:none;">
-                    <div style="font-size: 15px; font-weight: 800; color: {accent_blue}; margin-top:2px;">{top_loser['Symbol']}</div>
-                    <div class="card-value-red">{top_loser['ChangePct']:.2f}% <span style="font-size:12px; font-weight:normal;">(₹{top_loser['ChangePts']})</span></div>
+                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser['Symbol']}</div>
+                    <div class="card-value-red">{top_loser['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(₹{top_loser['ChangePts']})</span></div>
                 </a>
             </div>
         """, unsafe_allow_html=True)
@@ -821,15 +843,15 @@ with c3:
     st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">MARKET SENTIMENT</div>
-            <div style="font-size: 16px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:6px;">
+            <div style="font-size: 15px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:4px;">
                 <span class="live-blink">{sentiment_blink}</span>
                 <span>{sentiment_label}</span>
-                <span style="font-size:14px;">{sentiment_arrow}</span>
+                <span style="font-size:12px;">{sentiment_arrow}</span>
             </div>
-            <div style="font-size: 10px; color: {text_sub}; margin-top: 3px; font-weight: 700;">
-                <span style="color:#3fb950;">▲ Bullish: {total_bull_cnt}</span> | 
-                <span style="color:#f85149;">▼ Bearish: {total_bear_cnt}</span> | 
-                <span>⚪ Sideways: {sideways_cnt}</span>
+            <div style="font-size: 9px; color: {text_sub}; margin-top: 3px; font-weight: 700; white-space:nowrap;">
+                <span style="color:#3fb950;">▲ {total_bull_cnt}</span> | 
+                <span style="color:#f85149;">▼ {total_bear_cnt}</span> | 
+                <span>⚪ {sideways_cnt}</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -838,10 +860,10 @@ with c4:
     st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
-            <div style="font-size: 16px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
-                {TOTAL_SCANNED_STOCKS} Cash Stocks
+            <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
+                {TOTAL_SCANNED_STOCKS} Stocks
             </div>
-            <div style="font-size: 11px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active Signals: {total_bull_cnt + total_bear_cnt}</div>
+            <div style="font-size: 10px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active: {total_bull_cnt + total_bear_cnt}</div>
         </div>
     """, unsafe_allow_html=True)
 
