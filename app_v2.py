@@ -3,11 +3,8 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import datetime
-import concurrent.futures
 import os
 import pytz
-import time
-import sqlite3
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -17,32 +14,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- DATABASE SETUP FOR TRADING JOURNAL ---
-DB_FILE = "hira_trader_journal.db"
-
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS journal (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            trade_date TEXT,
-            symbol TEXT,
-            setup TEXT,
-            trade_type TEXT,
-            entry_price REAL,
-            exit_price REAL,
-            qty INTEGER,
-            pnl REAL,
-            status TEXT,
-            notes TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-init_db()
-
 # --- THEME STATE MANAGEMENT ---
 query_params = st.query_params
 
@@ -51,10 +22,6 @@ if 'theme' not in st.session_state:
 
 st.query_params['theme'] = st.session_state.theme
 
-if 'active_tab' not in st.session_state:
-    st.session_state.active_tab = "terminal"
-
-# --- THEME CSS DEFINITIONS ---
 if st.session_state.theme == 'dark':
     bg_color = "#0b0e14"
     card_bg = "#161b22"
@@ -76,427 +43,86 @@ else:
 
 st.markdown(f"""
     <style>
-        /* HIDE DEFAULT STREAMLIT CHROME & BOTTOM MANAGE APP TOOLBAR */
         header {{visibility: hidden !important; height: 0px !important;}}
         footer {{visibility: hidden !important; display: none !important;}}
         #MainMenu {{visibility: hidden !important;}}
-        
-        div[data-testid="stStatusWidget"], 
-        div[data-testid="stDecoration"], 
-        div[class*="viewerBadge"], 
-        div[data-testid="stToolbar"] {{
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
+        div[data-testid="stStatusWidget"], div[data-testid="stDecoration"], div[class*="viewerBadge"], div[data-testid="stToolbar"] {{
+            display: none !important; visibility: hidden !important; opacity: 0 !important;
         }}
-
-        /* Remove Page Padding Entirely to Keep Layout Compact */
         .block-container {{
-            padding-top: 0.3rem !important;
-            padding-bottom: 0.1rem !important;
-            padding-left: 0.6rem !important;
-            padding-right: 0.6rem !important;
-            max-width: 100% !important;
+            padding-top: 0.3rem !important; padding-bottom: 0.1rem !important; padding-left: 0.6rem !important; padding-right: 0.6rem !important; max-width: 100% !important;
         }}
-        
-        /* Dynamic Terminal Background */
         body, .stApp {{
-            background-color: {bg_color} !important;
-            color: {text_main} !important;
-            font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+            background-color: {bg_color} !important; color: {text_main} !important; font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         }}
-
-        /* HIDE ALL LOADING SPINNERS */
         div[data-testid="stSpinner"], .stSpinner {{
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
+            display: none !important; visibility: hidden !important; opacity: 0 !important;
         }}
-
-        /* Custom Button Styling */
         .stButton>button {{
-            background-color: {btn_bg} !important;
-            color: {accent_blue} !important;
-            border: 1px solid {border_color} !important;
-            border-radius: 6px !important;
-            font-weight: 800 !important;
-            font-size: 12px !important;
-            padding: 4px 8px !important;
-            transition: all 0.2s !important;
-            min-height: 0px !important;
-            height: 38px !important;
-            width: 100% !important;
+            background-color: {btn_bg} !important; color: {accent_blue} !important; border: 1px solid {border_color} !important;
+            border-radius: 6px !important; font-weight: 800 !important; font-size: 12px !important; padding: 4px 8px !important;
+            transition: all 0.2s !important; min-height: 0px !important; height: 38px !important; width: 100% !important;
         }}
-        .stButton>button:hover {{
-            border-color: {accent_blue} !important;
-            color: {text_main} !important;
-        }}
-
-        /* TOP NAV MENU TABS BUTTONS */
-        .nav-btn-active {{
-            border: 2px solid {accent_blue} !important;
-            background-color: {accent_blue}22 !important;
-            color: {accent_blue} !important;
-            font-weight: 900 !important;
-        }}
-
-        /* CLEAN & BOLD TITLE TEXT */
+        .stButton>button:hover {{ border-color: {accent_blue} !important; color: {text_main} !important; }}
         .nav-title-clean {{
-            font-size: 17px;
-            font-weight: 900;
-            color: {accent_blue} !important;
-            letter-spacing: 0.8px;
-            font-family: 'Trebuchet MS', 'Impact', sans-serif;
-            text-transform: uppercase;
-            white-space: nowrap;
-            line-height: 38px;
+            font-size: 17px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.8px;
+            font-family: 'Trebuchet MS', 'Impact', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 38px;
         }}
-
-        /* TOP ROW INDEX PILLS */
-        .header-indices-wrapper {{
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 8px;
-            width: 100%;
-            height: 38px;
-            white-space: nowrap;
-        }}
-        
-        .idx-pill {{
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            background-color: {sub_card_bg};
-            border: 1.5px solid {border_color};
-            border-radius: 7px;
-            padding: 4px 10px;
-            text-decoration: none !important;
-            font-size: 12px;
-            transition: border-color 0.2s, transform 0.1s;
-        }}
-        .idx-pill:hover {{
-            border-color: {accent_blue};
-            transform: translateY(-1px);
-        }}
+        .header-indices-wrapper {{ display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; height: 38px; white-space: nowrap; }}
+        .idx-pill {{ display: inline-flex; align-items: center; gap: 5px; background-color: {sub_card_bg}; border: 1.5px solid {border_color}; border-radius: 7px; padding: 4px 10px; text-decoration: none !important; font-size: 12px; transition: border-color 0.2s, transform 0.1s; }}
+        .idx-pill:hover {{ border-color: {accent_blue}; transform: translateY(-1px); }}
         .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 11px; text-transform: uppercase; }}
         .idx-num {{ color: {text_main}; font-weight: 900; font-size: 12px; }}
         .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 11px; }}
         .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 11px; }}
-
-        /* SMOOTH SLOW BLINKING ANIMATION (6 SECONDS PULSE) */
-        .live-blink {{
-            animation: pulseBlink 6.0s ease-in-out infinite;
-            display: inline-block;
-        }}
-        @keyframes pulseBlink {{
-            0% {{ opacity: 1; transform: scale(1); }}
-            50% {{ opacity: 0.40; transform: scale(0.98); }}
-            100% {{ opacity: 1; transform: scale(1); }}
-        }}
-
-        /* MARKET STATUS TAGS */
-        .market-status-open {{
-            background-color: rgba(63, 185, 80, 0.15);
-            color: #3fb950;
-            border: 1px solid rgba(63, 185, 80, 0.4);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 800;
-            white-space: nowrap;
-            display: block;
-            text-align: center;
-        }}
-        
-        .market-status-closed {{
-            background-color: rgba(248, 81, 73, 0.15);
-            color: #f85149;
-            border: 1px solid rgba(248, 81, 73, 0.4);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 800;
-            white-space: nowrap;
-            display: block;
-            text-align: center;
-        }}
-
-        /* Metric Summary Cards */
-        .metric-container {{
-            background-color: {card_bg};
-            border: 1px solid {border_color};
-            border-radius: 8px;
-            padding: 10px 12px;
-            height: 100%;
-            box-sizing: border-box;
-        }}
-        .card-label {{
-            font-size: 10px;
-            color: {text_sub};
-            font-weight: 800;
-            text-transform: uppercase;
-        }}
-        .card-value-green {{
-            font-size: 15px;
-            font-weight: 900;
-            color: #3fb950;
-            margin-top: 2px;
-        }}
-        .card-value-red {{
-            font-size: 15px;
-            font-weight: 900;
-            color: #f85149;
-            margin-top: 2px;
-        }}
-
-        /* Section Title Header */
-        .box-container {{
-            background-color: {card_bg};
-            border: 1px solid {border_color};
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin-top: 10px;
-            margin-bottom: 8px;
-        }}
-        .box-title {{
-            font-size: 13px;
-            font-weight: 800;
-            color: {text_main};
-            letter-spacing: 0.5px;
-        }}
-        
-        /* MARKET MOVERS STOCK CARDS */
-        .stock-card {{
-            background-color: {sub_card_bg};
-            border: 1px solid {border_color};
-            border-radius: 8px;
-            padding: 8px 10px;
-            text-align: left;
-        }}
-        .stock-card-top {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }}
-        .stock-symbol {{
-            font-size: 13px;
-            font-weight: 800;
-            color: {accent_blue};
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }}
-        .stock-card-body {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 4px;
-        }}
+        .live-blink {{ animation: pulseBlink 6.0s ease-in-out infinite; display: inline-block; }}
+        @keyframes pulseBlink {{ 0% {{ opacity: 1; transform: scale(1); }} 50% {{ opacity: 0.40; transform: scale(0.98); }} 100% {{ opacity: 1; transform: scale(1); }} }}
+        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.4); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; white-space: nowrap; display: block; text-align: center; }}
+        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.4); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; white-space: nowrap; display: block; text-align: center; }}
+        .metric-container {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 8px; padding: 10px 12px; height: 100%; box-sizing: border-box; }}
+        .card-label {{ font-size: 10px; color: {text_sub}; font-weight: 800; text-transform: uppercase; }}
+        .card-value-green {{ font-size: 15px; font-weight: 900; color: #3fb950; margin-top: 2px; }}
+        .card-value-red {{ font-size: 15px; font-weight: 900; color: #f85149; margin-top: 2px; }}
+        .box-container {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 8px; padding: 8px 12px; margin-top: 10px; margin-bottom: 8px; }}
+        .box-title {{ font-size: 13px; font-weight: 800; color: {text_main}; letter-spacing: 0.5px; }}
+        .stock-card {{ background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 8px; padding: 8px 10px; text-align: left; }}
+        .stock-card-top {{ display: flex; justify-content: space-between; align-items: center; }}
+        .stock-symbol {{ font-size: 13px; font-weight: 800; color: {accent_blue}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+        .stock-card-body {{ display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }}
         .stock-price-up {{ font-size: 14px; font-weight: 900; color: #3fb950; }}
         .stock-price-down {{ font-size: 14px; font-weight: 900; color: #f85149; }}
         .stock-meta {{ font-size: 10px; color: {text_sub}; font-weight: 600; text-align: right; }}
+        .setup-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 8px; padding: 12px; }}
+        .setup-header-bull {{ font-size: 15px; font-weight: 900; color: #3fb950; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
+        .setup-header-bear {{ font-size: 15px; font-weight: 900; color: #f85149; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
+        .row-header {{ display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; font-size: 10px; font-weight: 800; color: {text_sub}; text-transform: uppercase; border-bottom: 1px solid {border_color}; margin-bottom: 6px; }}
+        .stock-row-item {{ display: flex; justify-content: space-between; align-items: center; background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; text-decoration: none !important; }}
+        .sym-btn-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 5px; padding: 4px 10px; color: {accent_blue}; font-weight: 800; font-size: 12px; display: inline-block; }}
+        .status-watch {{ background-color: #C0C0C0; color: #000000; border: 1px solid #A9A9A9; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
+        .status-ready-bull {{ background-color: #006400; color: #FFFFFF; border: 1px solid #004d00; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
+        .status-ready-bear {{ background-color: #8B0000; color: #FFFFFF; border: 1px solid #660000; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
+        .vol-box {{ background-color: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.4); border-radius: 4px; padding: 1px 5px; font-weight: 900; font-size: 10px; display: inline-block; }}
+        .qty-box {{ background-color: rgba(88, 166, 255, 0.15); color: {accent_blue}; border: 1px solid rgba(88, 166, 255, 0.4); border-radius: 4px; padding: 1px 5px; font-weight: 900; font-size: 10px; display: inline-block; }}
 
-        /* SETUP CONTAINER BOX */
-        .setup-box {{
-            background-color: {card_bg};
-            border: 1px solid {border_color};
-            border-radius: 8px;
-            padding: 12px;
-        }}
-        .setup-header-bull {{
-            font-size: 15px;
-            font-weight: 900;
-            color: #3fb950;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }}
-        .setup-header-bear {{
-            font-size: 15px;
-            font-weight: 900;
-            color: #f85149;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }}
-
-        /* TABLE HEADER BAR */
-        .row-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 10px;
-            font-size: 10px;
-            font-weight: 800;
-            color: {text_sub};
-            text-transform: uppercase;
-            border-bottom: 1px solid {border_color};
-            margin-bottom: 6px;
-        }}
-
-        /* ROW ITEM */
-        .stock-row-item {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: {sub_card_bg};
-            border: 1px solid {border_color};
-            border-radius: 6px;
-            padding: 6px 10px;
-            margin-bottom: 6px;
-            text-decoration: none !important;
-        }}
-
-        .sym-btn-box {{
-            background-color: {card_bg};
-            border: 1px solid {border_color};
-            border-radius: 5px;
-            padding: 4px 10px;
-            color: {accent_blue};
-            font-weight: 800;
-            font-size: 12px;
-            display: inline-block;
-        }}
-
-        /* STATUS BUTTON STYLES */
-        .status-watch {{
-            background-color: #C0C0C0;
-            color: #000000;
-            border: 1px solid #A9A9A9;
-            border-radius: 5px;
-            padding: 3px 8px;
-            font-weight: 900;
-            font-size: 11px;
-            display: inline-block;
-        }}
-
-        .status-ready-bull {{
-            background-color: #006400;
-            color: #FFFFFF;
-            border: 1px solid #004d00;
-            border-radius: 5px;
-            padding: 3px 8px;
-            font-weight: 900;
-            font-size: 11px;
-            display: inline-block;
-        }}
-
-        .status-ready-bear {{
-            background-color: #8B0000;
-            color: #FFFFFF;
-            border: 1px solid #660000;
-            border-radius: 5px;
-            padding: 3px 8px;
-            font-weight: 900;
-            font-size: 11px;
-            display: inline-block;
-        }}
-
-        .vol-box {{
-            background-color: rgba(210, 153, 34, 0.15);
-            color: #d29922;
-            border: 1px solid rgba(210, 153, 34, 0.4);
-            border-radius: 4px;
-            padding: 1px 5px;
-            font-weight: 900;
-            font-size: 10px;
-            display: inline-block;
-        }}
-
-        .qty-box {{
-            background-color: rgba(88, 166, 255, 0.15);
-            color: {accent_blue};
-            border: 1px solid rgba(88, 166, 255, 0.4);
-            border-radius: 4px;
-            padding: 1px 5px;
-            font-weight: 900;
-            font-size: 10px;
-            display: inline-block;
-        }}
-
-        /* 📱 STRICT MOBILE RESPONSIVE CSS MEDIA QUERY */
         @media screen and (max-width: 768px) {{
-            /* 1. Title Center on Mobile */
-            div[data-testid="column"]:has(div.nav-title-clean) {{
-                width: 100% !important;
-                text-align: center !important;
-                margin-bottom: 4px !important;
-            }}
-            .nav-title-clean {{
-                text-align: center !important;
-                display: block !important;
-            }}
-
-            /* 2. Index Pills Grid 2x2 on Mobile */
-            div[data-testid="column"]:has(div.header-indices-wrapper) {{
-                width: 100% !important;
-                margin-bottom: 6px !important;
-            }}
-            .header-indices-wrapper {{
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                gap: 6px !important;
-                height: auto !important;
-                white-space: normal !important;
-            }}
-            .idx-pill {{
-                width: 100% !important;
-                justify-content: space-between !important;
-                padding: 4px 6px !important;
-            }}
-
-            /* 3. Market Status & Time Pair Side-by-Side (50% - 50%) */
-            div[data-testid="column"]:has(span.market-status-closed),
-            div[data-testid="column"]:has(span.market-status-open),
-            div[data-testid="column"]:has(div[style*="white-space:nowrap"]) {{
-                width: 48.5% !important;
-                display: inline-block !important;
-                float: left !important;
-                margin-bottom: 6px !important;
-            }}
-
-            /* 4. Dark Theme & Refresh Buttons Pair Side-by-Side (50% - 50%) */
-            div[data-testid="column"]:has(button) {{
-                width: 48.5% !important;
-                display: inline-block !important;
-                float: left !important;
-                margin-bottom: 10px !important;
-            }}
-
-            /* 5. Metric Cards Grid Side-by-Side Pairs (50% - 50%) */
-            div[data-testid="column"]:has(div.metric-container) {{
-                width: 48.5% !important;
-                display: inline-block !important;
-                float: left !important;
-                margin-bottom: 8px !important;
-            }}
-
-            /* 6. Setup Tables Stack Vertically (Bullish Top, Bearish Bottom) */
-            div[data-testid="column"]:has(div.setup-box) {{
-                width: 100% !important;
-                display: block !important;
-                clear: both !important;
-                margin-bottom: 12px !important;
-            }}
-            
-            /* Horizontal Scroll for Data Tables on Mobile */
-            .row-header, .stock-row-item {{
-                min-width: 380px !important;
-            }}
-            .setup-box {{
-                overflow-x: auto !important;
-            }}
+            div[data-testid="column"]:has(div.nav-title-clean) {{ width: 50% !important; order: 1 !important; float: left !important; text-align: center !important; }}
+            .nav-title-clean {{ text-align: center !important; font-size: 15px !important; }}
+            div[data-testid="column"]:has(button) {{ width: 25% !important; float: left !important; margin-bottom: 8px !important; }}
+            div[data-testid="column"]:has(div.header-indices-wrapper) {{ width: 100% !important; clear: both !important; margin-bottom: 8px !important; }}
+            .header-indices-wrapper {{ display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px !important; height: auto !important; white-space: normal !important; }}
+            .idx-pill {{ width: 100% !important; justify-content: space-between !important; padding: 4px 6px !important; }}
+            div[data-testid="column"]:has(span.market-status-closed), div[data-testid="column"]:has(span.market-status-open) {{ width: 100% !important; clear: both !important; margin-bottom: 4px !important; }}
+            div[data-testid="column"]:has(div[style*="white-space:nowrap"]) {{ width: 100% !important; text-align: center !important; margin-bottom: 10px !important; }}
+            div[data-testid="column"]:has(div.metric-container) {{ width: 48.5% !important; display: inline-block !important; float: left !important; margin-bottom: 8px !important; }}
+            div[data-testid="column"]:has(div.setup-box) {{ width: 100% !important; display: block !important; clear: both !important; margin-bottom: 12px !important; }}
+            .row-header, .stock-row-item {{ min-width: 380px !important; }}
+            .setup-box {{ overflow-x: auto !important; }}
         }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- KEYWORDS TO STRICTLY BAN ETFs ---
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
 
-# --- STRICT NSE F&O STOCKS LIST ---
 FNO_STOCKS = [
     "AARTIIND", "ABB", "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS", "ALKEM", "AMBUJACEMENT", 
     "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "ASTRAL", "ATUL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", 
@@ -518,39 +144,30 @@ FNO_STOCKS = [
     "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL", "ZYDUSLIFE"
 ]
 
-# --- DYNAMIC CSV LOADER ---
 @st.cache_data(ttl=3600)
 def load_hira_stocks():
-    csv_candidates = [
-        "Hira Stocks (2).csv",
-        "Hira Stocks (1).csv",
-        "Hira Stocks.csv"
-    ]
+    csv_candidates = ["Hira Stocks (2).csv", "Hira Stocks (1).csv", "Hira Stocks.csv"]
     for file_candidate in csv_candidates:
         if os.path.exists(file_candidate):
             try:
                 df = pd.read_csv(file_candidate)
                 col = 'symbol' if 'symbol' in df.columns else df.columns[0]
                 syms = df[col].dropna().astype(str).str.strip().unique().tolist()
-                
                 filtered_syms = []
                 for s in syms:
                     clean_s = s.upper().replace(".NS", "")
                     if (not any(kw in clean_s for kw in ETF_KEYWORDS)) and (clean_s not in FNO_STOCKS):
                         filtered_syms.append(f"{s}.NS" if not s.endswith(".NS") else s)
-                
                 if len(filtered_syms) > 0:
                     return filtered_syms
             except Exception:
                 pass
-            
-    return ['ALOKINDS.NS', 'TRIDENT.NS', 'SUZLON.NS', 'BCG.NS', 'SJVN.NS']
+    return ['ALOKINDS.NS', 'TRIDENT.NS', 'SUZLON.NS', 'BDL.NS', 'SJVN.NS']
 
 ALL_HIRA_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(ALL_HIRA_SYMBOLS)
 
-# --- ACCURATE FETCH FOR TOP INDICES (FAST BATCH DOWNLOAD) ---
-@st.cache_data(ttl=15)
+@st.cache_data(ttl=60)
 def fetch_indices():
     indices = {
         "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
@@ -565,21 +182,16 @@ def fetch_indices():
         for name, (sym, tv_sym) in indices.items():
             tv_url = f"https://www.tradingview.com/chart/?symbol={tv_sym}"
             try:
-                if len(symbols) > 1:
-                    df = data[sym].dropna()
-                else:
-                    df = data.dropna()
+                df = data[sym].dropna() if len(symbols) > 1 else data.dropna()
                 if len(df) >= 2:
-                    curr = df['Close'].iloc[-1]
-                    prev = df['Close'].iloc[-2]
+                    curr, prev = df['Close'].iloc[-1], df['Close'].iloc[-2]
                     change = curr - prev
-                    pct = (change / prev) * 100
-                    res[name] = {"val": round(curr, 2), "change": round(change, 2), "pct": round(pct, 2), "url": tv_url}
+                    res[name] = {"val": round(curr, 2), "change": round(change, 2), "pct": round((change/prev)*100, 2), "url": tv_url}
                 else:
                     res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": tv_url}
-            except:
+            except Exception:
                 res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": tv_url}
-    except:
+    except Exception:
         for name, (sym, tv_sym) in indices.items():
             res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": f"https://www.tradingview.com/chart/?symbol={tv_sym}"}
     return res
@@ -589,45 +201,33 @@ def calculate_ema(series, length):
 
 def calculate_vwap(df):
     tp = (df['High'] + df['Low'] + df['Close']) / 3
-    vwap = (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
-    return vwap
+    return (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
 
-# --- BATCHED & VECTORIZED FAST SCANNER ENGINE ---
-@st.cache_data(ttl=15)
+@st.cache_data(ttl=60)
 def run_market_scanner():
-    bullish_list = []
-    bearish_list = []
-    all_stocks = []
-
-    # 🚀 STEP 1: BULK DOWNLOAD ALL STOCKS AT ONCE (SUPER FAST)
+    bullish_list, bearish_list, all_stocks = [], [], []
     try:
         bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="5m", progress=False, group_by="ticker", threads=True)
         bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=True)
     except Exception:
-        bulk_5m = None
-        bulk_1d = None
+        return [], [], None, None, [], 0, 0
 
     if bulk_5m is None or bulk_1d is None:
         return [], [], None, None, [], 0, 0
 
     per_trade_cap = 10000
 
-    # 🚀 STEP 2: FAST VECTORIZED PROCESSING IN MEMORY
     for symbol in ALL_HIRA_SYMBOLS:
         try:
             clean_symbol = symbol.replace(".NS", "").upper()
-            
-            if len(ALL_HIRA_SYMBOLS) > 1:
-                df_5m = bulk_5m[symbol].dropna()
-                df_daily = bulk_1d[symbol].dropna()
-            else:
-                df_5m = bulk_5m.dropna()
-                df_daily = bulk_1d.dropna()
+            df_5m = bulk_5m[symbol].dropna() if len(ALL_HIRA_SYMBOLS) > 1 else bulk_5m.dropna()
+            df_daily = bulk_1d[symbol].dropna() if len(ALL_HIRA_SYMBOLS) > 1 else bulk_1d.dropna()
 
             if len(df_5m) < 20 or len(df_daily) < 2:
                 continue
 
             df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
+            df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
             df_5m['VWAP'] = calculate_vwap(df_5m)
 
             latest_trading_date = df_5m.index[-1].date()
@@ -636,110 +236,112 @@ def run_market_scanner():
             if len(today_df) < 2:
                 continue
 
-            c1 = today_df.iloc[0]
-            c2 = today_df.iloc[1]
+            prev_day = df_daily.iloc[-2]
+            is_prev_day_sideways = (((prev_day['High'] - prev_day['Low']) / prev_day['Close']) * 100) <= 1.5
 
-            max_base_vol = max(c1['Volume'], c2['Volume'])
-            if max_base_vol < 1000:
-                continue
-
-            latest = today_df.iloc[-1]
-            curr_price = latest['Close']
-            prev_close = df_daily['Close'].iloc[-2]
-            day_change_pct = ((curr_price - prev_close) / prev_close) * 100
-            change_pts = curr_price - prev_close
-
-            tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
-            calc_qty = int((per_trade_cap * 5) / curr_price) if curr_price > 0 else 0
-
-            signal_bullish = False
-            signal_bearish = False
-            status_state = ""
-            signal_time = "-"
-            vol_multiple = 1.0
-
-            c1_high, c1_low = c1['High'], c1['Low']
-            c1_open, c1_close = c1['Open'], c1['Close']
+            c1, c2 = today_df.iloc[0], today_df.iloc[1]
+            c1_high, c1_low, c1_open, c1_close = c1['High'], c1['Low'], c1['Open'], c1['Close']
             c1_range = c1_high - c1_low
 
             if c1_range == 0:
                 continue
 
-            c1_range_pct = (c1_range / c1_low) * 100
-            if c1_range_pct > 1.00:
+            c1_range_pct = (c1_range / c1_close) * 100
+            c1_ema20_dist = abs(c1_close - c1['EMA20']) / c1_close * 100
+            c1_ema200_dist = abs(c1_close - c1['EMA200']) / c1_close * 100
+
+            body_ratio = abs(c1_close - c1_open) / c1_range
+            upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
+            lower_wick_ratio = (min(c1_open, c1_close) - c1_low) / c1_range
+
+            max_base_vol = max(c1['Volume'], c2['Volume'])
+            if max_base_vol < 1000:
                 continue
 
-            c1_body = abs(c1_close - c1_open)
-            body_ratio = c1_body / c1_range
+            valid_closes = today_df['Close'].dropna()
+            if valid_closes.empty:
+                continue
+            curr_price = float(valid_closes.iloc[-1])
 
-            upper_wick = c1_high - max(c1_open, c1_close)
-            lower_wick = min(c1_open, c1_close) - c1_low
+            valid_daily_closes = df_daily['Close'].dropna()
+            prev_close = float(valid_daily_closes.iloc[-2]) if len(valid_daily_closes) >= 2 else curr_price
 
-            upper_wick_ratio = upper_wick / c1_range
-            lower_wick_ratio = lower_wick / c1_range
+            if curr_price <= 0:
+                continue
 
-            c1_vwap = c1['VWAP']
-            c1_ema20 = c1['EMA20']
+            day_change_pct = ((curr_price - prev_close) / prev_close) * 100
+            change_pts = curr_price - prev_close
+            tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
+            
+            calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
-            c1_bull_cond = (c1_close >= c1_ema20) and (c1_close >= c1_vwap) and (body_ratio >= 0.55) and (upper_wick_ratio <= 0.30)
-            c1_bear_cond = (c1_close <= c1_ema20) and (c1_close <= c1_vwap) and (body_ratio >= 0.55) and (lower_wick_ratio <= 0.30)
+            signal_bullish, signal_bearish = False, False
+            status_state, signal_time, vol_multiple = "", "-", 1.0
 
-            if c1_bull_cond:
+            c1_bull_cond = (
+                is_prev_day_sideways and (c1_close > c1_low) and (c1_range_pct <= 1.5) and
+                (body_ratio >= 0.55) and (upper_wick_ratio <= 0.30) and (c1_close >= c1['VWAP']) and
+                (c1_close > c1['EMA20']) and (c1_close > c1['EMA200']) and
+                (c1_ema20_dist <= 0.3) and (c1_ema200_dist <= 0.3)
+            )
+
+            c2_bull_cond = (
+                (c2['High'] <= c1_high) and (c2['Low'] >= c1_low) and (c2['High'] < c1_high) and
+                (c2['Close'] >= (c2['Low'] + (c2['High'] - c2['Low']) * 0.3)) and
+                ((c2['High'] - c2['Low']) <= c1_range)
+            )
+
+            c1_bear_cond = (
+                is_prev_day_sideways and (c1_close < c1_high) and (c1_range_pct <= 1.5) and
+                (body_ratio >= 0.55) and (lower_wick_ratio <= 0.30) and (c1_close <= c1['VWAP']) and
+                (c1_close < c1['EMA20']) and (c1_close < c1['EMA200']) and
+                (c1_ema20_dist <= 0.3) and (c1_ema200_dist <= 0.3)
+            )
+
+            c2_bear_cond = (
+                (c2['High'] <= c1_high) and (c2['Low'] >= c1_low) and (c2['Low'] > c1_low) and
+                (c2['Close'] <= (c2['High'] - (c2['High'] - c2['Low']) * 0.3)) and
+                ((c2['High'] - c2['Low']) <= c1_range)
+            )
+
+            if c1_bull_cond and c2_bull_cond:
                 signal_bullish = True
-                status_state = "READY"
-                signal_time = "09:20"
-                if (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low']):
-                    status_state = "WATCH"
-
+                status_state, signal_time = "WATCH", "09:20"
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
-                        if (c_curr['High'] > c1['High']) and (c_curr['Close'] > c_curr['VWAP']):
+                        if (c_curr['High'] > max(c1_high, c2['High'])) and (c_curr['Close'] > c_curr['Open']) and (c_curr['Close'] > c_curr['VWAP']) and (c_curr['Volume'] > (max_base_vol * 1.5)):
                             status_state = "READY"
                             signal_time = c_curr.name.strftime("%H:%M")
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                             break
 
-            elif c1_bear_cond:
+            elif c1_bear_cond and c2_bear_cond:
                 signal_bearish = True
-                status_state = "READY"
-                signal_time = "09:20"
-                if (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low']):
-                    status_state = "WATCH"
-
+                status_state, signal_time = "WATCH", "09:20"
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
-                        if (c_curr['Low'] < c1['Low']) and (c_curr['Close'] < c_curr['VWAP']):
+                        if (c_curr['Low'] < min(c1_low, c2['Low'])) and (c_curr['Close'] < c_curr['Open']) and (c_curr['Close'] < c_curr['VWAP']) and (c_curr['Volume'] > (max_base_vol * 1.5)):
                             status_state = "READY"
                             signal_time = c_curr.name.strftime("%H:%M")
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                             break
 
-            latest_vol = latest['Volume']
-            if max_base_vol > 0:
+            latest_vol = today_df.iloc[-1]['Volume']
+            if max_base_vol > 0 and vol_multiple == 1.0:
                 vol_multiple = round(latest_vol / max_base_vol, 2)
 
             res = {
-                "Symbol": clean_symbol,
-                "Price": curr_price,
-                "ChangePct": day_change_pct,
-                "ChangePts": round(change_pts, 2),
-                "SignalTime": signal_time,
-                "VolMultiple": vol_multiple,
-                "IsBullish": signal_bullish,
-                "IsBearish": signal_bearish,
-                "StatusState": status_state,
-                "TVUrl": tv_url,
-                "Qty": calc_qty
+                "Symbol": clean_symbol, "Price": curr_price, "ChangePct": day_change_pct,
+                "ChangePts": round(change_pts, 2), "SignalTime": signal_time, "VolMultiple": vol_multiple,
+                "IsBullish": signal_bullish, "IsBearish": signal_bearish, "StatusState": status_state,
+                "TVUrl": tv_url, "Qty": calc_qty
             }
-            
             all_stocks.append(res)
-            if signal_bullish:
-                bullish_list.append(res)
-            if signal_bearish:
-                bearish_list.append(res)
-        except:
+            if signal_bullish: bullish_list.append(res)
+            if signal_bearish: bearish_list.append(res)
+        except Exception:
             continue
 
     all_df = pd.DataFrame(all_stocks)
@@ -758,22 +360,15 @@ def run_market_scanner():
 
     return top_bullish, top_bearish, top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
-# --- MARKET OPEN / CLOSE LOGIC ---
+# --- MARKET TIME & HEADER ---
 ist_tz = pytz.timezone('Asia/Kolkata')
 now_dt = datetime.datetime.now(ist_tz)
-
 market_open_time = now_dt.replace(hour=9, minute=15, second=0, microsecond=0)
 market_close_time = now_dt.replace(hour=15, minute=30, second=0, microsecond=0)
+is_market_open = (now_dt.weekday() < 5) and (market_open_time <= now_dt <= market_close_time)
 
-is_weekday = now_dt.weekday() < 5
-is_market_open = is_weekday and (market_open_time <= now_dt <= market_close_time)
+status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> MARKET OPEN</span>' if is_market_open else '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-if is_market_open:
-    status_html = '<span class="market-status-open"><span class="live-blink">🟢</span> MARKET OPEN</span>'
-else:
-    status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
-
-# --- TOP HEADER ROW ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
@@ -782,357 +377,183 @@ for name, data in top_idx.items():
     pct = data.get('pct', 0)
     cls = "idx-up-p" if pct >= 0 else "idx-down-p"
     arrow = "▲" if pct >= 0 else "▼"
-    url = data.get("url", "#")
-    val = data.get("val", 0)
-    
-    idx_pills_html += (
-        f'<a class="idx-pill" href="{url}" target="_blank">'
-        f'<span class="idx-lbl">{name}:</span> '
-        f'<span class="idx-num">{val:,.2f}</span> '
-        f'<span class="{cls}">{arrow}{pct:+.2f}%</span>'
-        f'</a>'
-    )
+    idx_pills_html += f'<a class="idx-pill" href="{data.get("url", "#")}" target="_blank"><span class="idx-lbl">{name}:</span> <span class="idx-num">{data.get("val", 0):,.2f}</span> <span class="{cls}">{arrow}{pct:+.2f}%</span></a>'
 idx_pills_html += '</div>'
 
-nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.15, 0.53, 0.09, 0.11, 0.06, 0.06])
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.08, 0.52, 0.10, 0.12, 0.09, 0.09])
 
 with nav_col1:
-    st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
-
-with nav_col2:
-    st.markdown(idx_pills_html, unsafe_allow_html=True)
-
-with nav_col3:
-    st.markdown(f'<div style="margin-top:2px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
-
-with nav_col4:
-    st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap; text-align:center;">🕒 {now_time}</div>', unsafe_allow_html=True)
-
-with nav_col5:
-    theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
-    if st.button(theme_icon):
+    if st.button("🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"):
         st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
         st.query_params['theme'] = st.session_state.theme
         st.rerun()
 
-with nav_col6:
+with nav_col2:
+    st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
+
+with nav_col3:
     if st.button("🔄 Refresh"):
         st.cache_data.clear()
         st.rerun()
 
-st.markdown("<div style='margin-bottom: 5px;'></div>", unsafe_allow_html=True)
+st.markdown(idx_pills_html, unsafe_allow_html=True)
 
-# ==========================================
-# 🆕 TOP NAVIGATION TAB BUTTONS (MAIN MENU)
-# ==========================================
-tab_col1, tab_col2, tab_col3 = st.columns(3)
+m_status_col1, m_status_col2 = st.columns([0.5, 0.5])
+with m_status_col1:
+    st.markdown(f'<div style="margin-top:4px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
 
-with tab_col1:
-    btn_style = "nav-btn-active" if st.session_state.active_tab == "terminal" else ""
-    if st.button("📊 LIVE TERMINAL SCANNER", key="btn_term"):
-        st.session_state.active_tab = "terminal"
-        st.rerun()
-
-with tab_col2:
-    btn_style = "nav-btn-active" if st.session_state.active_tab == "journal" else ""
-    if st.button("📓 TRADING JOURNAL & ANALYTICS", key="btn_jour"):
-        st.session_state.active_tab = "journal"
-        st.rerun()
-
-with tab_col3:
-    btn_style = "nav-btn-active" if st.session_state.active_tab == "filters" else ""
-    if st.button("⚙️ STRICT LOGIC FILTERS & CAPITAL CONTROL", key="btn_filt"):
-        st.session_state.active_tab = "filters"
-        st.rerun()
+with m_status_col2:
+    st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap; text-align:center;">🕒 {now_time}</div>', unsafe_allow_html=True)
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# ==========================================
-# PAGE 1: LIVE TERMINAL SCANNER
-# ==========================================
-if st.session_state.active_tab == "terminal":
-    # --- EXECUTE SCANNER ---
-    bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
+# --- EXECUTE SCANNER ---
+bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
+sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
+sentiment_label = "Bullish" if total_bull_cnt >= total_bear_cnt else "Bearish"
+sentiment_color = "#3fb950" if total_bull_cnt >= total_bear_cnt else "#f85149"
+sentiment_blink = "🟢" if total_bull_cnt >= total_bear_cnt else "🔴"
+sentiment_arrow = "▲" if total_bull_cnt >= total_bear_cnt else "▼"
 
-    sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
+c1, c2, c3, c4 = st.columns(4)
 
-    if total_bull_cnt >= total_bear_cnt:
-        sentiment_label = "Bullish"
-        sentiment_color = "#3fb950"
-        sentiment_blink = "🟢"
-        sentiment_arrow = "▲"
-    else:
-        sentiment_label = "Bearish"
-        sentiment_color = "#f85149"
-        sentiment_blink = "🔴"
-        sentiment_arrow = "▼"
-
-    # --- METRIC CARDS ROW ---
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        if top_gainer:
-            st.markdown(f"""
-                <div class="metric-container">
-                    <div class="card-label">TOP GAINER</div>
-                    <a href="{top_gainer['TVUrl']}" target="_blank" style="text-decoration:none;">
-                        <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer['Symbol']}</div>
-                        <div class="card-value-green">+{top_gainer['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(+₹{top_gainer['ChangePts']})</span></div>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
-
-    with c2:
-        if top_loser:
-            st.markdown(f"""
-                <div class="metric-container">
-                    <div class="card-label">TOP LOSER</div>
-                    <a href="{top_loser['TVUrl']}" target="_blank" style="text-decoration:none;">
-                        <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser['Symbol']}</div>
-                        <div class="card-value-red">{top_loser['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(₹{top_loser['ChangePts']})</span></div>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
-
-    with c3:
+with c1:
+    if top_gainer:
         st.markdown(f"""
             <div class="metric-container">
-                <div class="card-label">MARKET SENTIMENT</div>
-                <div style="font-size: 15px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:4px;">
-                    <span class="live-blink">{sentiment_blink}</span>
-                    <span>{sentiment_label}</span>
-                    <span style="font-size:12px;">{sentiment_arrow}</span>
-                </div>
-                <div style="font-size: 9px; color: {text_sub}; margin-top: 3px; font-weight: 700; white-space:nowrap;">
-                    <span style="color:#3fb950;">▲ {total_bull_cnt}</span> | 
-                    <span style="color:#f85149;">▼ {total_bear_cnt}</span> | 
-                    <span>⚪ {sideways_cnt}</span>
-                </div>
+                <div class="card-label">TOP GAINER</div>
+                <a href="{top_gainer['TVUrl']}" target="_blank" style="text-decoration:none;">
+                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer['Symbol']}</div>
+                    <div class="card-value-green">+{top_gainer['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(+₹{top_gainer['ChangePts']})</span></div>
+                </a>
             </div>
         """, unsafe_allow_html=True)
 
-    with c4:
+with c2:
+    if top_loser:
         st.markdown(f"""
             <div class="metric-container">
-                <div class="card-label">SCANNED STOCKS</div>
-                <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
-                    {TOTAL_SCANNED_STOCKS} Stocks
-                </div>
-                <div style="font-size: 10px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active: {total_bull_cnt + total_bear_cnt}</div>
+                <div class="card-label">TOP LOSER</div>
+                <a href="{top_loser['TVUrl']}" target="_blank" style="text-decoration:none;">
+                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser['Symbol']}</div>
+                    <div class="card-value-red">{top_loser['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(₹{top_loser['ChangePts']})</span></div>
+                </a>
             </div>
         """, unsafe_allow_html=True)
 
-    # --- MARKET MOVERS ---
-    st.markdown("""
-        <div class="box-container">
-            <div class="box-title">🔥 MARKET MOVERS</div>
+with c3:
+    st.markdown(f"""
+        <div class="metric-container">
+            <div class="card-label">MARKET SENTIMENT</div>
+            <div style="font-size: 15px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:4px;">
+                <span class="live-blink">{sentiment_blink}</span>
+                <span>{sentiment_label}</span>
+                <span style="font-size:12px;">{sentiment_arrow}</span>
+            </div>
+            <div style="font-size: 9px; color: {text_sub}; margin-top: 3px; font-weight: 700; white-space:nowrap;">
+                <span style="color:#3fb950;">▲ {total_bull_cnt}</span> | 
+                <span style="color:#f85149;">▼ {total_bear_cnt}</span> | 
+                <span>⚪ {sideways_cnt}</span>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
-    if market_movers:
-        m_cols = st.columns(len(market_movers))
-        for i, m in enumerate(market_movers):
-            with m_cols[i]:
-                p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
-                sign = "+" if m['ChangePct'] >= 0 else ""
-                time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
-                
-                st.markdown(f"""
-                    <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
-                        <div class="stock-card">
-                            <div class="stock-card-top">
-                                <span class="stock-symbol">{m['Symbol']}</span>
-                                <div style="display:flex; gap:3px;">
-                                    <span class="qty-box">{m['Qty']}</span>
-                                    <span class="vol-box">{m['VolMultiple']:.1f}x</span>
-                                </div>
-                            </div>
-                            <div class="stock-card-body">
-                                <div>
-                                    <span class="{p_class} live-blink">₹{m['Price']:.2f}</span>
-                                    <span style="font-size: 11px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'};">
-                                        {sign}{m['ChangePct']:.2f}%
-                                    </span>
-                                </div>
-                                <div class="stock-meta">🕒 {time_str}</div>
+with c4:
+    st.markdown(f"""
+        <div class="metric-container">
+            <div class="card-label">SCANNED STOCKS</div>
+            <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
+                {TOTAL_SCANNED_STOCKS} Stocks
+            </div>
+            <div style="font-size: 10px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active: {total_bull_cnt + total_bear_cnt}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("""<div class="box-container"><div class="box-title">🔥 MARKET MOVERS</div></div>""", unsafe_allow_html=True)
+
+if market_movers:
+    m_cols = st.columns(len(market_movers))
+    for i, m in enumerate(market_movers):
+        with m_cols[i]:
+            p_class = "stock-price-up" if m['ChangePct'] >= 0 else "stock-price-down"
+            sign = "+" if m['ChangePct'] >= 0 else ""
+            time_str = m['SignalTime'] if m['SignalTime'] != "-" else "09:20"
+            st.markdown(f"""
+                <a href="{m['TVUrl']}" target="_blank" style="text-decoration:none;">
+                    <div class="stock-card">
+                        <div class="stock-card-top">
+                            <span class="stock-symbol">{m['Symbol']}</span>
+                            <div style="display:flex; gap:3px;">
+                                <span class="qty-box">{m['Qty']}</span>
+                                <span class="vol-box">{m['VolMultiple']:.1f}x</span>
                             </div>
                         </div>
-                    </a>
-                """, unsafe_allow_html=True)
+                        <div class="stock-card-body">
+                            <div>
+                                <span class="{p_class} live-blink">₹{m['Price']:.2f}</span>
+                                <span style="font-size: 11px; font-weight: 800; color: {'#3fb950' if m['ChangePct']>=0 else '#f85149'};">{sign}{m['ChangePct']:.2f}%</span>
+                            </div>
+                            <div class="stock-meta">🕒 {time_str}</div>
+                        </div>
+                    </div>
+                </a>
+            """, unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-    # --- ROW LIST (BULLISH & BEARISH SETUPS) ---
-    tb_col1, tb_col2 = st.columns(2)
+tb_col1, tb_col2 = st.columns(2)
 
-    with tb_col1:
-        st.markdown("""
-            <div class="setup-box">
-                <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
-                <div class="row-header">
-                    <span style="width: 20%;">SYMBOL</span>
-                    <span style="width: 15%;">STATUS</span>
-                    <span style="width: 15%;">ALERT TIME</span>
-                    <span style="width: 15%;">VOL SURGE</span>
-                    <span style="width: 12%;">QTY</span>
-                    <span style="width: 11%; text-align:right;">PRICE</span>
-                    <span style="width: 12%; text-align:right;">CHANGE</span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        if bullish_signals:
-            for s in bullish_signals:
-                status_btn_html = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bull">READY</span>'
-
-                st.markdown(f"""
-                    <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                        <div style="width: 20%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
-                        <div style="width: 15%;">{status_btn_html}</div>
-                        <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                        <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                        <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
-                        <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                        <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
-                    </a>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bullish breakouts...</div>', unsafe_allow_html=True)
-
-    with tb_col2:
-        st.markdown("""
-            <div class="setup-box">
-                <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
-                <div class="row-header">
-                    <span style="width: 20%;">SYMBOL</span>
-                    <span style="width: 15%;">STATUS</span>
-                    <span style="width: 15%;">ALERT TIME</span>
-                    <span style="width: 15%;">VOL SURGE</span>
-                    <span style="width: 12%;">QTY</span>
-                    <span style="width: 11%; text-align:right;">PRICE</span>
-                    <span style="width: 11%; text-align:right;">CHANGE</span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        if bearish_signals:
-            for s in bearish_signals:
-                status_btn_html = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bear">READY</span>'
-
-                st.markdown(f"""
-                    <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
-                        <div style="width: 20%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
-                        <div style="width: 15%;">{status_btn_html}</div>
-                        <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
-                        <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
-                        <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
-                        <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
-                        <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
-                    </a>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
-
-    if is_market_open:
-        st.markdown("""
-            <script>
-                setTimeout(function(){
-                    window.location.reload();
-                }, 30000);
-            </script>
-        """, unsafe_allow_html=True)
-
-# ==========================================
-# PAGE 2: TRADING JOURNAL & ANALYTICS
-# ==========================================
-elif st.session_state.active_tab == "journal":
+with tb_col1:
     st.markdown("""
-        <div class="box-container">
-            <div class="box-title">📓 PRIVATE TRADING JOURNAL & PERFORMANCE ANALYTICS</div>
+        <div class="setup-box">
+            <div class="setup-header-bull"><span class="live-blink">🟢</span> BULLISH SETUPS</div>
+            <div class="row-header">
+                <span style="width: 20%;">SYMBOL</span><span style="width: 15%;">STATUS</span><span style="width: 15%;">ALERT TIME</span><span style="width: 15%;">VOL SURGE</span><span style="width: 12%;">QTY</span><span style="width: 11%; text-align:right;">PRICE</span><span style="width: 12%; text-align:right;">CHANGE</span>
+            </div>
         </div>
     """, unsafe_allow_html=True)
+    if bullish_signals:
+        for s in bullish_signals:
+            status_btn = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bull">READY</span>'
+            st.markdown(f"""
+                <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
+                    <div style="width: 20%;"><span class="sym-btn-box">{s['Symbol']}</span></div>
+                    <div style="width: 15%;">{status_btn}</div>
+                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                    <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                    <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
+                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:#3fb950; font-size:12px;">▲{s['ChangePct']:.2f}%</div>
+                </a>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bullish breakouts...</div>', unsafe_allow_html=True)
 
-    j_col1, j_col2 = st.columns([1, 2])
-
-    with j_col1:
-        st.markdown("### ➕ Record Trade Entry")
-        with st.form("journal_form"):
-            t_date = st.date_input("Trade Date", datetime.date.today())
-            t_symbol = st.text_input("Stock Symbol (e.g. ALOKINDS)").upper()
-            t_setup = st.selectbox("Setup Used", ["10Min Pause Candle Breakout", "VWAP Reversal", "EMA Crossover", "Manual Entry"])
-            t_type = st.selectbox("Type", ["BUY", "SELL"])
-            t_entry = st.number_input("Entry Price (₹)", min_value=0.0, step=0.5)
-            t_exit = st.number_input("Exit Price (₹)", min_value=0.0, step=0.5)
-            t_qty = st.number_input("Quantity", min_value=1, step=1)
-            
-            pnl_calc = (t_exit - t_entry) * t_qty if t_type == "BUY" else (t_entry - t_exit) * t_qty
-            st.write(f"**Calculated Net P&L:** ₹{pnl_calc:,.2f}")
-            
-            t_status = st.selectbox("Status", ["TARGET HIT", "SL HIT", "OPEN"])
-            t_notes = st.text_area("Trade Notes / Lessons")
-
-            submitted = st.form_submit_button("💾 Save Trade Entry")
-            if submitted and t_symbol:
-                conn = sqlite3.connect(DB_FILE)
-                c = conn.cursor()
-                c.execute('''
-                    INSERT INTO journal (trade_date, symbol, setup, trade_type, entry_price, exit_price, qty, pnl, status, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (str(t_date), t_symbol, t_setup, t_type, t_entry, t_exit, t_qty, pnl_calc, t_status, t_notes))
-                conn.commit()
-                conn.close()
-                st.success(f"✅ Trade for {t_symbol} saved successfully!")
-                st.rerun()
-
-    with j_col2:
-        st.markdown("### 📊 Overall Strategy Performance")
-        conn = sqlite3.connect(DB_FILE)
-        df_journal = pd.read_sql_query("SELECT * FROM journal ORDER BY id DESC", conn)
-        conn.close()
-
-        if not df_journal.empty:
-            total_pnl = df_journal['pnl'].sum()
-            total_trades = len(df_journal)
-            wins = len(df_journal[df_journal['pnl'] > 0])
-            win_rate = (wins / total_trades) * 100 if total_trades > 0 else 0.0
-
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Total Realized P&L", f"₹{total_pnl:,.2f}")
-            m2.metric("Total Executed Trades", total_trades)
-            m3.metric("System Win Rate", f"{win_rate:.1f}%")
-
-            st.markdown("---")
-            st.dataframe(df_journal, use_container_width=True)
-        else:
-            st.info("💡 No trades logged in the database yet. Fill out the form on the left to start tracking performance!")
-
-# ==========================================
-# PAGE 3: STRICT LOGIC FILTERS & CAPITAL CONTROL
-# ==========================================
-elif st.session_state.active_tab == "filters":
+with tb_col2:
     st.markdown("""
-        <div class="box-container">
-            <div class="box-title">⚙️ STRICT QUALITY FILTERS & DYNAMIC CAPITAL MANAGEMENT</div>
+        <div class="setup-box">
+            <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
+            <div class="row-header">
+                <span style="width: 20%;">SYMBOL</span><span style="width: 15%;">STATUS</span><span style="width: 15%;">ALERT TIME</span><span style="width: 15%;">VOL SURGE</span><span style="width: 12%;">QTY</span><span style="width: 11%; text-align:right;">PRICE</span><span style="width: 11%; text-align:right;">CHANGE</span>
+            </div>
         </div>
     """, unsafe_allow_html=True)
+    if bearish_signals:
+        for s in bearish_signals:
+            status_btn = '<span class="status-watch">WATCH</span>' if s['StatusState'] == 'WATCH' else '<span class="status-ready-bear">READY</span>'
+            st.markdown(f"""
+                <a href="{s['TVUrl']}" target="_blank" class="stock-row-item">
+                    <div style="width: 20%;"><span class="sym-btn-box" style="color:#f85149;">{s['Symbol']}</span></div>
+                    <div style="width: 15%;">{status_btn}</div>
+                    <div style="width: 15%; font-size:11px; color:{text_sub}; font-weight:700;">🕒 {s['SignalTime']}</div>
+                    <div style="width: 15%;"><span class="vol-box">{s['VolMultiple']:.2f}x</span></div>
+                    <div style="width: 12%;"><span class="qty-box">{s['Qty']}</span></div>
+                    <div style="width: 11%; text-align:right; font-weight:900; color:{text_main}; font-size:13px;" class="live-blink">₹{s['Price']:.2f}</div>
+                    <div style="width: 12%; text-align:right; font-weight:900; color:#f85149; font-size:12px;">▼{s['ChangePct']:.2f}%</div>
+                </a>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
-    col_c1, col_c2 = st.columns(2)
-
-    with col_c1:
-        st.markdown("### 💰 Capital Allocation & Slot Controls")
-        total_cap = st.number_input("Total Trading Capital (₹)", value=100000, step=10000)
-        per_trade = st.number_input("Allocation Per Trade (₹)", value=10000, step=1000)
-        max_slots = int(total_cap / per_trade) if per_trade > 0 else 10
-        
-        st.info(f"💡 **Max Allowed Simultaneous Positions:** `{max_slots} Slots`")
-        st.write(f"When all **{max_slots} slots** are occupied, any 11th signal will be automatically skipped until a position closes.")
-
-    with col_c2:
-        st.markdown("### 🛡️ Algorithmic Signal Quality Rules")
-        st.checkbox("🚫 Strictly Block Penny & Low-Volume Stocks", value=True)
-        st.checkbox("🕯️ Reject Candles with Body Ratio < 60%", value=True)
-        st.checkbox("📈 Require VWAP & EMA Trend Alignment", value=True)
-        st.checkbox("🎯 Pause Buying if Nifty 50 is Heavy Red", value=True)
-        st.slider("📊 Minimum Volume Surge Threshold", min_value=1.0, max_value=5.0, value=2.0, step=0.5)
-
-    st.success("✅ All Risk Management and Capital Allocation Rules are Active in System Memory!")
+if is_market_open:
+    st.markdown("""<script>setTimeout(function(){ window.location.reload(); }, 30000);</script>""", unsafe_allow_html=True)
