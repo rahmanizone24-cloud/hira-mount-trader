@@ -371,41 +371,47 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* KRRISH AVATAR OVERLAY (FIXED AT BOTTOM RIGHT) */
+        /* FIXED SUPERHERO FLOATING WIDGET (BOTTOM RIGHT - INTRASTOCKS STYLE) */
         .krrish-fixed-float {{
             position: fixed !important;
-            bottom: 45px !important;
-            right: 20px !important;
+            bottom: 25px !important;
+            right: 25px !important;
             z-index: 9999999 !important;
+            cursor: pointer;
         }}
 
         .krrish-avatar-glow {{
-            width: 58px;
-            height: 58px;
-            background: radial-gradient(circle, #00d2ff 0%, #031528 85%);
-            border: 2px solid #00d2ff;
+            width: 54px;
+            height: 54px;
             border-radius: 50%;
+            border: 2px solid #00d2ff;
+            background: #031528;
+            box-shadow: 0 0 18px rgba(0, 210, 255, 0.8);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 22px #00d2ff;
-            cursor: pointer;
-            user-select: none;
-            animation: pulseGlow 1.8s infinite alternate;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: superheroPulse 2s infinite alternate;
         }}
 
-        @keyframes pulseGlow {{
-            0% {{ box-shadow: 0 0 10px rgba(0, 210, 255, 0.6); transform: scale(0.96); }}
-            100% {{ box-shadow: 0 0 30px rgba(0, 210, 255, 1); transform: scale(1.08); }}
+        .krrish-avatar-glow:hover {{
+            transform: scale(1.12);
+            box-shadow: 0 0 28px rgba(0, 210, 255, 1);
+        }}
+
+        @keyframes superheroPulse {{
+            0% {{ box-shadow: 0 0 10px rgba(0, 210, 255, 0.5); transform: scale(0.98); }}
+            100% {{ box-shadow: 0 0 24px rgba(0, 210, 255, 1); transform: scale(1.05); }}
         }}
 
         /* ALERT HISTORY PANEL POPUP */
         .alerts-history-panel {{
             display: none;
             position: fixed !important;
-            bottom: 110px !important;
-            right: 20px !important;
-            width: 285px;
+            bottom: 90px !important;
+            right: 25px !important;
+            width: 290px;
             max-height: 380px;
             background-color: {card_bg};
             border: 2px solid #00d2ff;
@@ -419,8 +425,8 @@ st.markdown(f"""
         /* AUTO-DISMISS TOAST BUBBLE */
         .toast-bubble {{
             position: fixed !important;
-            bottom: 110px !important;
-            right: 20px !important;
+            bottom: 90px !important;
+            right: 25px !important;
             background-color: {card_bg};
             border: 2px solid #00d2ff;
             border-radius: 10px;
@@ -966,7 +972,9 @@ for stock in all_ready_stocks:
 if not alert_items_html:
     alert_items_html = f'<div style="text-align:center; color:{text_sub}; font-size:11px; padding:15px;">No active breakouts yet</div>'
 
-# --- CLEAN FLOATING OVERLAY AVATAR & ALERT PANEL ---
+# --- HIGH-QUALITY AVATAR WIDGET (INTRASTOCKS STYLE) ---
+AVATAR_IMG_URL = "https://api.dicebear.com/7.x/bottts/svg?seed=KrrishHero&backgroundColor=031528&textureChance=100"
+
 latest_sym = latest_ready_stock['Symbol'] if latest_ready_stock else ''
 latest_type = ('Bullish Breakout' if latest_ready_stock and latest_ready_stock['IsBullish'] else 'Bearish Breakdown') if latest_ready_stock else ''
 latest_time = latest_ready_stock['SignalTime'] if latest_ready_stock else ''
@@ -975,44 +983,75 @@ latest_change = f"{latest_ready_stock['ChangePct']:+.2f}%" if latest_ready_stock
 latest_color = ("#3fb950" if latest_ready_stock and latest_ready_stock['IsBullish'] else "#f85149") if latest_ready_stock else "#58a6ff"
 toast_display = 'block' if latest_ready_stock else 'none'
 
-KRRISH_SVG = """<svg viewBox="0 0 100 100" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
-<circle cx="50" cy="50" r="45" fill="#031528"/>
-<path d="M50 15 C35 15 25 30 25 45 C25 65 38 80 50 85 C62 80 75 65 75 45 C75 30 65 15 50 15 Z" fill="#0b1d3a"/>
-<path d="M30 38 Q50 25 70 38 Q78 50 70 58 Q50 48 30 58 Q22 50 30 38 Z" fill="#00d2ff"/>
-<circle cx="41" cy="46" r="3.5" fill="#ffffff"/>
-<circle cx="59" cy="46" r="3.5" fill="#ffffff"/>
-<path d="M42 68 Q50 74 58 68" stroke="#00d2ff" stroke-width="3" fill="none"/>
-</svg>"""
+part1 = f'''
+<div class="krrish-fixed-float" id="krrishTriggerBtn">
+    <div class="krrish-avatar-glow" title="Click to view Alert History">
+        <img src="{AVATAR_IMG_URL}" width="42" height="42" alt="Krrish Trader" style="object-fit:cover; border-radius:50%;" />
+    </div>
+</div>
+'''
 
-part1 = '<div class="krrish-fixed-float" onclick="toggleAlertPanel()"><div class="krrish-avatar-glow" title="Click to view Alert History">' + KRRISH_SVG + '</div></div>'
-part2 = '<div id="alertHistoryPanel" class="alerts-history-panel"><div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid ' + border_color + '; padding-bottom:6px; margin-bottom:8px;"><span style="font-weight:900; font-size:12px; color:' + text_main + ';">📢 Alert History</span><div><button class="clear-btn" onclick="clearAlertHistory()">Clear</button><span style="font-size:12px; color:' + accent_blue + '; cursor:pointer; margin-left:8px;" onclick="toggleAlertPanel()">✖</span></div></div><div id="alertListContainer">' + alert_items_html + '</div></div>'
-part3 = '<div id="toastNotification" class="toast-bubble" style="display:' + toast_display + ';"><div style="font-weight:900; color:' + latest_color + '; font-size:12px; margin-bottom:2px;">🚨 READY ALERT!</div><div style="font-size:11px; color:' + text_main + ';"><b>' + latest_sym + '</b> gave a <b>' + latest_type + '</b> at <b>' + latest_time + '</b>.</div><div style="font-size:10px; color:' + text_sub + '; margin-top:3px;">Price: ' + latest_price + ' (' + latest_change + ')</div></div>'
+part2 = f'''
+<div id="alertHistoryPanel" class="alerts-history-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid {border_color}; padding-bottom:6px; margin-bottom:8px;">
+        <span style="font-weight:900; font-size:12px; color:{text_main};">📢 Alert History</span>
+        <div>
+            <button class="clear-btn" id="clearBtnId">Clear</button>
+            <span style="font-size:14px; color:{accent_blue}; cursor:pointer; margin-left:10px; font-weight:900;" id="closePanelBtn">✖</span>
+        </div>
+    </div>
+    <div id="alertListContainer">{alert_items_html}</div>
+</div>
+'''
+
+part3 = f'''
+<div id="toastNotification" class="toast-bubble" style="display:{toast_display};">
+    <div style="font-weight:900; color:{latest_color}; font-size:12px; margin-bottom:2px;">🚨 READY ALERT!</div>
+    <div style="font-size:11px; color:{text_main};"><b>{latest_sym}</b> gave a <b>{latest_type}</b> at <b>{latest_time}</b>.</div>
+    <div style="font-size:10px; color:{text_sub}; margin-top:3px;">Price: {latest_price} ({latest_change})</div>
+</div>
+'''
 
 script_js = """
 <script>
     setTimeout(function() {
         var toast = document.getElementById('toastNotification');
         if(toast) { toast.style.display = 'none'; }
-    }, 5000);
+    }, 6000);
 
-    function toggleAlertPanel() {
-        var panel = document.getElementById('alertHistoryPanel');
-        var toast = document.getElementById('toastNotification');
-        if(toast) toast.style.display = 'none';
-        if (panel) {
-            if (panel.style.display === "block") {
-                panel.style.display = "none";
-            } else {
-                panel.style.display = "block";
+    var triggerBtn = document.getElementById('krrishTriggerBtn');
+    var closeBtn = document.getElementById('closePanelBtn');
+    var clearBtn = document.getElementById('clearBtnId');
+
+    if(triggerBtn) {
+        triggerBtn.addEventListener('click', function() {
+            var panel = document.getElementById('alertHistoryPanel');
+            var toast = document.getElementById('toastNotification');
+            if(toast) toast.style.display = 'none';
+            if (panel) {
+                if (panel.style.display === "block") {
+                    panel.style.display = "none";
+                } else {
+                    panel.style.display = "block";
+                }
             }
-        }
+        });
     }
 
-    function clearAlertHistory() {
-        var container = document.getElementById('alertListContainer');
-        if(container) {
-            container.innerHTML = '<div style="text-align:center; color:#8b949e; font-size:11px; padding:15px;">Cleared all active alerts</div>';
-        }
+    if(closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            var panel = document.getElementById('alertHistoryPanel');
+            if(panel) panel.style.display = "none";
+        });
+    }
+
+    if(clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            var container = document.getElementById('alertListContainer');
+            if(container) {
+                container.innerHTML = '<div style="text-align:center; color:#8b949e; font-size:11px; padding:15px;">Cleared all active alerts</div>';
+            }
+        });
     }
 </script>
 """
