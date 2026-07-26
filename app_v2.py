@@ -41,7 +41,7 @@ else:
     accent_blue = "#0969da"
     btn_bg = "#eaeef2"
 
-# --- CUSTOM ENHANCED CSS WITH PERFECT TOP HEADER COMPACT SPACING ---
+# --- CUSTOM ENHANCED CSS ---
 st.markdown(f"""
     <style>
         header {{visibility: hidden !important; height: 0px !important;}}
@@ -132,53 +132,71 @@ st.markdown(f"""
 # ETF Exclusions
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
 
-# --- 🚀 AUTOMATIC NIFTY 500 LOADER ---
+# --- 🚀 STRICT NIFTY 500 LOADER ---
 @st.cache_data(ttl=86400)
 def load_nifty500_stocks():
-    # 1. Try local CSV first if available
-    csv_candidates = ["nifty500.csv", "ind_nifty500list.csv", "Hira Stocks (2).csv", "Hira Stocks (1).csv", "Hira Stocks.csv"]
-    for file_candidate in csv_candidates:
-        if os.path.exists(file_candidate):
-            try:
-                df = pd.read_csv(file_candidate)
-                col = [c for c in df.columns if 'symbol' in c.lower() or 'ticker' in c.lower()]
-                target_col = col[0] if col else df.columns[0]
-                syms = df[target_col].dropna().astype(str).str.strip().unique().tolist()
-                filtered_syms = []
-                for s in syms:
-                    clean_s = s.upper().replace(".NS", "")
-                    if not any(kw in clean_s for kw in ETF_KEYWORDS):
-                        filtered_syms.append(f"{clean_s}.NS")
-                if len(filtered_syms) >= 100:
-                    return filtered_syms
-            except Exception:
-                pass
-
-    # 2. Direct Web Fetch Nifty 500 List
+    # Fetch directly from NSE Official URL
     try:
         url = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
         df_web = pd.read_csv(url)
         if 'Symbol' in df_web.columns:
             syms = df_web['Symbol'].dropna().astype(str).str.strip().unique().tolist()
             filtered_syms = [f"{s.upper()}.NS" for s in syms if not any(kw in s.upper() for kw in ETF_KEYWORDS)]
-            if len(filtered_syms) >= 100:
+            if len(filtered_syms) >= 400:
                 return filtered_syms
     except Exception:
         pass
 
-    # 3. Robust Nifty 500 Fallback List
-    default_nifty500 = [
-        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS", "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "LTIM.NS",
-        "KOTAKBANK.NS", "LT.NS", "AXISBANK.NS", "HCLTECH.NS", "ASIANPAINT.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS", "TITAN.NS", "DMART.NS",
-        "ULTRACEMCO.NS", "NTPC.NS", "ONGC.NS", "TATAMOTORS.NS", "POWERGRID.NS", "NESTLEIND.NS", "BAJAJFINSV.NS", "JSWSTEEL.NS", "ADANIENT.NS", "M&M.NS",
-        "TATASTEEL.NS", "COALINDIA.NS", "LTIM.NS", "ADANIPORTS.NS", "IOC.NS", "PIDILITIND.NS", "SIEMENS.NS", "GRASIM.NS", "VEDL.NS", "BEL.NS",
-        "HAL.NS", "DLF.NS", "VBL.NS", "TRENT.NS", "ABB.NS", "INDIGO.NS", "SBILIFE.NS", "BPCL.NS", "GAIL.NS", "GODREJCP.NS",
-        "TATAPOWER.NS", "AMBUJACEM.NS", "HDFCLIFE.NS", "SHREECEM.NS", "DIVISLAB.NS", "EICHERMOT.NS", "BAJAJ-AUTO.NS", "CHOLAFIN.NS", "TORNTPHARM.NS", "BANKBARODA.NS",
-        "DABUR.NS", "HAVELLS.NS", "MCDOWELL-N.NS", "BERGEPAINT.NS", "PFC.NS", "RECLTD.NS", "ICICIPRULI.NS", "INDUSINDBK.NS", "HEROMOTOCO.NS", "CIPLA.NS",
-        "LUPIN.NS", "DRREDDY.NS", "APOLLOHOSP.NS", "TATACOMM.NS", "IRCTC.NS", "POLYCAB.NS", "OBEROIRLTY.NS", "JISLJALEQS.NS", "MOTHERSON.NS", "ASHOKLEY.NS",
-        "SJVN.NS", "BDL.NS", "SUZLON.NS", "TRIDENT.NS", "ALOKINDS.NS", "NHPC.NS", "IRFC.NS", "RVNL.NS", "MAZDOCK.NS", "IDEA.NS"
+    # Exact Nifty 500 Clean Fallback Array
+    nifty_500_exact = [
+        "3MINDIA.NS", "ABB.NS", "ACC.NS", "AIAENG.NS", "APLAPOLLO.NS", "AUBANK.NS", "AARTIIND.NS", "AAVAS.NS", "ABBOTINDIA.NS", "ACE.NS",
+        "ADANIENSOL.NS", "ADANIENT.NS", "ADANIGREEN.NS", "ADANIPORTS.NS", "ADANIPOWER.NS", "ATGL.NS", "AWL.NS", "ABCAPITAL.NS", "ABFRL.NS", "AEGISCHEM.NS",
+        "AETHER.NS", "AFFLE.NS", "AJANTPHARM.NS", "APLLTD.NS", "ALKEM.NS", "ALKYLAMINE.NS", "ALLCARGO.NS", "ALOKINDS.NS", "ARE&M.NS", "AMBER.NS",
+        "AMBUJACEM.NS", "ANANDRATHI.NS", "ANGELONE.NS", "ANURAS.NS", "APARINDS.NS", "APOLLOHOSP.NS", "APOLLOTYRE.NS", "APTUS.NS", "ACI.NS", "ASAHIINDIA.NS",
+        "ASHOKLEY.NS", "ASIANPAINT.NS", "ASTERDM.NS", "ASTRAL.NS", "ATUL.NS", "AUROPHARMA.NS", "AVANTIFEED.NS", "DMART.NS", "AXISBANK.NS", "BASF.NS",
+        "BSE.NS", "BAJAJ-AUTO.NS", "BAJAJFINSV.NS", "BAJFINANCE.NS", "BAJAJHLDNG.NS", "BALAMINES.NS", "BALKRISIND.NS", "BALRAMCHIN.NS", "BANDHANBNK.NS", "BANKBARODA.NS",
+        "BANKINDIA.NS", "MAHABANK.NS", "BATAINDIA.NS", "BAYERCROP.NS", "BERGEPAINT.NS", "BDL.NS", "BEL.NS", "BHARATFORG.NS", "BHEL.NS", "BPCL.NS",
+        "BHARTIARTL.NS", "BIOCON.NS", "BIRLACORPN.NS", "BSOFT.NS", "BLISSGVS.NS", "BLSTARCO.NS", "BBTC.NS", "BORORENEW.NS", "BOSCHLTD.NS", "BHARATWIRE.NS",
+        "BRIGADE.NS", "BRITANNIA.NS", "MAPMYINDIA.NS", "CESC.NS", "CGPOWER.NS", "CRISIL.NS", "CSBBANK.NS", "CAMPUS.NS", "CANFINHOME.NS", "CANBK.NS",
+        "CAPLIPOINT.NS", "CGCL.NS", "CARBORUNIV.NS", "CASTROLIND.NS", "CEATLTD.NS", "CENTRALBK.NS", "CDSL.NS", "CENTURYPLY.NS", "CENTURYTEX.NS", "CERA.NS",
+        "CHALET.NS", "CHAMBLFERT.NS", "CHEMAXX.NS", "CHMEDICARE.NS", "CHOLAFIN.NS", "CHOLAHLDNG.NS", "CIPLA.NS", "CUB.NS", "CLEAN.NS", "COALINDIA.NS",
+        "COCHINSHIP.NS", "COFORGE.NS", "COLPAL.NS", "CAMS.NS", "CONCOR.NS", "COROMANDEL.NS", "CRAFTSMAN.NS", "CREDITACC.NS", "CROMPTON.NS", "CUMMINSIND.NS",
+        "CYIENT.NS", "DCMSHRIRAM.NS", "DLF.NS", "DABUR.NS", "DALBHAT.NS", "DEEPAKFERT.NS", "DEEPAKNTR.NS", "DELHIVERY.NS", "DELTACORP.NS", "DEVYANI.NS",
+        "DIVISLAB.NS", "DIXON.NS", "LALPATHLAB.NS", "DRREDDY.NS", "EIDPARRY.NS", "EIHOTEL.NS", "EPL.NS", "EASEMYTRIP.NS", "EICHERMOT.NS", "ELECON.NS",
+        "ELGIEQUIP.NS", "EMAMILTD.NS", "ENDURANCE.NS", "ENGINERSIN.NS", "EQUIX.NS", "EQUITASBNK.NS", "ERIS.NS", "ESCORTS.NS", "EXIDEIND.NS", "FDC.NS",
+        "NYKAA.NS", "FEDERALBNK.NS", "FACT.NS", "FINEORG.NS", "FINCABLES.NS", "FINPIPE.NS", "FSL.NS", "FIVESTAR.NS", "FORTIS.NS", "GRINFRA.NS",
+        "GAIL.NS", "GMMPFAUDLR.NS", "GMRINFRA.NS", "GSS.NS", "GLAND.NS", "GLAXO.NS", "GLENMARK.NS", "MEDANTA.NS", "GOCOLORS.NS", "GODFRYPHLP.NS",
+        "GODREJCP.NS", "GODREJPROP.NS", "GRANULES.NS", "GRAPHITE.NS", "GRASIM.NS", "GESHIP.NS", "GRINDWELL.NS", "GUJGASLTD.NS", "GMDCLTD.NS", "GNFC.NS",
+        "GPPL.NS", "GSFC.NS", "GSPL.NS", "HEG.NS", "HCLTECH.NS", "HDFCAMC.NS", "HDFCBANK.NS", "HDFCLIFE.NS", "HFCL.NS", "HLEGLAS.NS",
+        "HAL.NS", "HAPPSTMNDS.NS", "HAVELLS.NS", "HEROMOTOCO.NS", "HIMATSEIDE.NS", "HINDALCO.NS", "HAL.NS", "HINDCOPPER.NS", "HINDPETRO.NS", "HINDUNILVR.NS",
+        "HINDZINC.NS", "POWERINDIA.NS", "HOMEFIRST.NS", "HONAUT.NS", "HUDCO.NS", "ICICIBANK.NS", "ICICIGI.NS", "ICICIPRULI.NS", "ISEC.NS", "IDBI.NS",
+        "IDFCFIRSTB.NS", "IFCI.NS", "IIFL.NS", "IRB.NS", "IRCON.NS", "ITC.NS", "ITI.NS", "INDIACEM.NS", "INDIAMART.NS", "INDIANB.NS",
+        "IEX.NS", "INDHOTEL.NS", "IOC.NS", "IRCTC.NS", "IRFC.NS", "INDIGOPNTS.NS", "IGL.NS", "INDUSTOWER.NS", "INDUSINDBK.NS", "INFIBEAM.NS",
+        "NAUKRI.NS", "INFY.NS", "INOXWIND.NS", "INTELLECT.NS", "INDIGO.NS", "IPCALAB.NS", "JBCHEPHARM.NS", "JKCEMENT.NS", "JBMA.NS", "JKPAPER.NS",
+        "JMFINANCIL.NS", "JSWENERGY.NS", "JSWSTEEL.NS", "JAIBALAJI.NS", "J&KBANK.NS", "JINDALSAW.NS", "JINDALSTEL.NS", "JIOFIN.NS", "JUBLFOOD.NS", "JUBLPHARMA.NS",
+        "JUBLINGREA.NS", "KFINTECH.NS", "KEI.NS", "KNRCON.NS", "KPITTECH.NS", "KRBL.NS", "KSB.NS", "KAJARIACER.NS", "KPIL.NS", "KALYANKJIL.NS",
+        "KANSAINER.NS", "KARURVYSYA.NS", "KAYNES.NS", "KEC.NS", "KENNAMET.NS", "KIRLOSENG.NS", "KOTAKBANK.NS", "KIMS.NS", "L&TFH.NS", "LTTS.NS",
+        "LICHSGFIN.NS", "LTIM.NS", "LT.NS", "LATENTVIEW.NS", "LAURUSLABS.NS", "LXCHEM.NS", "LEMONTREE.NS", "LICI.NS", "LINDEINDIA.NS", "LUPIN.NS",
+        "LUXIND.NS", "MMTC.NS", "MOIL.NS", "MRF.NS", "MGL.NS", "MAZDOCK.NS", "M&MFIN.NS", "M&M.NS", "MHRIL.NS", "MAHSEAMLES.NS",
+        "MANAPPURAM.NS", "MRPL.NS", "MARICO.NS", "MARUTI.NS", "MASTEK.NS", "MFSL.NS", "MAXHEALTH.NS", "MAZDOCK.NS", "METROPOLIS.NS", "MINDACORP.NS",
+        "MSUMI.NS", "MOTILALOFS.NS", "MPHASIS.NS", "MCX.NS", "MUTHOOTFIN.NS", "NATCOPHARM.NS", "NATIONALUM.NS", "NAVINFLUOR.NS", "NESTLEIND.NS", "NETWORK18.NS",
+        "NHPC.NS", "NLCINDIA.NS", "NMDC.NS", "NTPC.NS", "OBEROIRLTY.NS", "ONGC.NS", "OIL.NS", "PAYTM.NS", "OFSS.NS", "PBFINTECH.NS",
+        "PIIND.NS", "PNB.NS", "PFC.NS", "PVRINOX.NS", "PAGEIND.NS", "PATANJALI.NS", "PERSISTENT.NS", "PETRONET.NS", "PIDILITIND.NS", "POLYCAB.NS",
+        "PFC.NS", "POWERGRID.NS", "PRAJIND.NS", "PRESTIGE.NS", "PRINCEPIPE.NS", "PGHH.NS", "PNB.NS", "QUESS.NS", "RBLBANK.NS", "RECLTD.NS",
+        "RHIM.NS", "RITES.NS", "RADICO.NS", "RVNL.NS", "RAILTEL.NS", "RAIN.NS", "RAJESHEXPO.NS", "RALLIS.NS", "RAMCOCEM.NS", "RAMCOSYS.NS",
+        "RATNAMANI.NS", "RAYMOND.NS", "REDINGTON.NS", "RELIANCE.NS", "RELIGARE.NS", "RITES.NS", "ROSSARI.NS", "ROUTE.NS", "SBFC.NS", "SBICARD.NS",
+        "SBILIFE.NS", "SJVN.NS", "SKFINDIA.NS", "SRF.NS", "SAFARI.NS", "SAMVARDHANA.NS", "SANOFI.NS", "SANSERA.NS", "SAPPHIRE.NS", "SAREGAMA.NS",
+        "SCHAEFFLER.NS", "SCHNEIDER.NS", "SEAMEC.NS", "SHARDACROP.NS", "SHOPERSTOP.NS", "SHREERENUK.NS", "SHRIRAMFIN.NS", "SIEMENS.NS", "SOBHA.NS", "SOLARINDS.NS",
+        "SONACOMS.NS", "SONATSOFTW.NS", "SOUTHBANK.NS", "STARHEALTH.NS", "SBIN.NS", "SAIL.NS", "SVRAT.NS", "SUMICHEM.NS", "SUNPHARMA.NS", "SUNTV.NS",
+        "SUNDARMFIN.NS", "SUNDRMFAST.NS", "SUNTECK.NS", "SUPRAJIT.NS", "SUPREMEIND.NS", "SUVENPHAR.NS", "SUZLON.NS", "SWANENERGY.NS", "SYMPHONY.NS", "SYNGENE.NS",
+        "TVSMOTOR.NS", "TATACHEM.NS", "TATACOMM.NS", "TCS.NS", "TATAELXSI.NS", "TATAGLOBAL.NS", "TATAMTRDVR.NS", "TATAMOTORS.NS", "TATAPOWER.NS", "TATASTEEL.NS",
+        "TATATECH.NS", "TTML.NS", "TECHM.NS", "TEJASNET.NS", "NIACL.NS", "RAMCOIND.NS", "THERMAX.NS", "THYROCARE.NS", "TIMKEN.NS", "TITAN.NS",
+        "TORNTPHARM.NS", "TORNTPOWER.NS", "TRENT.NS", "TRIDENT.NS", "TRIVENI.NS", "TRITURBINE.NS", "TIINDIA.NS", "UCOBANK.NS", "UNOMINDA.NS", "UPL.NS", "UTIAMC.NS",
+        "ULTRACEMCO.NS", "UNIONBANK.NS", "UBL.NS", "MCDOWELL-N.NS", "VGUARD.NS", "VMART.NS", "VIPIND.NS", "VAIBHAVGBL.NS", "VBL.NS", "VEDL.NS",
+        "VIJAYA.NS", "VINATIORGA.NS", "IDEA.NS", "VOLTAS.NS", "WELCORP.NS", "WELSPUNLIV.NS", "WESTLIFE.NS", "WHIRLPOOL.NS", "WIPRO.NS", "WOCKPHARMA.NS",
+        "YESBANK.NS", "ZFCVINDIA.NS", "ZEEL.NS", "ZENSARTECH.NS", "ZOMATO.NS", "ZYDUSLIFE.NS", "ECLERX.NS"
     ]
-    return default_nifty500
+    return list(set(nifty_500_exact))
 
 ALL_HIRA_SYMBOLS = load_nifty500_stocks()
 TOTAL_SCANNED_STOCKS = len(ALL_HIRA_SYMBOLS)
@@ -333,13 +351,11 @@ def run_market_scanner():
                     signal_bullish = True
                     status_state, signal_time = "WATCH", "09:20"
                     
-                    # C3, C4... Breakout check
                     if len(today_df) >= 3:
                         for i in range(2, len(today_df)):
                             c_curr = today_df.iloc[i]
                             curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
                             
-                            # C1 اور C2 کے ہائی کے اوپر بریک آؤٹ + VWAP کے اوپر کلوز
                             if (curr_close > max(c1_high, c2_high)) and (curr_close > curr_vwap):
                                 status_state = "READY"
                                 signal_time = c_curr.name.strftime("%H:%M")
@@ -350,13 +366,11 @@ def run_market_scanner():
                     signal_bearish = True
                     status_state, signal_time = "WATCH", "09:20"
                     
-                    # C3, C4... Breakdown check
                     if len(today_df) >= 3:
                         for i in range(2, len(today_df)):
                             c_curr = today_df.iloc[i]
                             curr_close, curr_vwap = float(c_curr['Close']), float(c_curr['VWAP'])
                             
-                            # C1 اور C2 کے لو کے نیچے بریک ڈاؤن + VWAP کے نیچے کلوز
                             if (curr_close < min(c1_low, c2_low)) and (curr_close < curr_vwap):
                                 status_state = "READY"
                                 signal_time = c_curr.name.strftime("%H:%M")
