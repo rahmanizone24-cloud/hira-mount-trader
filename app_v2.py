@@ -14,7 +14,7 @@ st.set_page_config(
     page_title="Hira Mount Trader Terminal",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded"  # Enabled Sidebar for Navigation
+    initial_sidebar_state="collapsed"
 )
 
 # --- DATABASE SETUP FOR TRADING JOURNAL ---
@@ -50,6 +50,9 @@ if 'theme' not in st.session_state:
     st.session_state.theme = query_params.get('theme', 'dark')
 
 st.query_params['theme'] = st.session_state.theme
+
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "terminal"
 
 # --- THEME CSS DEFINITIONS ---
 if st.session_state.theme == 'dark':
@@ -127,6 +130,14 @@ st.markdown(f"""
         .stButton>button:hover {{
             border-color: {accent_blue} !important;
             color: {text_main} !important;
+        }}
+
+        /* TOP NAV MENU TABS BUTTONS */
+        .nav-btn-active {{
+            border: 2px solid {accent_blue} !important;
+            background-color: {accent_blue}22 !important;
+            color: {accent_blue} !important;
+            font-weight: 900 !important;
         }}
 
         /* CLEAN & BOLD TITLE TEXT */
@@ -482,22 +493,6 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR NAVIGATION MENU ---
-st.sidebar.markdown(f"<h2 style='color: {accent_blue}; text-align: center;'>🏛️ HIRA MOUNT</h2>", unsafe_allow_html=True)
-st.sidebar.markdown("---")
-
-app_mode = st.sidebar.radio(
-    "📌 MAIN MENU",
-    ["📊 Live Terminal", "📓 Trading Journal", "⚙️ Filters & Settings"]
-)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 💰 Capital Control")
-total_capital = st.sidebar.number_input("Total Capital (₹)", value=100000, step=10000)
-per_trade_cap = st.sidebar.number_input("Per Trade Allocation (₹)", value=10000, step=1000)
-max_slots = int(total_capital / per_trade_cap) if per_trade_cap > 0 else 10
-st.sidebar.info(f"💡 Available Slots: **{max_slots} Trades**")
-
 # --- KEYWORDS TO STRICTLY BAN ETFs ---
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
 
@@ -614,6 +609,8 @@ def run_market_scanner():
 
     if bulk_5m is None or bulk_1d is None:
         return [], [], None, None, [], 0, 0
+
+    per_trade_cap = 10000
 
     # 🚀 STEP 2: FAST VECTORIZED PROCESSING IN MEMORY
     for symbol in ALL_HIRA_SYMBOLS:
@@ -776,66 +773,89 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
+# --- TOP HEADER ROW ---
+top_idx = fetch_indices()
+now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
+
+idx_pills_html = '<div class="header-indices-wrapper">'
+for name, data in top_idx.items():
+    pct = data.get('pct', 0)
+    cls = "idx-up-p" if pct >= 0 else "idx-down-p"
+    arrow = "▲" if pct >= 0 else "▼"
+    url = data.get("url", "#")
+    val = data.get("val", 0)
+    
+    idx_pills_html += (
+        f'<a class="idx-pill" href="{url}" target="_blank">'
+        f'<span class="idx-lbl">{name}:</span> '
+        f'<span class="idx-num">{val:,.2f}</span> '
+        f'<span class="{cls}">{arrow}{pct:+.2f}%</span>'
+        f'</a>'
+    )
+idx_pills_html += '</div>'
+
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.15, 0.53, 0.09, 0.11, 0.06, 0.06])
+
+with nav_col1:
+    st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
+
+with nav_col2:
+    st.markdown(idx_pills_html, unsafe_allow_html=True)
+
+with nav_col3:
+    st.markdown(f'<div style="margin-top:2px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
+
+with nav_col4:
+    st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap; text-align:center;">🕒 {now_time}</div>', unsafe_allow_html=True)
+
+with nav_col5:
+    theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
+    if st.button(theme_icon):
+        st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
+        st.query_params['theme'] = st.session_state.theme
+        st.rerun()
+
+with nav_col6:
+    if st.button("🔄 Refresh"):
+        st.cache_data.clear()
+        st.rerun()
+
+st.markdown("<div style='margin-bottom: 5px;'></div>", unsafe_allow_html=True)
+
 # ==========================================
-# PAGE 1: LIVE TERMINAL SCANNER (ORIGINAL)
+# 🆕 TOP NAVIGATION TAB BUTTONS (MAIN MENU)
 # ==========================================
-if app_mode == "📊 Live Terminal":
-    # --- TOP NAVIGATION HEADER (ORIGINAL UNTOUCHED DESKTOP STRUCTURE) ---
-    top_idx = fetch_indices()
-    now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
+tab_col1, tab_col2, tab_col3 = st.columns(3)
 
-    idx_pills_html = '<div class="header-indices-wrapper">'
-    for name, data in top_idx.items():
-        pct = data.get('pct', 0)
-        cls = "idx-up-p" if pct >= 0 else "idx-down-p"
-        arrow = "▲" if pct >= 0 else "▼"
-        url = data.get("url", "#")
-        val = data.get("val", 0)
-        
-        idx_pills_html += (
-            f'<a class="idx-pill" href="{url}" target="_blank">'
-            f'<span class="idx-lbl">{name}:</span> '
-            f'<span class="idx-num">{val:,.2f}</span> '
-            f'<span class="{cls}">{arrow}{pct:+.2f}%</span>'
-            f'</a>'
-        )
-    idx_pills_html += '</div>'
+with tab_col1:
+    btn_style = "nav-btn-active" if st.session_state.active_tab == "terminal" else ""
+    if st.button("📊 LIVE TERMINAL SCANNER", key="btn_term"):
+        st.session_state.active_tab = "terminal"
+        st.rerun()
 
-    nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.15, 0.53, 0.09, 0.11, 0.06, 0.06])
+with tab_col2:
+    btn_style = "nav-btn-active" if st.session_state.active_tab == "journal" else ""
+    if st.button("📓 TRADING JOURNAL & ANALYTICS", key="btn_jour"):
+        st.session_state.active_tab = "journal"
+        st.rerun()
 
-    with nav_col1:
-        st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
+with tab_col3:
+    btn_style = "nav-btn-active" if st.session_state.active_tab == "filters" else ""
+    if st.button("⚙️ STRICT LOGIC FILTERS & CAPITAL CONTROL", key="btn_filt"):
+        st.session_state.active_tab = "filters"
+        st.rerun()
 
-    with nav_col2:
-        st.markdown(idx_pills_html, unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-    with nav_col3:
-        st.markdown(f'<div style="margin-top:2px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
-
-    with nav_col4:
-        st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap; text-align:center;">🕒 {now_time}</div>', unsafe_allow_html=True)
-
-    with nav_col5:
-        theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
-        if st.button(theme_icon):
-            st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
-            st.query_params['theme'] = st.session_state.theme
-            st.rerun()
-
-    with nav_col6:
-        if st.button("🔄 Refresh"):
-            st.cache_data.clear()
-            st.rerun()
-
-    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
-
+# ==========================================
+# PAGE 1: LIVE TERMINAL SCANNER
+# ==========================================
+if st.session_state.active_tab == "terminal":
     # --- EXECUTE SCANNER ---
     bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
 
-    # --- CALCULATE SIDEWAYS STOCKS FOR ACCURATE SENTIMENT ---
     sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
 
-    # --- DYNAMIC SENTIMENT LOGIC ---
     if total_bull_cnt >= total_bear_cnt:
         sentiment_label = "Bullish"
         sentiment_color = "#3fb950"
@@ -847,7 +867,7 @@ if app_mode == "📊 Live Terminal":
         sentiment_blink = "🔴"
         sentiment_arrow = "▼"
 
-    # --- METRIC CARDS ROW (ORIGINAL DESKTOP 4-COLUMN STRUCTURE) ---
+    # --- METRIC CARDS ROW ---
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
@@ -1013,7 +1033,6 @@ if app_mode == "📊 Live Terminal":
         else:
             st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:25px; font-weight:600;">Searching for High-Volume Bearish breakdowns...</div>', unsafe_allow_html=True)
 
-    # --- AUTO-REFRESH (30 SECONDS) ---
     if is_market_open:
         st.markdown("""
             <script>
@@ -1026,14 +1045,17 @@ if app_mode == "📊 Live Terminal":
 # ==========================================
 # PAGE 2: TRADING JOURNAL & ANALYTICS
 # ==========================================
-elif app_mode == "📓 Trading Journal":
-    st.title("📓 Private Trading Journal")
-    st.markdown("Record your automated/manual trades, review performance, and analyze win rate.")
+elif st.session_state.active_tab == "journal":
+    st.markdown("""
+        <div class="box-container">
+            <div class="box-title">📓 PRIVATE TRADING JOURNAL & PERFORMANCE ANALYTICS</div>
+        </div>
+    """, unsafe_allow_html=True)
 
     j_col1, j_col2 = st.columns([1, 2])
 
     with j_col1:
-        st.subheader("➕ Log New Trade")
+        st.markdown("### ➕ Record Trade Entry")
         with st.form("journal_form"):
             t_date = st.date_input("Trade Date", datetime.date.today())
             t_symbol = st.text_input("Stock Symbol (e.g. ALOKINDS)").upper()
@@ -1044,12 +1066,12 @@ elif app_mode == "📓 Trading Journal":
             t_qty = st.number_input("Quantity", min_value=1, step=1)
             
             pnl_calc = (t_exit - t_entry) * t_qty if t_type == "BUY" else (t_entry - t_exit) * t_qty
-            st.write(f"**Calculated P&L:** ₹{pnl_calc:,.2f}")
+            st.write(f"**Calculated Net P&L:** ₹{pnl_calc:,.2f}")
             
             t_status = st.selectbox("Status", ["TARGET HIT", "SL HIT", "OPEN"])
-            t_notes = st.text_area("Trade Notes / Mistakes")
+            t_notes = st.text_area("Trade Notes / Lessons")
 
-            submitted = st.form_submit_button("💾 Save Trade")
+            submitted = st.form_submit_button("💾 Save Trade Entry")
             if submitted and t_symbol:
                 conn = sqlite3.connect(DB_FILE)
                 c = conn.cursor()
@@ -1059,11 +1081,11 @@ elif app_mode == "📓 Trading Journal":
                 ''', (str(t_date), t_symbol, t_setup, t_type, t_entry, t_exit, t_qty, pnl_calc, t_status, t_notes))
                 conn.commit()
                 conn.close()
-                st.success(f"Trade for {t_symbol} saved successfully!")
+                st.success(f"✅ Trade for {t_symbol} saved successfully!")
                 st.rerun()
 
     with j_col2:
-        st.subheader("📊 Performance & Analytics")
+        st.markdown("### 📊 Overall Strategy Performance")
         conn = sqlite3.connect(DB_FILE)
         df_journal = pd.read_sql_query("SELECT * FROM journal ORDER BY id DESC", conn)
         conn.close()
@@ -1076,33 +1098,41 @@ elif app_mode == "📓 Trading Journal":
 
             m1, m2, m3 = st.columns(3)
             m1.metric("Total Realized P&L", f"₹{total_pnl:,.2f}")
-            m2.metric("Total Trades", total_trades)
-            m3.metric("Win Rate", f"{win_rate:.1f}%")
+            m2.metric("Total Executed Trades", total_trades)
+            m3.metric("System Win Rate", f"{win_rate:.1f}%")
 
             st.markdown("---")
             st.dataframe(df_journal, use_container_width=True)
         else:
-            st.info("No trades recorded yet. Start logging your trades on the left panel!")
+            st.info("💡 No trades logged in the database yet. Fill out the form on the left to start tracking performance!")
 
 # ==========================================
-# PAGE 3: STRICT LOGIC FILTERS & CONFIG
+# PAGE 3: STRICT LOGIC FILTERS & CAPITAL CONTROL
 # ==========================================
-elif app_mode == "⚙️ Filters & Settings":
-    st.title("⚙️ Strict Logical Quality Filters Configuration")
-    st.markdown("Fine-tune strict quality parameters to block unwanted/illogical signals before execution.")
+elif st.session_state.active_tab == "filters":
+    st.markdown("""
+        <div class="box-container">
+            <div class="box-title">⚙️ STRICT QUALITY FILTERS & DYNAMIC CAPITAL MANAGEMENT</div>
+        </div>
+    """, unsafe_allow_html=True)
 
-    st.subheader("🛡️ Algorithmic Risk & Quality Rules")
-    
-    col_f1, col_f2 = st.columns(2)
-    
-    with col_f1:
-        st.checkbox("🚫 Block Penny / Non-Liquid Stocks", value=True)
-        st.checkbox("🕯️ Enforce Candle Body Ratio >= 60%", value=True)
-        st.slider("📊 Minimum Volume Spike Multiple", min_value=1.0, max_value=5.0, value=2.0, step=0.5)
+    col_c1, col_c2 = st.columns(2)
 
-    with col_f2:
-        st.checkbox("📈 Enforce VWAP & EMA Alignment", value=True)
-        st.checkbox("🎯 Nifty 50 Market Trend Check", value=True)
-        st.number_input("🛡️ Buffer Entry Price (%)", value=0.10, step=0.05)
+    with col_c1:
+        st.markdown("### 💰 Capital Allocation & Slot Controls")
+        total_cap = st.number_input("Total Trading Capital (₹)", value=100000, step=10000)
+        per_trade = st.number_input("Allocation Per Trade (₹)", value=10000, step=1000)
+        max_slots = int(total_cap / per_trade) if per_trade > 0 else 10
+        
+        st.info(f"💡 **Max Allowed Simultaneous Positions:** `{max_slots} Slots`")
+        st.write(f"When all **{max_slots} slots** are occupied, any 11th signal will be automatically skipped until a position closes.")
 
-    st.success("✅ Logical parameters saved in local configuration!")
+    with col_c2:
+        st.markdown("### 🛡️ Algorithmic Signal Quality Rules")
+        st.checkbox("🚫 Strictly Block Penny & Low-Volume Stocks", value=True)
+        st.checkbox("🕯️ Reject Candles with Body Ratio < 60%", value=True)
+        st.checkbox("📈 Require VWAP & EMA Trend Alignment", value=True)
+        st.checkbox("🎯 Pause Buying if Nifty 50 is Heavy Red", value=True)
+        st.slider("📊 Minimum Volume Surge Threshold", min_value=1.0, max_value=5.0, value=2.0, step=0.5)
+
+    st.success("✅ All Risk Management and Capital Allocation Rules are Active in System Memory!")
