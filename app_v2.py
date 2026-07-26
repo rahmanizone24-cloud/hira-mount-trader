@@ -379,32 +379,23 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* 📱 EXACT MOBILE UI CUSTOM CSS FOR PERFECT LAYOUT */
+        /* 📱 STRICT MOBILE RESPONSIVE CSS MEDIA QUERY */
         @media screen and (max-width: 768px) {{
-            /* 1. Header Navigation Row Layout Adjustment */
+            /* 1. Title Center on Mobile */
             div[data-testid="column"]:has(div.nav-title-clean) {{
-                width: 50% !important;
-                order: 1 !important;
-                float: left !important;
+                width: 100% !important;
                 text-align: center !important;
+                margin-bottom: 4px !important;
             }}
             .nav-title-clean {{
                 text-align: center !important;
-                font-size: 15px !important;
-            }}
-
-            /* Theme & Refresh Buttons at Top Left & Right */
-            div[data-testid="column"]:has(button) {{
-                width: 25% !important;
-                float: left !important;
-                margin-bottom: 8px !important;
+                display: block !important;
             }}
 
             /* 2. Index Pills Grid 2x2 on Mobile */
             div[data-testid="column"]:has(div.header-indices-wrapper) {{
                 width: 100% !important;
-                clear: both !important;
-                margin-bottom: 8px !important;
+                margin-bottom: 6px !important;
             }}
             .header-indices-wrapper {{
                 display: grid !important;
@@ -419,21 +410,25 @@ st.markdown(f"""
                 padding: 4px 6px !important;
             }}
 
-            /* 3. Market Status & Time Full Width Below Indices */
+            /* 3. Market Status & Time Pair Side-by-Side (50% - 50%) */
             div[data-testid="column"]:has(span.market-status-closed),
-            div[data-testid="column"]:has(span.market-status-open) {{
-                width: 100% !important;
-                clear: both !important;
-                margin-bottom: 4px !important;
+            div[data-testid="column"]:has(span.market-status-open),
+            div[data-testid="column"]:has(div[style*="white-space:nowrap"]) {{
+                width: 48.5% !important;
+                display: inline-block !important;
+                float: left !important;
+                margin-bottom: 6px !important;
             }}
 
-            div[data-testid="column"]:has(div[style*="white-space:nowrap"]) {{
-                width: 100% !important;
-                text-align: center !important;
+            /* 4. Dark Theme & Refresh Buttons Pair Side-by-Side (50% - 50%) */
+            div[data-testid="column"]:has(button) {{
+                width: 48.5% !important;
+                display: inline-block !important;
+                float: left !important;
                 margin-bottom: 10px !important;
             }}
 
-            /* 4. Metric Cards Side-by-Side 2x2 Grid (50% Width) */
+            /* 5. Metric Cards Grid Side-by-Side Pairs (50% - 50%) */
             div[data-testid="column"]:has(div.metric-container) {{
                 width: 48.5% !important;
                 display: inline-block !important;
@@ -441,7 +436,7 @@ st.markdown(f"""
                 margin-bottom: 8px !important;
             }}
 
-            /* 5. Setup Tables Stack Vertically */
+            /* 6. Setup Tables Stack Vertically (Bullish Top, Bearish Bottom) */
             div[data-testid="column"]:has(div.setup-box) {{
                 width: 100% !important;
                 display: block !important;
@@ -449,6 +444,7 @@ st.markdown(f"""
                 margin-bottom: 12px !important;
             }}
             
+            /* Horizontal Scroll for Data Tables on Mobile */
             .row-header, .stock-row-item {{
                 min-width: 380px !important;
             }}
@@ -558,15 +554,14 @@ def calculate_vwap(df):
     vwap = (tp * df['Volume']).cumsum() / df['Volume'].cumsum()
     return vwap
 
-# -------------------------------------------------------------
-# 🔥 ALL-IN-ONE ULTRA-FAST & ULTRA-STRICT SCANNER ENGINE
-# -------------------------------------------------------------
+# --- BATCHED & VECTORIZED FAST SCANNER ENGINE ---
 @st.cache_data(ttl=15)
 def run_market_scanner():
     bullish_list = []
     bearish_list = []
     all_stocks = []
 
+    # 🚀 STEP 1: BULK DOWNLOAD ALL STOCKS AT ONCE (SUPER FAST)
     try:
         bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="5m", progress=False, group_by="ticker", threads=True)
         bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=True)
@@ -579,6 +574,7 @@ def run_market_scanner():
 
     per_trade_cap = 10000
 
+    # 🚀 STEP 2: FAST VECTORIZED PROCESSING IN MEMORY
     for symbol in ALL_HIRA_SYMBOLS:
         try:
             clean_symbol = symbol.replace(".NS", "").upper()
@@ -594,7 +590,6 @@ def run_market_scanner():
                 continue
 
             df_5m['EMA20'] = calculate_ema(df_5m['Close'], 20)
-            df_5m['EMA200'] = calculate_ema(df_5m['Close'], 200)
             df_5m['VWAP'] = calculate_vwap(df_5m)
 
             latest_trading_date = df_5m.index[-1].date()
@@ -603,28 +598,8 @@ def run_market_scanner():
             if len(today_df) < 2:
                 continue
 
-            prev_day = df_daily.iloc[-2]
-            prev_day_range_pct = ((prev_day['High'] - prev_day['Low']) / prev_day['Close']) * 100
-            is_prev_day_sideways = prev_day_range_pct <= 1.5
-
             c1 = today_df.iloc[0]
             c2 = today_df.iloc[1]
-
-            c1_high, c1_low = c1['High'], c1['Low']
-            c1_open, c1_close = c1['Open'], c1['Close']
-            c1_range = c1_high - c1_low
-
-            if c1_range == 0:
-                continue
-
-            c1_range_pct = (c1_range / c1_close) * 100
-            c1_ema20_dist = abs(c1_close - c1['EMA20']) / c1_close * 100
-            c1_ema200_dist = abs(c1_close - c1['EMA200']) / c1_close * 100
-
-            c1_body = abs(c1_close - c1_open)
-            body_ratio = c1_body / c1_range
-            upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
-            lower_wick_ratio = (min(c1_open, c1_close) - c1_low) / c1_range
 
             max_base_vol = max(c1['Volume'], c2['Volume'])
             if max_base_vol < 1000:
@@ -645,79 +620,59 @@ def run_market_scanner():
             signal_time = "-"
             vol_multiple = 1.0
 
-            c1_bull_cond = (
-                is_prev_day_sideways and
-                (c1_close > c1_low) and
-                (c1_range_pct <= 1.5) and
-                (body_ratio >= 0.55) and
-                (upper_wick_ratio <= 0.30) and
-                (c1_close >= c1['VWAP']) and
-                (c1_close > c1['EMA20']) and
-                (c1_close > c1['EMA200']) and
-                (c1_ema20_dist <= 0.3) and
-                (c1_ema200_dist <= 0.3)
-            )
+            c1_high, c1_low = c1['High'], c1['Low']
+            c1_open, c1_close = c1['Open'], c1['Close']
+            c1_range = c1_high - c1_low
 
-            c2_bull_cond = (
-                (c2['High'] <= c1_high) and
-                (c2['Low'] >= c1_low) and
-                (c2['High'] < c1_high) and
-                (c2['Close'] >= (c2['Low'] + (c2['High'] - c2['Low']) * 0.3)) and
-                ((c2['High'] - c2['Low']) <= c1_range)
-            )
+            if c1_range == 0:
+                continue
 
-            c1_bear_cond = (
-                is_prev_day_sideways and
-                (c1_close < c1_high) and
-                (c1_range_pct <= 1.5) and
-                (body_ratio >= 0.55) and
-                (lower_wick_ratio <= 0.30) and
-                (c1_close <= c1['VWAP']) and
-                (c1_close < c1['EMA20']) and
-                (c1_close < c1['EMA200']) and
-                (c1_ema20_dist <= 0.3) and
-                (c1_ema200_dist <= 0.3)
-            )
+            c1_range_pct = (c1_range / c1_low) * 100
+            if c1_range_pct > 1.00:
+                continue
 
-            c2_bear_cond = (
-                (c2['High'] <= c1_high) and
-                (c2['Low'] >= c1_low) and
-                (c2['Low'] > c1_low) and
-                (c2['Close'] <= (c2['High'] - (c2['High'] - c2['Low']) * 0.3)) and
-                ((c2['High'] - c2['Low']) <= c1_range)
-            )
+            c1_body = abs(c1_close - c1_open)
+            body_ratio = c1_body / c1_range
 
-            if c1_bull_cond and c2_bull_cond:
+            upper_wick = c1_high - max(c1_open, c1_close)
+            lower_wick = min(c1_open, c1_close) - c1_low
+
+            upper_wick_ratio = upper_wick / c1_range
+            lower_wick_ratio = lower_wick / c1_range
+
+            c1_vwap = c1['VWAP']
+            c1_ema20 = c1['EMA20']
+
+            c1_bull_cond = (c1_close >= c1_ema20) and (c1_close >= c1_vwap) and (body_ratio >= 0.55) and (upper_wick_ratio <= 0.30)
+            c1_bear_cond = (c1_close <= c1_ema20) and (c1_close <= c1_vwap) and (body_ratio >= 0.55) and (lower_wick_ratio <= 0.30)
+
+            if c1_bull_cond:
                 signal_bullish = True
-                status_state = "WATCH"
+                status_state = "READY"
                 signal_time = "09:20"
+                if (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low']):
+                    status_state = "WATCH"
 
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
-                        price_breakout = c_curr['High'] > max(c1_high, c2['High'])
-                        strong_structure = (c_curr['Close'] > c_curr['Open']) and (c_curr['Close'] > c_curr['VWAP'])
-                        volume_spike = c_curr['Volume'] > (max_base_vol * 1.5)
-
-                        if price_breakout and strong_structure and volume_spike:
+                        if (c_curr['High'] > c1['High']) and (c_curr['Close'] > c_curr['VWAP']):
                             status_state = "READY"
                             signal_time = c_curr.name.strftime("%H:%M")
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
                             break
 
-            elif c1_bear_cond and c2_bear_cond:
+            elif c1_bear_cond:
                 signal_bearish = True
-                status_state = "WATCH"
+                status_state = "READY"
                 signal_time = "09:20"
+                if (c2['High'] <= c1['High']) and (c2['Low'] >= c1['Low']):
+                    status_state = "WATCH"
 
                 if len(today_df) >= 3:
                     for i in range(2, len(today_df)):
                         c_curr = today_df.iloc[i]
-                        price_breakdown = c_curr['Low'] < min(c1_low, c2['Low'])
-                        strong_structure = (c_curr['Close'] < c_curr['Open']) and (c_curr['Close'] < c_curr['VWAP'])
-                        volume_spike = c_curr['Volume'] > (max_base_vol * 1.5)
-
-                        if price_breakdown and strong_structure and volume_spike:
+                        if (c_curr['Low'] < c1['Low']) and (c_curr['Close'] < c_curr['VWAP']):
                             status_state = "READY"
                             signal_time = c_curr.name.strftime("%H:%M")
                             vol_multiple = round(c_curr['Volume'] / max_base_vol, 2) if max_base_vol > 0 else 1.5
@@ -801,35 +756,37 @@ for name, data in top_idx.items():
     )
 idx_pills_html += '</div>'
 
-nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.08, 0.52, 0.10, 0.12, 0.09, 0.09])
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.15, 0.53, 0.09, 0.11, 0.06, 0.06])
 
 with nav_col1:
+    st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
+
+with nav_col2:
+    st.markdown(idx_pills_html, unsafe_allow_html=True)
+
+with nav_col3:
+    st.markdown(f'<div style="margin-top:2px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
+
+with nav_col4:
+    st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap; text-align:center;">🕒 {now_time}</div>', unsafe_allow_html=True)
+
+with nav_col5:
     theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
     if st.button(theme_icon):
         st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
         st.query_params['theme'] = st.session_state.theme
         st.rerun()
 
-with nav_col2:
-    st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
-
-with nav_col3:
+with nav_col6:
     if st.button("🔄 Refresh"):
         st.cache_data.clear()
         st.rerun()
 
-# INDICES ROW
-st.markdown(idx_pills_html, unsafe_allow_html=True)
-
-# MARKET STATUS & TIME ROW
-m_status_col1, m_status_col2 = st.columns([0.5, 0.5])
-with m_status_col1:
-    st.markdown(f'<div style="margin-top:4px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
-
-with m_status_col2:
-    st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap; text-align:center;">🕒 {now_time}</div>', unsafe_allow_html=True)
-
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+
+# ==========================================
+# PURE ORIGINAL TERMINAL SCANNER VIEW
+# ==========================================
 
 # --- EXECUTE SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
