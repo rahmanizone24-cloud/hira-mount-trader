@@ -162,7 +162,7 @@ st.markdown(f"""
             background-color: rgba(63, 185, 80, 0.15);
             color: #3fb950;
             border: 1px solid rgba(63, 185, 80, 0.4);
-            padding: 6px 10px;
+            padding: 4px 8px;
             border-radius: 6px;
             font-size: 11px;
             font-weight: 800;
@@ -175,24 +175,12 @@ st.markdown(f"""
             background-color: rgba(248, 81, 73, 0.15);
             color: #f85149;
             border: 1px solid rgba(248, 81, 73, 0.4);
-            padding: 6px 10px;
+            padding: 4px 8px;
             border-radius: 6px;
             font-size: 11px;
             font-weight: 800;
             white-space: nowrap;
             display: block;
-            text-align: center;
-        }}
-
-        .time-box-card {{
-            background-color: {sub_card_bg};
-            border: 1px solid {border_color};
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            color: {text_sub};
-            font-weight: 800;
-            white-space: nowrap;
             text-align: center;
         }}
 
@@ -391,26 +379,24 @@ st.markdown(f"""
             display: inline-block;
         }}
 
-        /* CUSTOM 2-COLUMN GRID CONTAINERS */
-        .grid-2col-wrapper {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 8px;
-            width: 100%;
-        }}
-
-        /* 📱 MOBILE RESPONSIVE MEDIA QUERY */
+        /* 📱 STRICT MOBILE RESPONSIVE CSS MEDIA QUERY */
         @media screen and (max-width: 768px) {{
-            /* Title Center in Mobile */
+            /* 1. Title Center on Mobile */
+            div[data-testid="column"]:has(div.nav-title-clean) {{
+                width: 100% !important;
+                text-align: center !important;
+                margin-bottom: 4px !important;
+            }}
             .nav-title-clean {{
                 text-align: center !important;
                 display: block !important;
-                width: 100% !important;
-                margin-bottom: 4px !important;
             }}
 
-            /* Index Pills Grid 2x2 */
+            /* 2. Index Pills Grid 2x2 on Mobile */
+            div[data-testid="column"]:has(div.header-indices-wrapper) {{
+                width: 100% !important;
+                margin-bottom: 6px !important;
+            }}
             .header-indices-wrapper {{
                 display: grid !important;
                 grid-template-columns: 1fr 1fr !important;
@@ -424,7 +410,33 @@ st.markdown(f"""
                 padding: 4px 6px !important;
             }}
 
-            /* Setup Tables Stack Vertically */
+            /* 3. Market Status & Time Pair Side-by-Side (50% - 50%) */
+            div[data-testid="column"]:has(span.market-status-closed),
+            div[data-testid="column"]:has(span.market-status-open),
+            div[data-testid="column"]:has(div[style*="white-space:nowrap"]) {{
+                width: 48.5% !important;
+                display: inline-block !important;
+                float: left !important;
+                margin-bottom: 6px !important;
+            }}
+
+            /* 4. Dark Theme & Refresh Buttons Pair Side-by-Side (50% - 50%) */
+            div[data-testid="column"]:has(button) {{
+                width: 48.5% !important;
+                display: inline-block !important;
+                float: left !important;
+                margin-bottom: 10px !important;
+            }}
+
+            /* 5. Metric Cards Grid Side-by-Side Pairs (50% - 50%) */
+            div[data-testid="column"]:has(div.metric-container) {{
+                width: 48.5% !important;
+                display: inline-block !important;
+                float: left !important;
+                margin-bottom: 8px !important;
+            }}
+
+            /* 6. Setup Tables Stack Vertically (Bullish Top, Bearish Bottom) */
             div[data-testid="column"]:has(div.setup-box) {{
                 width: 100% !important;
                 display: block !important;
@@ -432,7 +444,7 @@ st.markdown(f"""
                 margin-bottom: 12px !important;
             }}
             
-            /* Horizontal Scroll for Table Rows */
+            /* Horizontal Scroll for Data Tables on Mobile */
             .row-header, .stock-row-item {{
                 min-width: 380px !important;
             }}
@@ -732,7 +744,7 @@ if is_market_open:
 else:
     status_html = '<span class="market-status-closed"><span class="live-blink">🔴</span> MARKET CLOSED</span>'
 
-# --- TOP NAVIGATION HEADER ---
+# --- TOP NAVIGATION HEADER (ORIGINAL UNTOUCHED DESKTOP STRUCTURE) ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b %Y | %I:%M:%S %p")
 
@@ -753,7 +765,7 @@ for name, data in top_idx.items():
     )
 idx_pills_html += '</div>'
 
-nav_col1, nav_col2 = st.columns([0.2, 0.8])
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([0.15, 0.53, 0.09, 0.11, 0.06, 0.06])
 
 with nav_col1:
     st.markdown('<div class="nav-title-clean">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
@@ -761,30 +773,25 @@ with nav_col1:
 with nav_col2:
     st.markdown(idx_pills_html, unsafe_allow_html=True)
 
-st.markdown("<div style='margin-bottom: 6px;'></div>", unsafe_allow_html=True)
+with nav_col3:
+    st.markdown(f'<div style="margin-top:2px; text-align:center;">{status_html}</div>', unsafe_allow_html=True)
 
-# --- 1. ACTION & TIME BAR (2-COLUMN GRID HTML) ---
-st.markdown(f"""
-    <div class="grid-2col-wrapper">
-        <div>{status_html}</div>
-        <div class="time-box-card">🕒 {now_time}</div>
-    </div>
-""", unsafe_allow_html=True)
+with nav_col4:
+    st.markdown(f'<div style="font-size: 11px; color: {text_sub}; font-weight: 800; margin-top:8px; white-space:nowrap; text-align:center;">🕒 {now_time}</div>', unsafe_allow_html=True)
 
-btn_c1, btn_c2 = st.columns(2)
-with btn_c1:
+with nav_col5:
     theme_icon = "🌙 Dark" if st.session_state.theme == 'light' else "☀️ Light"
     if st.button(theme_icon):
         st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
         st.query_params['theme'] = st.session_state.theme
         st.rerun()
 
-with btn_c2:
+with nav_col6:
     if st.button("🔄 Refresh"):
         st.cache_data.clear()
         st.rerun()
 
-st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
 # --- EXECUTE SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
@@ -804,45 +811,41 @@ else:
     sentiment_blink = "🔴"
     sentiment_arrow = "▼"
 
-# --- 2. TOP GAINER & TOP LOSER (STRICT 2-BOX GRID HTML) ---
-tg_symbol = top_gainer['Symbol'] if top_gainer else "-"
-tg_pct = f"+{top_gainer['ChangePct']:.2f}%" if top_gainer else "0.00%"
-tg_pts = f"(+₹{top_gainer['ChangePts']})" if top_gainer else ""
-tg_url = top_gainer['TVUrl'] if top_gainer else "#"
+# --- METRIC CARDS ROW (ORIGINAL DESKTOP 4-COLUMN STRUCTURE) ---
+c1, c2, c3, c4 = st.columns(4)
 
-tl_symbol = top_loser['Symbol'] if top_loser else "-"
-tl_pct = f"{top_loser['ChangePct']:.2f}%" if top_loser else "0.00%"
-tl_pts = f"(₹{top_loser['ChangePts']})" if top_loser else ""
-tl_url = top_loser['TVUrl'] if top_loser else "#"
+with c1:
+    if top_gainer:
+        st.markdown(f"""
+            <div class="metric-container">
+                <div class="card-label">TOP GAINER</div>
+                <a href="{top_gainer['TVUrl']}" target="_blank" style="text-decoration:none;">
+                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_gainer['Symbol']}</div>
+                    <div class="card-value-green">+{top_gainer['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(+₹{top_gainer['ChangePts']})</span></div>
+                </a>
+            </div>
+        """, unsafe_allow_html=True)
 
-st.markdown(f"""
-    <div class="grid-2col-wrapper">
-        <div class="metric-container">
-            <div class="card-label">TOP GAINER</div>
-            <a href="{tg_url}" target="_blank" style="text-decoration:none;">
-                <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{tg_symbol}</div>
-                <div class="card-value-green">{tg_pct} <span style="font-size:10px; font-weight:normal;">{tg_pts}</span></div>
-            </a>
-        </div>
-        <div class="metric-container">
-            <div class="card-label">TOP LOSER</div>
-            <a href="{tl_url}" target="_blank" style="text-decoration:none;">
-                <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{tl_symbol}</div>
-                <div class="card-value-red">{tl_pct} <span style="font-size:10px; font-weight:normal;">{tl_pts}</span></div>
-            </a>
-        </div>
-    </div>
-""", unsafe_allow_html=True)
+with c2:
+    if top_loser:
+        st.markdown(f"""
+            <div class="metric-container">
+                <div class="card-label">TOP LOSER</div>
+                <a href="{top_loser['TVUrl']}" target="_blank" style="text-decoration:none;">
+                    <div style="font-size: 14px; font-weight: 800; color: {accent_blue}; margin-top:2px; overflow:hidden; text-overflow:ellipsis;">{top_loser['Symbol']}</div>
+                    <div class="card-value-red">{top_loser['ChangePct']:.2f}% <span style="font-size:10px; font-weight:normal;">(₹{top_loser['ChangePts']})</span></div>
+                </a>
+            </div>
+        """, unsafe_allow_html=True)
 
-# --- 3. MARKET SENTIMENT & SCANNED STOCKS (STRICT 2-BOX GRID HTML) ---
-st.markdown(f"""
-    <div class="grid-2col-wrapper">
+with c3:
+    st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">MARKET SENTIMENT</div>
-            <div style="font-size: 14px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:4px;">
+            <div style="font-size: 15px; font-weight: 900; color: {sentiment_color}; margin-top:2px; display:flex; align-items:center; gap:4px;">
                 <span class="live-blink">{sentiment_blink}</span>
                 <span>{sentiment_label}</span>
-                <span style="font-size:11px;">{sentiment_arrow}</span>
+                <span style="font-size:12px;">{sentiment_arrow}</span>
             </div>
             <div style="font-size: 9px; color: {text_sub}; margin-top: 3px; font-weight: 700; white-space:nowrap;">
                 <span style="color:#3fb950;">▲ {total_bull_cnt}</span> | 
@@ -850,15 +853,18 @@ st.markdown(f"""
                 <span>⚪ {sideways_cnt}</span>
             </div>
         </div>
+    """, unsafe_allow_html=True)
+
+with c4:
+    st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
-            <div style="font-size: 14px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
+            <div style="font-size: 15px; font-weight: 900; color: {accent_blue}; margin-top:2px;">
                 {TOTAL_SCANNED_STOCKS} Stocks
             </div>
             <div style="font-size: 10px; color: #3fb950; font-weight: 700; margin-top: 2px;">Active: {total_bull_cnt + total_bear_cnt}</div>
         </div>
-    </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 # --- MARKET MOVERS ---
 st.markdown("""
@@ -900,7 +906,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- ROW LIST (BULLISH & BEARISH SETUPS - RESPONSIVE LAYOUT) ---
+# --- ROW LIST (BULLISH & BEARISH SETUPS) ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
