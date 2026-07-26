@@ -129,28 +129,8 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
+# ETF Exclusions only (F&O Filtering removed to allow high-volume F&O stocks)
 ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
-
-FNO_STOCKS = [
-    "AARTIIND", "ABB", "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS", "ALKEM", "AMBUJACEMENT", 
-    "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "ASTRAL", "ATUL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", 
-    "BAJAJFINSV", "BAJFINANCE", "BALKRISIND", "BALRAMCHIN", "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT", 
-    "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BSOFT", "BPCL", "BRITANNIA", "CANBK", "CANFINHOME", "CHAMBLFERT", 
-    "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE", "COLPAL", "CONCOR", "COROMANDEL", "CROMPTON", "CUB", "CUMMINSIND", 
-    "DABUR", "DALBHARAT", "DEEPAKNTR", "DIVISLAB", "DIXON", "DLF", "DRREDDY", "EICHERMOT", "ESCORTS", "EXIDEIND", 
-    "FEDERALBNK", "GAIL", "GLENMARK", "GMMPFAUDLR", "GNFC", "GODREJPROP", "GODREJCP", "GRANULES", "GRASIM", "GUJGASLTD", 
-    "HAL", "HAVELLS", "HCLTECH", "HDFCBANK", "HDFCLIFE", "HDFCAMC", "HEROMOTOCO", "HINDALCO", "HAL", "HINDCOPPER", 
-    "HINDPETRO", "HINDUNILVR", "ICICIBANK", "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IEX", "IGL", "INDHOTEL", 
-    "INDIAMART", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "IOC", "IPCALAB", "IRCTC", "ITC", "JINDALSTEL", 
-    "JKCEMENT", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "LALPATHLAB", "LT", "LTIM", "LTF", "LTI", "LTTS", 
-    "LUPIN", "M&M", "M&MFIN", "MANAPPURAM", "MARICO", "MARUTI", "MCDOWELL-N", "MCX", "METROPOLIS", "MFSL", 
-    "MGL", "MOTHERSON", "MPHASIS", "MRF", "MUTHOOTFIN", "NATIONALUM", "NAUKRI", "NAVINFLUOR", "NESTLEIND", "NMDC", 
-    "NTPC", "OBEROIRLTY", "OFFS", "ONGC", "PAGEIND", "PERSISTENT", "PETRONET", "PFC", "PIDILITIND", "PIIND", 
-    "PNB", "POLYCAB", "POWERGRID", "PVRINOX", "RAMCOCEM", "RBLBANK", "RECLTD", "RELIANCE", "SAIL", "SBICARD", 
-    "SBILIFE", "SBIN", "SHREECEM", "SHRIRAMFIN", "SIEMENS", "SRF", "SUNPHARMA", "SUNTV", "SYNGENE", "TATACHEMICALS", 
-    "TATACOMM", "TATACONSUM", "TATAMOTORS", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TITAN", "TORNTPHARM", "TRENT", 
-    "TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL", "ZYDUSLIFE"
-]
 
 @st.cache_data(ttl=86400)
 def load_hira_stocks():
@@ -164,13 +144,13 @@ def load_hira_stocks():
                 filtered_syms = []
                 for s in syms:
                     clean_s = s.upper().replace(".NS", "")
-                    if (not any(kw in clean_s for kw in ETF_KEYWORDS)) and (clean_s not in FNO_STOCKS):
+                    if not any(kw in clean_s for kw in ETF_KEYWORDS):
                         filtered_syms.append(f"{s}.NS" if not s.endswith(".NS") else s)
                 if len(filtered_syms) > 0:
                     return filtered_syms
             except Exception:
                 pass
-    return ['ALOKINDS.NS', 'TRIDENT.NS', 'SUZLON.NS', 'BDL.NS', 'SJVN.NS']
+    return ['ALOKINDS.NS', 'TRIDENT.NS', 'SUZLON.NS', 'BDL.NS', 'SJVN.NS', 'RELIANCE.NS', 'TATAMOTORS.NS', 'INFY.NS', 'BAJFINANCE.NS']
 
 ALL_HIRA_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(ALL_HIRA_SYMBOLS)
@@ -296,7 +276,7 @@ def run_market_scanner():
                 signal_bullish, signal_bearish = False, False
                 status_state, signal_time, vol_multiple = "", "-", 1.0
 
-                # 🟢 RELAXED BULLISH CONDITION (Previous day sideways condition REMOVED)
+                # 🟢 BULLISH CONDITION
                 c1_bull_cond = (
                     (c1_close > c1_low) and (c1_range_pct <= 1.5) and
                     (body_ratio >= 0.55) and (upper_wick_ratio <= 0.30) and (c1_close >= float(c1['VWAP'])) and
@@ -310,7 +290,7 @@ def run_market_scanner():
                     ((float(c2['High']) - float(c2['Low'])) <= c1_range)
                 )
 
-                # 🔴 RELAXED BEARISH CONDITION (Previous day sideways condition REMOVED)
+                # 🔴 BEARISH CONDITION
                 c1_bear_cond = (
                     (c1_close < c1_high) and (c1_range_pct <= 1.5) and
                     (body_ratio >= 0.55) and (lower_wick_ratio <= 0.30) and (c1_close <= float(c1['VWAP'])) and
@@ -563,7 +543,7 @@ with tb_col2:
         <div class="setup-box">
             <div class="setup-header-bear"><span class="live-blink">🔴</span> BEARISH SETUPS</div>
             <div class="row-header">
-                <span style="width: 20%;">SYMBOL</span><span style="width: 15%;">STATUS</span><span style="width: 15%;">ALERT TIME</span><span style="width: 15%;">VOL SURGE</span><span style="width: 12%;">QTY</span><span style="width: 11%; text-align:right;">PRICE</span><span style="width: 11%; text-align:right;">CHANGE</span>
+                <span style="width: 20%;">SYMBOL</span><span style="width: 15%;">STATUS</span><span style="width: 15%;">ALERT TIME</span><span style="width: 15%;">VOL SURGE</span><span style="width: 12%;">QTY</span><span style="width: 11%; text-align:right;">PRICE</span><span style="width: 12%; text-align:right;">CHANGE</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
