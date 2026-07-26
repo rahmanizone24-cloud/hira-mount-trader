@@ -257,9 +257,6 @@ def run_market_scanner():
                 if len(today_df) < 2:
                     continue
 
-                prev_day = df_daily.iloc[-2]
-                is_prev_day_sideways = (((prev_day['High'] - prev_day['Low']) / prev_day['Close']) * 100) <= 1.5
-
                 c1, c2 = today_df.iloc[0], today_df.iloc[1]
                 c1_high, c1_low, c1_open, c1_close = float(c1['High']), float(c1['Low']), float(c1['Open']), float(c1['Close'])
                 c1_range = c1_high - c1_low
@@ -299,8 +296,9 @@ def run_market_scanner():
                 signal_bullish, signal_bearish = False, False
                 status_state, signal_time, vol_multiple = "", "-", 1.0
 
+                # 🟢 RELAXED BULLISH CONDITION (Previous day sideways condition REMOVED)
                 c1_bull_cond = (
-                    is_prev_day_sideways and (c1_close > c1_low) and (c1_range_pct <= 1.5) and
+                    (c1_close > c1_low) and (c1_range_pct <= 1.5) and
                     (body_ratio >= 0.55) and (upper_wick_ratio <= 0.30) and (c1_close >= float(c1['VWAP'])) and
                     (c1_close > float(c1['EMA20'])) and (c1_close > float(c1['EMA200'])) and
                     (c1_ema20_dist <= 0.3) and (c1_ema200_dist <= 0.3)
@@ -312,8 +310,9 @@ def run_market_scanner():
                     ((float(c2['High']) - float(c2['Low'])) <= c1_range)
                 )
 
+                # 🔴 RELAXED BEARISH CONDITION (Previous day sideways condition REMOVED)
                 c1_bear_cond = (
-                    is_prev_day_sideways and (c1_close < c1_high) and (c1_range_pct <= 1.5) and
+                    (c1_close < c1_high) and (c1_range_pct <= 1.5) and
                     (body_ratio >= 0.55) and (lower_wick_ratio <= 0.30) and (c1_close <= float(c1['VWAP'])) and
                     (c1_close < float(c1['EMA20'])) and (c1_close < float(c1['EMA200'])) and
                     (c1_ema20_dist <= 0.3) and (c1_ema200_dist <= 0.3)
