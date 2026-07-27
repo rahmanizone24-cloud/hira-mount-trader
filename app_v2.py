@@ -1,7 +1,5 @@
 import datetime
 import os
-import threading
-import time
 import numpy as np
 import pandas as pd
 import pytz
@@ -116,11 +114,10 @@ st.markdown(
         .cell-price-up {{ background-color: rgba(63, 185, 80, 0.12); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.3); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; animation: smoothPulse 3.5s ease-in-out infinite; }}
         .cell-price-down {{ background-color: rgba(248, 81, 73, 0.12); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.3); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; animation: smoothPulse 3.5s ease-in-out infinite; }}
         
-        /* DIFFERENT COLOR FOR CHANGE PERCENTAGE */
         .cell-pct-up {{ background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; }}
         .cell-pct-down {{ background-color: rgba(251, 146, 60, 0.15); color: #fb923c; border: 1.5px solid rgba(251, 146, 60, 0.4); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; }}
         
-        /* STATUS BOX: DARK BG WITH ONLY TEXT COLOR CHANGED */
+        /* STATUS BADGES */
         .badge-ready-bull {{ background-color: {sub_card_bg}; color: #3fb950; border: 1.5px solid #3fb950; border-radius: 6px; padding: 4px; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; height: 36px; width: 100%; }}
         .badge-ready-bear {{ background-color: {sub_card_bg}; color: #f85149; border: 1.5px solid #f85149; border-radius: 6px; padding: 4px; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; height: 36px; width: 100%; }}
         .badge-watch {{ background-color: {sub_card_bg}; color: #d29922; border: 1.5px solid #d29922; border-radius: 6px; padding: 4px; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; height: 36px; width: 100%; }}
@@ -172,7 +169,7 @@ def safe_extract_symbol(df_bulk, symbol):
         return None
 
 # --- INDICES FETCH ---
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=20, show_spinner=False)
 def fetch_indices():
     indices = {
         "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
@@ -209,10 +206,10 @@ def calculate_vwap(df):
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
-# --- OPTIMIZED FAST SCANNER ENGINE ---
+# --- OPTIMIZED SCANNER ENGINE WITH STRICT PAUSE CANDLE RULES ---
 @st.cache_data(ttl=15, show_spinner=False)
 def run_market_scanner():
-    bullish_list, bearish_list, all_scanned_stocks = [], [], []
+    bullish_list, bearish_list = [], []
     per_trade_cap = 10000
 
     try:
@@ -241,7 +238,6 @@ def run_market_scanner():
 
             curr_price = float(today_df["Close"].iloc[-1])
             prev_close = float(df_daily["Close"].iloc[-2])
-            latest_bar_time = str(today_df.index[-1].strftime("%I:%M %p"))
 
             if curr_price <= 0 or prev_close <= 0:
                 continue
@@ -251,18 +247,7 @@ def run_market_scanner():
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
-            stock_info = {
-                "Symbol": str(clean_symbol),
-                "Price": float(curr_price),
-                "ChangePct": float(day_change_pct),
-                "ChangePts": float(round(change_pts, 2)),
-                "SignalTime": latest_bar_time,
-                "TVUrl": str(tv_url),
-                "Qty": int(calc_qty)
-            }
-            all_scanned_stocks.append(stock_info)
-
-            # Strategy Calculations
+            # --- STRICT CANDLE 1 (9:15 AM) ---
             c1 = today_df.iloc[0]
             c1_high, c1_low = float(c1["High"]), float(c1["Low"])
             c1_open, c1_close = float(c1["Open"]), float(c1["Close"])
@@ -273,31 +258,34 @@ def run_market_scanner():
             c1_wick_bottom = min(c1_open, c1_close) - c1_low
             c1_body = abs(c1_close - c1_open)
 
-            # 9:15 Filters
-            if c1_range_pct > 1.2:  
+            # Strict Filter 1: First Candle Range <= 1.2%, No Gap > 1.5%, No Excessive Wicks
+            if c1_range_pct > 1.2:
                 continue
-            if abs(((c1_open - prev_close) / prev_close) * 100) > 1.5:  
+            if abs(((c1_open - prev_close) / prev_close) * 100) > 1.5:
                 continue
-            if c1_wick_top > (c1_body * 1.5) and c1_wick_bottom > (c1_body * 1.5):  
+            if c1_wick_top > (c1_body * 1.5) and c1_wick_bottom > (c1_body * 1.5):
                 continue
 
-            # 9:20 Candle
+            # --- STRICT CANDLE 2 (9:20 AM PAUSE BAR) ---
             c2 = today_df.iloc[1]
             c2_high, c2_low = float(c2["High"]), float(c2["Low"])
-
-            is_inside_pause = (c2_high <= c1_high * 1.002) and (c2_low >= c1_low * 0.998)
+            c2_open, c2_close = float(c2["Open"]), float(c2["Close"])
 
             status_state = None
             is_bullish = False
             is_bearish = False
             trigger_time = str(today_df.index[1].strftime("%I:%M %p"))
 
-            # --- BULLISH STRATEGY ---
+            # 🟢 STRICT BULLISH SETUP RULES
+            # 1. C1 Close Above EMA20
+            # 2. C2 is a Small Red Profit-Booking Candle (c2_close < c2_open)
+            # 3. C2 High does NOT Break C1 High (Inside Pause)
             if (c1_close > c1_ema20) and (abs(c1_close - c1_ema20) / c1_ema20 <= 0.015):
-                if is_inside_pause:
+                if (c2_close <= c2_open) and (c2_high <= c1_high * 1.002) and (c2_low >= c1_low * 0.998):
                     status_state = "WATCH"
                     is_bullish = True
 
+                    # Check Breakout After 9:20
                     for idx in range(2, len(today_df)):
                         ck = today_df.iloc[idx]
                         if float(ck["Close"]) > max(c1_high, c2_high) and float(ck["Close"]) > float(ck["VWAP"]):
@@ -305,12 +293,16 @@ def run_market_scanner():
                             trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
                             break
 
-            # --- BEARISH STRATEGY ---
+            # 🔴 STRICT BEARISH SETUP RULES
+            # 1. C1 Close Below EMA20
+            # 2. C2 is a Small Green Profit-Booking Candle (c2_close > c2_open)
+            # 3. C2 Low does NOT Break C1 Low (Inside Pause)
             elif (c1_close < c1_ema20) and (abs(c1_close - c1_ema20) / c1_ema20 <= 0.015):
-                if is_inside_pause:
+                if (c2_close >= c2_open) and (c2_low >= c1_low * 0.998) and (c2_high <= c1_high * 1.002):
                     status_state = "WATCH"
                     is_bearish = True
 
+                    # Check Breakdown After 9:20
                     for idx in range(2, len(today_df)):
                         ck = today_df.iloc[idx]
                         if float(ck["Close"]) < min(c1_low, c2_low) and float(ck["Close"]) < float(ck["VWAP"]):
@@ -324,7 +316,7 @@ def run_market_scanner():
                     "Price": float(curr_price),
                     "ChangePct": float(day_change_pct),
                     "ChangePts": float(round(change_pts, 2)),
-                    "SignalTime": trigger_time,
+                    "SignalTime": trigger_time,  # Accurate Alert Time
                     "IsBullish": is_bullish,
                     "IsBearish": is_bearish,
                     "StatusState": status_state,
@@ -337,37 +329,21 @@ def run_market_scanner():
         except Exception:
             continue
 
-    all_df = pd.DataFrame(all_scanned_stocks)
-    top_gainer, top_loser, market_movers = None, None, []
-
-    # Map signal times accurately
-    signal_time_dict = {s["Symbol"]: s["SignalTime"] for s in (bullish_list + bearish_list)}
-
-    if not all_df.empty:
-        try:
-            top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
-            if top_gainer["Symbol"] in signal_time_dict:
-                top_gainer["SignalTime"] = signal_time_dict[top_gainer["Symbol"]]
-
-            top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
-            if top_loser["Symbol"] in signal_time_dict:
-                top_loser["SignalTime"] = signal_time_dict[top_loser["Symbol"]]
-
-            # MARKET MOVERS: Highest % Gainers (Top 4) + Highest % Losers (Top 4)
-            bull_movers = all_df[all_df["ChangePct"] > 0].sort_values(by="ChangePct", ascending=False).head(4).to_dict("records")
-            bear_movers = all_df[all_df["ChangePct"] < 0].sort_values(by="ChangePct", ascending=True).head(4).to_dict("records")
-            
-            raw_movers = bull_movers + bear_movers
-            for m in raw_movers:
-                if m["Symbol"] in signal_time_dict:
-                    m["SignalTime"] = signal_time_dict[m["Symbol"]]
-                market_movers.append(m)
-
-        except Exception:
-            pass
-
     bullish_sorted = sorted(bullish_list, key=lambda x: (x["StatusState"] == "READY", x["ChangePct"]), reverse=True)
     bearish_sorted = sorted(bearish_list, key=lambda x: (x["StatusState"] == "READY", -x["ChangePct"]), reverse=True)
+
+    # Derive Top Cards & Market Movers Strictly From Validated Signals
+    combined_signals = bullish_sorted + bearish_sorted
+    top_gainer, top_loser, market_movers = None, None, []
+
+    if combined_signals:
+        all_signals_df = pd.DataFrame(combined_signals)
+        top_gainer = all_signals_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
+        top_loser = all_signals_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
+
+        bull_movers = [s for s in bullish_sorted if s["ChangePct"] > 0][:4]
+        bear_movers = [s for s in bearish_sorted if s["ChangePct"] < 0][:4]
+        market_movers = bull_movers + bear_movers
 
     return bullish_sorted, bearish_sorted, top_gainer, top_loser, market_movers, len(bullish_sorted), len(bearish_sorted)
 
@@ -411,7 +387,7 @@ st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 10px; border-color: {bo
 # --- RUN SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
 
-# --- LINE 2: METRICS CARDS (CLEAN WITHOUT 10k LABEL) ---
+# --- LINE 2: METRICS CARDS ---
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
