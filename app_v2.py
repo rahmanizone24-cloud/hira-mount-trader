@@ -16,7 +16,7 @@ st.set_page_config(
 
 # --- THEME STATE MANAGEMENT ---
 if "theme" not in st.session_state:
-    st.session_state.theme = st.query_params.get("theme", "dark")
+    st.session_state.theme = "dark"
 
 if st.session_state.theme == "dark":
     bg_color = "#0b0e14"
@@ -127,63 +127,19 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-ETF_KEYWORDS = ["BEES", "ETF", "GOLD", "SILVER", "LIQUID", "IWIN", "SETF", "HDFCMF", "ICICIMFC", "GILT", "NIFTY100", "MID150", "MOM50", "NIF100"]
-
+# TOP HIGH-LIQUIDITY LIQUID STOCKS FOR FAST SCANNING
 @st.cache_data(ttl=86400, show_spinner=False)
 def load_nifty500_stocks():
-    nifty_500_exact = [
-        "3MINDIA.NS", "ABB.NS", "ACC.NS", "AIAENG.NS", "APLAPOLLO.NS", "AUBANK.NS", "AARTIIND.NS", "AAVAS.NS", "ABBOTINDIA.NS", "ACE.NS",
-        "ADANIENSOL.NS", "ADANIENT.NS", "ADANIGREEN.NS", "ADANIPORTS.NS", "ADANIPOWER.NS", "ATGL.NS", "AWL.NS", "ABCAPITAL.NS", "ABFRL.NS",
-        "AEGISCHEM.NS", "AETHER.NS", "AFFLE.NS", "AJANTPHARM.NS", "APLLTD.NS", "ALKEM.NS", "ALKYLAMINE.NS", "ALLCARGO.NS", "ALOKINDS.NS",
-        "ARE&M.NS", "AMBER.NS", "AMBUJACEM.NS", "ANANDRATHI.NS", "ANGELONE.NS", "ANURAS.NS", "APARINDS.NS", "APOLLOHOSP.NS", "APOLLOTYRE.NS",
-        "APTUS.NS", "ACI.NS", "ASAHIINDIA.NS", "ASHOKLEY.NS", "ASIANPAINT.NS", "ASTERDM.NS", "ASTRAL.NS", "ATUL.NS", "AUROPHARMA.NS",
-        "AVANTIFEED.NS", "DMART.NS", "AXISBANK.NS", "BASF.NS", "BSE.NS", "BAJAJ-AUTO.NS", "BAJAJFINSV.NS", "BAJFINANCE.NS", "BAJAJHLDNG.NS",
-        "BALAMINES.NS", "BALKRISIND.NS", "BALRAMCHIN.NS", "BANDHANBNK.NS", "BANKBARODA.NS", "BANKINDIA.NS", "MAHABANK.NS", "BATAINDIA.NS",
-        "BAYERCROP.NS", "BERGEPAINT.NS", "BDL.NS", "BEL.NS", "BHARATFORG.NS", "BHEL.NS", "BPCL.NS", "BHARTIARTL.NS", "BIOCON.NS",
-        "BIRLACORPN.NS", "BSOFT.NS", "BLISSGVS.NS", "BLSTARCO.NS", "BBTC.NS", "BORORENEW.NS", "BOSCHLTD.NS", "BHARATWIRE.NS", "BRIGADE.NS",
-        "BRITANNIA.NS", "MAPMYINDIA.NS", "CESC.NS", "CGPOWER.NS", "CRISIL.NS", "CSBBANK.NS", "CAMPUS.NS", "CANFINHOME.NS", "CANBK.NS",
-        "CAPLIPOINT.NS", "CGCL.NS", "CARBORUNIV.NS", "CASTROLIND.NS", "CEATLTD.NS", "CENTRALBK.NS", "CDSL.NS", "CENTURYPLY.NS",
-        "CENTURYTEX.NS", "CERA.NS", "CHALET.NS", "CHAMBLFERT.NS", "CHEMAXX.NS", "CHMEDICARE.NS", "CHOLAFIN.NS", "CHOLAHLDNG.NS", "CIPLA.NS",
-        "CUB.NS", "CLEAN.NS", "COALINDIA.NS", "COCHINSHIP.NS", "COFORGE.NS", "COLPAL.NS", "CAMS.NS", "CONCOR.NS", "COROMANDEL.NS",
-        "CRAFTSMAN.NS", "CREDITACC.NS", "CROMPTON.NS", "CUMMINSIND.NS", "CYIENT.NS", "DCMSHRIRAM.NS", "DLF.NS", "DABUR.NS", "DALBHAT.NS",
-        "DEEPAKFERT.NS", "DEEPAKNTR.NS", "DELHIVERY.NS", "DELTACORP.NS", "DEVYANI.NS", "DIVISLAB.NS", "DIXON.NS", "LALPATHLAB.NS", "DRREDDY.NS",
-        "EIDPARRY.NS", "EIHOTEL.NS", "EPL.NS", "EASEMYTRIP.NS", "EICHERMOT.NS", "ELECON.NS", "ELGIEQUIP.NS", "EMAMILTD.NS", "ENDURANCE.NS",
-        "ENGINERSIN.NS", "EQUIX.NS", "EQUITASBNK.NS", "ERIS.NS", "ESCORTS.NS", "EXIDEIND.NS", "FDC.NS", "NYKAA.NS", "FEDERALBNK.NS", "FACT.NS",
-        "FINEORG.NS", "FINCABLES.NS", "FINPIPE.NS", "FSL.NS", "FIVESTAR.NS", "FORTIS.NS", "GRINFRA.NS", "GAIL.NS", "GMMPFAUDLR.NS",
-        "GMRINFRA.NS", "GSS.NS", "GLAND.NS", "GLAXO.NS", "GLENMARK.NS", "MEDANTA.NS", "GOCOLORS.NS", "GODFRYPHLP.NS", "GODREJCP.NS",
-        "GODREJPROP.NS", "GRANULES.NS", "GRAPHITE.NS", "GRASIM.NS", "GESHIP.NS", "GRINDWELL.NS", "GUJGASLTD.NS", "GMDCLTD.NS", "GNFC.NS",
-        "GPPL.NS", "GSFC.NS", "GSPL.NS", "HEG.NS", "HCLTECH.NS", "HDFCAMC.NS", "HDFCBANK.NS", "HDFCLIFE.NS", "HFCL.NS", "HLEGLAS.NS",
-        "HAL.NS", "HAPPSTMNDS.NS", "HAVELLS.NS", "HEROMOTOCO.NS", "HIMATSEIDE.NS", "HINDALCO.NS", "HINDCOPPER.NS", "HINDPETRO.NS",
-        "HINDUNILVR.NS", "HINDZINC.NS", "POWERINDIA.NS", "HOMEFIRST.NS", "HONAUT.NS", "HUDCO.NS", "ICICIBANK.NS", "ICICIGI.NS",
-        "ICICIPRULI.NS", "ISEC.NS", "IDBI.NS", "IDFCFIRSTB.NS", "IFCI.NS", "IIFL.NS", "IRB.NS", "IRCON.NS", "ITC.NS", "ITI.NS", "INDIACEM.NS",
-        "INDIAMART.NS", "INDIANB.NS", "IEX.NS", "INDHOTEL.NS", "IOC.NS", "IRCTC.NS", "IRFC.NS", "INDIGOPNTS.NS", "IGL.NS", "INDUSTOWER.NS",
-        "INDUSINDBK.NS", "INFIBEAM.NS", "NAUKRI.NS", "INFY.NS", "INOXWIND.NS", "INTELLECT.NS", "INDIGO.NS", "IPCALAB.NS", "JBCHEPHARM.NS",
-        "JKCEMENT.NS", "JBMA.NS", "JKPAPER.NS", "JMFINANCIL.NS", "JSWENERGY.NS", "JSWSTEEL.NS", "JAIBALAJI.NS", "J&KBANK.NS", "JINDALSAW.NS",
-        "JINDALSTEL.NS", "JIOFIN.NS", "JUBLFOOD.NS", "JUBLPHARMA.NS", "JUBLINGREA.NS", "KFINTECH.NS", "KEI.NS", "KNRCON.NS", "KPITTECH.NS",
-        "KRBL.NS", "KSB.NS", "KAJARIACER.NS", "KPIL.NS", "KALYANKJIL.NS", "KANSAINER.NS", "KARURVYSYA.NS", "KAYNES.NS", "KEC.NS", "KENNAMET.NS",
-        "KIRLOSENG.NS", "KOTAKBANK.NS", "KIMS.NS", "L&TFH.NS", "LTTS.NS", "LICHSGFIN.NS", "LTIM.NS", "LT.NS", "LATENTVIEW.NS", "LAURUSLABS.NS",
-        "LXCHEM.NS", "LEMONTREE.NS", "LICI.NS", "LINDEINDIA.NS", "LUPIN.NS", "LUXIND.NS", "MMTC.NS", "MOIL.NS", "MRF.NS", "MGL.NS",
-        "MAZDOCK.NS", "M&MFIN.NS", "M&M.NS", "MHRIL.NS", "MAHSEAMLES.NS", "MANAPPURAM.NS", "MRPL.NS", "MARICO.NS", "MARUTI.NS", "MASTEK.NS",
-        "MFSL.NS", "MAXHEALTH.NS", "METROPOLIS.NS", "MINDACORP.NS", "MSUMI.NS", "MOTILALOFS.NS", "MPHASIS.NS", "MCX.NS", "MUTHOOTFIN.NS",
-        "NATCOPHARM.NS", "NATIONALUM.NS", "NAVINFLUOR.NS", "NESTLEIND.NS", "NETWORK18.NS", "NHPC.NS", "NLCINDIA.NS", "NMDC.NS", "NTPC.NS",
-        "OBEROIRLTY.NS", "ONGC.NS", "OIL.NS", "PAYTM.NS", "OFSS.NS", "PBFINTECH.NS", "PIIND.NS", "PNB.NS", "PFC.NS", "PVRINOX.NS", "PAGEIND.NS",
-        "PATANJALI.NS", "PERSISTENT.NS", "PETRONET.NS", "PIDILITIND.NS", "POLYCAB.NS", "POWERGRID.NS", "PRAJIND.NS", "PRESTIGE.NS",
-        "PRINCEPIPE.NS", "PGHH.NS", "QUESS.NS", "RBLBANK.NS", "RECLTD.NS", "RHIM.NS", "RITES.NS", "RADICO.NS", "RVNL.NS", "RAILTEL.NS",
-        "RAIN.NS", "RAJESHEXPO.NS", "RALLIS.NS", "RAMCOCEM.NS", "RAMCOSYS.NS", "RATNAMANI.NS", "RAYMOND.NS", "REDINGTON.NS", "RELIANCE.NS",
-        "RELIGARE.NS", "ROSSARI.NS", "ROUTE.NS", "SBFC.NS", "SBICARD.NS", "SBILIFE.NS", "SJVN.NS", "SKFINDIA.NS", "SRF.NS", "SAFARI.NS",
-        "SAMVARDHANA.NS", "SANOFI.NS", "SANSERA.NS", "SAPPHIRE.NS", "SAREGAMA.NS", "SCHAEFFLER.NS", "SCHNEIDER.NS", "SEAMEC.NS", "SHARDACROP.NS",
-        "SHOPERSTOP.NS", "SHREERENUK.NS", "SHRIRAMFIN.NS", "SIEMENS.NS", "SOBHA.NS", "SOLARINDS.NS", "SONACOMS.NS", "SONATSOFTW.NS",
-        "SOUTHBANK.NS", "STARHEALTH.NS", "SBIN.NS", "SAIL.NS", "SVRAT.NS", "SUMICHEM.NS", "SUNPHARMA.NS", "SUNTV.NS", "SUNDARMFIN.NS",
-        "SUNDRMFAST.NS", "SUNTECK.NS", "SUPRAJIT.NS", "SUPREMEIND.NS", "SUVENPHAR.NS", "SUZLON.NS", "SWANENERGY.NS", "SYMPHONY.NS",
-        "SYNGENE.NS", "TVSMOTOR.NS", "TATACHEM.NS", "TATACOMM.NS", "TCS.NS", "TATAELXSI.NS", "TATAGLOBAL.NS", "TATAMTRDVR.NS", "TATAMOTORS.NS",
-        "TATAPOWER.NS", "TATASTEEL.NS", "TATATECH.NS", "TTML.NS", "TECHM.NS", "TEJASNET.NS", "NIACL.NS", "RAMCOIND.NS", "THERMAX.NS",
-        "THYROCARE.NS", "TIMKEN.NS", "TITAN.NS", "TORNTPHARM.NS", "TORNTPOWER.NS", "TRENT.NS", "TRIDENT.NS", "TRIVENI.NS", "TRITURBINE.NS",
-        "TIINDIA.NS", "UCOBANK.NS", "UNOMINDA.NS", "UPL.NS", "UTIAMC.NS", "ULTRACEMCO.NS", "UNIONBANK.NS", "UBL.NS", "MCDOWELL-N.NS",
-        "VGUARD.NS", "VMART.NS", "VIPIND.NS", "VAIBHAVGBL.NS", "VBL.NS", "VEDL.NS", "VIJAYA.NS", "VINATIORGA.NS", "IDEA.NS", "VOLTAS.NS",
-        "WELCORP.NS", "WELSPUNLIV.NS", "WESTLIFE.NS", "WHIRLPOOL.NS", "WIPRO.NS", "WOCKPHARMA.NS", "YESBANK.NS", "ZFCVINDIA.NS", "ZEEL.NS",
-        "ZENSARTECH.NS", "ZOMATO.NS", "ZYDUSLIFE.NS", "ECLERX.NS"
+    return [
+        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "BHARTIARTL.NS", "ITC.NS", "SBIN.NS",
+        "LTIM.NS", "LT.NS", "BAJFINANCE.NS", "HCLTECH.NS", "KOTAKBANK.NS", "AXISBANK.NS", "M&M.NS", "SUNPHARMA.NS",
+        "TITAN.NS", "MARUTI.NS", "ULTRACEMCO.NS", "NTPC.NS", "TATAMOTORS.NS", "POWERGRID.NS", "ONGC.NS", "ADANIENT.NS",
+        "JIOFIN.NS", "COALINDIA.NS", "TATASTEEL.NS", "HINDUNILVR.NS", "BAJAJ-AUTO.NS", "GRASIM.NS", "BRITANNIA.NS",
+        "TECHM.NS", "HDFCLIFE.NS", "ADANIPORTS.NS", "CIPLA.NS", "HEROMOTOCO.NS", "INDUSINDBK.NS", "EICHERMOT.NS",
+        "DRREDDY.NS", "WIPRO.NS", "BPCL.NS", "TATACONSUM.NS", "DIVISLAB.NS", "SBILIFE.NS", "APOLLOHOSP.NS", "ECLERX.NS",
+        "ALKEM.NS", "BAJAJFINSV.NS", "BEL.NS", "HAL.NS", "TRENT.NS", "VBL.NS", "ZOMATO.NS", "PFC.NS", "RECLTD.NS",
+        "SIEMENS.NS", "DLF.NS", "IOC.NS", "ABB.NS", "VBL.NS", "JINDALSTEL.NS", "SHRIRAMFIN.NS", "GAIL.NS", "TATA-POWER.NS"
     ]
-    return list(set(nifty_500_exact))
 
 ALL_HIRA_SYMBOLS = load_nifty500_stocks()
 TOTAL_SCANNED_STOCKS = len(ALL_HIRA_SYMBOLS)
@@ -240,145 +196,137 @@ def run_market_scanner():
     bullish_list, bearish_list, all_stocks = [], [], []
     per_trade_cap = 10000
 
-    chunk_size = 150
-    symbol_chunks = [ALL_HIRA_SYMBOLS[i:i + chunk_size] for i in range(0, len(ALL_HIRA_SYMBOLS), chunk_size)]
+    try:
+        bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="2d", interval="5m", progress=False, group_by="ticker")
+        bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker")
+    except Exception:
+        return [], [], None, None, [], 0, 0
 
-    for chunk in symbol_chunks:
+    if bulk_5m is None or bulk_1d is None or bulk_5m.empty:
+        return [], [], None, None, [], 0, 0
+
+    for symbol in ALL_HIRA_SYMBOLS:
         try:
-            bulk_5m = yf.download(chunk, period="2d", interval="5m", progress=False, group_by="ticker")
-            bulk_1d = yf.download(chunk, period="5d", interval="1d", progress=False, group_by="ticker")
+            clean_symbol = symbol.replace(".NS", "").upper()
+            
+            if symbol not in bulk_5m or symbol not in bulk_1d:
+                continue
+            df_5m = bulk_5m[symbol].dropna()
+            df_daily = bulk_1d[symbol].dropna()
+
+            if len(df_5m) < 10 or len(df_daily) < 2:
+                continue
+
+            df_5m["VWAP"] = calculate_vwap(df_5m)
+
+            latest_trading_date = df_5m.index[-1].date()
+            today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
+
+            if len(today_df) < 3:
+                continue
+
+            valid_closes = today_df["Close"].dropna()
+            if valid_closes.empty:
+                continue
+            curr_price = float(valid_closes.iloc[-1])
+
+            valid_daily = df_daily.dropna()
+            if len(valid_daily) >= 2:
+                prev_day_row = valid_daily.iloc[-2]
+                pdh = float(prev_day_row["High"])
+                pdl = float(prev_day_row["Low"])
+                prev_close = float(prev_day_row["Close"])
+            else:
+                continue
+
+            if curr_price <= 0:
+                continue
+
+            day_change_pct = float(((curr_price - prev_close) / prev_close) * 100)
+            change_pts = float(curr_price - prev_close)
+            tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
+            calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
+
+            c1 = today_df.iloc[0]
+            c1_high, c1_low, c1_open, c1_close = float(c1["High"]), float(c1["Low"]), float(c1["Open"]), float(c1["Close"])
+            c1_range = c1_high - c1_low
+
+            if c1_range == 0:
+                continue
+
+            c1_range_pct = (c1_range / c1_close) * 100
+
+            if c1_range_pct > 1.2:
+                continue
+
+            gap_pct = abs(c1_open - prev_close) / prev_close * 100
+            upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
+            lower_wick_ratio = (min(c1_open, c1_close) - c1_low) / c1_range
+
+            max_base_vol = max(float(c1["Volume"]), float(today_df.iloc[1]["Volume"]))
+            if max_base_vol < 1000:
+                continue
+
+            c2 = today_df.iloc[1]
+            c2_high, c2_low, c2_open, c2_close = float(c2["High"]), float(c2["Low"]), float(c2["Open"]), float(c2["Close"])
+            c2_range = c2_high - c2_low
+
+            c1_bull_cond = (c1_range_pct <= 1.2) and (gap_pct <= 1.2) and (upper_wick_ratio <= 0.40) and (lower_wick_ratio <= 0.40)
+            c2_bull_pause_cond = (c2_close < c2_open) and (c2_high <= c1_high) and (c2_low >= c1_low) and (c2_range <= c1_range * 0.90)
+
+            c1_bear_cond = (c1_range_pct <= 1.2) and (gap_pct <= 1.2) and (upper_wick_ratio <= 0.40) and (lower_wick_ratio <= 0.40)
+            c2_bear_pause_cond = (c2_close > c2_open) and (c2_high <= c1_high) and (c2_low >= c1_low) and (c2_range <= c1_range * 0.90)
+
+            signal_bullish, signal_bearish = False, False
+            status_state, signal_time, vol_multiple = "READY", "-", 1.0
+
+            if c1_bull_cond and c2_bull_pause_cond:
+                for i in range(2, len(today_df)):
+                    c_curr = today_df.iloc[i]
+                    curr_close, curr_vwap = float(c_curr["Close"]), float(c_curr["VWAP"])
+                    curr_vol = float(c_curr["Volume"])
+                    calc_vol_mult = float(round(curr_vol / max_base_vol, 2)) if max_base_vol > 0 else 1.0
+
+                    if (curr_close > max(c1_high, c2_high)) and (curr_close > curr_vwap) and (curr_close > pdh) and (calc_vol_mult >= 1.1):
+                        signal_bullish = True
+                        signal_time = c_curr.name.strftime("%H:%M")
+                        vol_multiple = calc_vol_mult
+                        break
+
+            elif c1_bear_cond and c2_bear_pause_cond:
+                for i in range(2, len(today_df)):
+                    c_curr = today_df.iloc[i]
+                    curr_close, curr_vwap = float(c_curr["Close"]), float(c_curr["VWAP"])
+                    curr_vol = float(c_curr["Volume"])
+                    calc_vol_mult = float(round(curr_vol / max_base_vol, 2)) if max_base_vol > 0 else 1.0
+
+                    if (curr_close < min(c1_low, c2_low)) and (curr_close < curr_vwap) and (curr_close < pdl) and (calc_vol_mult >= 1.1):
+                        signal_bearish = True
+                        signal_time = c_curr.name.strftime("%H:%M")
+                        vol_multiple = calc_vol_mult
+                        break
+
+            res = {
+                "Symbol": str(clean_symbol),
+                "Price": float(curr_price),
+                "ChangePct": float(day_change_pct),
+                "ChangePts": float(round(change_pts, 2)),
+                "SignalTime": str(signal_time),
+                "VolMultiple": float(vol_multiple),
+                "IsBullish": bool(signal_bullish),
+                "IsBearish": bool(signal_bearish),
+                "StatusState": "READY",
+                "TVUrl": str(tv_url),
+                "Qty": int(calc_qty),
+            }
+            all_stocks.append(res)
+
+            if signal_bullish:
+                bullish_list.append(res)
+            if signal_bearish:
+                bearish_list.append(res)
         except Exception:
             continue
-
-        if bulk_5m is None or bulk_1d is None:
-            continue
-
-        for symbol in chunk:
-            try:
-                clean_symbol = symbol.replace(".NS", "").upper()
-                
-                if len(chunk) > 1:
-                    if symbol not in bulk_5m or symbol not in bulk_1d:
-                        continue
-                    df_5m = bulk_5m[symbol].dropna()
-                    df_daily = bulk_1d[symbol].dropna()
-                else:
-                    df_5m = bulk_5m.dropna()
-                    df_daily = bulk_1d.dropna()
-
-                if len(df_5m) < 15 or len(df_daily) < 2:
-                    continue
-
-                df_5m["VWAP"] = calculate_vwap(df_5m)
-
-                latest_trading_date = df_5m.index[-1].date()
-                today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
-
-                if len(today_df) < 3:
-                    continue
-
-                valid_closes = today_df["Close"].dropna()
-                if valid_closes.empty:
-                    continue
-                curr_price = float(valid_closes.iloc[-1])
-
-                valid_daily = df_daily.dropna()
-                if len(valid_daily) >= 2:
-                    prev_day_row = valid_daily.iloc[-2]
-                    pdh = float(prev_day_row["High"])
-                    pdl = float(prev_day_row["Low"])
-                    prev_close = float(prev_day_row["Close"])
-                else:
-                    continue
-
-                if curr_price <= 0:
-                    continue
-
-                day_change_pct = float(((curr_price - prev_close) / prev_close) * 100)
-                change_pts = float(curr_price - prev_close)
-                tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
-                calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
-
-                c1 = today_df.iloc[0]
-                c1_high, c1_low, c1_open, c1_close = float(c1["High"]), float(c1["Low"]), float(c1["Open"]), float(c1["Close"])
-                c1_range = c1_high - c1_low
-
-                if c1_range == 0:
-                    continue
-
-                c1_range_pct = (c1_range / c1_close) * 100
-
-                if c1_range_pct > 1.0:
-                    continue
-
-                gap_pct = abs(c1_open - prev_close) / prev_close * 100
-                upper_wick_ratio = (c1_high - max(c1_open, c1_close)) / c1_range
-                lower_wick_ratio = (min(c1_open, c1_close) - c1_low) / c1_range
-
-                max_base_vol = max(float(c1["Volume"]), float(today_df.iloc[1]["Volume"]))
-                if max_base_vol < 1000:
-                    continue
-
-                c2 = today_df.iloc[1]
-                c2_high, c2_low, c2_open, c2_close = float(c2["High"]), float(c2["Low"]), float(c2["Open"]), float(c2["Close"])
-                c2_range = c2_high - c2_low
-
-                c1_bull_cond = (c1_range_pct <= 1.0) and (gap_pct <= 1.0) and (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)
-                c2_bull_pause_cond = (c2_close < c2_open) and (c2_high <= c1_high) and (c2_low >= c1_low) and (c2_range <= c1_range * 0.85)
-
-                c1_bear_cond = (c1_range_pct <= 1.0) and (gap_pct <= 1.0) and (upper_wick_ratio <= 0.35) and (lower_wick_ratio <= 0.35)
-                c2_bear_pause_cond = (c2_close > c2_open) and (c2_high <= c1_high) and (c2_low >= c1_low) and (c2_range <= c1_range * 0.85)
-
-                signal_bullish, signal_bearish = False, False
-                status_state, signal_time, vol_multiple = "READY", "-", 1.0
-
-                if c1_bull_cond and c2_bull_pause_cond:
-                    for i in range(2, len(today_df)):
-                        c_curr = today_df.iloc[i]
-                        curr_close, curr_vwap = float(c_curr["Close"]), float(c_curr["VWAP"])
-                        curr_vol = float(c_curr["Volume"])
-                        calc_vol_mult = float(round(curr_vol / max_base_vol, 2)) if max_base_vol > 0 else 1.0
-
-                        if (curr_close > max(c1_high, c2_high)) and (curr_close > curr_vwap) and (curr_close > pdh) and (calc_vol_mult >= 1.2):
-                            signal_bullish = True
-                            signal_time = c_curr.name.strftime("%H:%M")
-                            vol_multiple = calc_vol_mult
-                            break
-
-                elif c1_bear_cond and c2_bear_pause_cond:
-                    for i in range(2, len(today_df)):
-                        c_curr = today_df.iloc[i]
-                        curr_close, curr_vwap = float(c_curr["Close"]), float(c_curr["VWAP"])
-                        curr_vol = float(c_curr["Volume"])
-                        calc_vol_mult = float(round(curr_vol / max_base_vol, 2)) if max_base_vol > 0 else 1.0
-
-                        if (curr_close < min(c1_low, c2_low)) and (curr_close < curr_vwap) and (curr_close < pdl) and (calc_vol_mult >= 1.2):
-                            signal_bearish = True
-                            signal_time = c_curr.name.strftime("%H:%M")
-                            vol_multiple = calc_vol_mult
-                            break
-
-                res = {
-                    "Symbol": str(clean_symbol),
-                    "Price": float(curr_price),
-                    "ChangePct": float(day_change_pct),
-                    "ChangePts": float(round(change_pts, 2)),
-                    "SignalTime": str(signal_time),
-                    "VolMultiple": float(vol_multiple),
-                    "IsBullish": bool(signal_bullish),
-                    "IsBearish": bool(signal_bearish),
-                    "StatusState": "READY",
-                    "TVUrl": str(tv_url),
-                    "Qty": int(calc_qty),
-                }
-                all_stocks.append(res)
-
-                if signal_bullish:
-                    bullish_list.append(res)
-                if signal_bearish:
-                    bearish_list.append(res)
-            except Exception:
-                continue
 
     all_df = pd.DataFrame(all_stocks)
     top_gainer, top_loser, balanced_movers = None, None, []
@@ -625,7 +573,7 @@ with tb_col2:
             unsafe_allow_html=True,
         )
 
-# --- 🚀 POWERFUL LIVE AUTO REFRESH SYSTEM ---
+# --- LIVE AUTO REFRESH ---
 refresh_time_ms = 15000 if is_market_open else 300000
 st.markdown(
     f"<script>setTimeout(function(){{ window.location.reload(); }}, {refresh_time_ms});</script>",
