@@ -1,5 +1,7 @@
 import datetime
 import os
+import threading
+import time
 import numpy as np
 import pandas as pd
 import pytz
@@ -114,7 +116,7 @@ st.markdown(
         .cell-price-up {{ background-color: rgba(63, 185, 80, 0.12); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.3); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; animation: smoothPulse 3.5s ease-in-out infinite; }}
         .cell-price-down {{ background-color: rgba(248, 81, 73, 0.12); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.3); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; animation: smoothPulse 3.5s ease-in-out infinite; }}
         
-        /* DIFFERENT COLOR FOR CHANGE PERCENTAGE (CYAN BLUE FOR BULLISH, ORANGE FOR BEARISH) */
+        /* DIFFERENT COLOR FOR CHANGE PERCENTAGE */
         .cell-pct-up {{ background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; }}
         .cell-pct-down {{ background-color: rgba(251, 146, 60, 0.15); color: #fb923c; border: 1.5px solid rgba(251, 146, 60, 0.4); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; }}
         
@@ -207,14 +209,13 @@ def calculate_vwap(df):
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
-# --- FAST SCANNER ENGINE WITH EXACT TRIGGER TIME MAPPING ---
-@st.cache_data(ttl=25, show_spinner=False)
+# --- OPTIMIZED FAST SCANNER ENGINE ---
+@st.cache_data(ttl=15, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
 
     try:
-        # Fast Bulk Download
         bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="2d", interval="5m", progress=False, group_by="ticker", threads=True)
         bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=True)
     except Exception:
@@ -250,7 +251,6 @@ def run_market_scanner():
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
-            # Base info
             stock_info = {
                 "Symbol": str(clean_symbol),
                 "Price": float(curr_price),
@@ -324,7 +324,7 @@ def run_market_scanner():
                     "Price": float(curr_price),
                     "ChangePct": float(day_change_pct),
                     "ChangePts": float(round(change_pts, 2)),
-                    "SignalTime": trigger_time,  # Precise Breakout/Breakdown Time
+                    "SignalTime": trigger_time,
                     "IsBullish": is_bullish,
                     "IsBearish": is_bearish,
                     "StatusState": status_state,
@@ -340,16 +340,18 @@ def run_market_scanner():
     all_df = pd.DataFrame(all_scanned_stocks)
     top_gainer, top_loser, market_movers = None, None, []
 
-    # Map signal times to dictionary for Market Movers lookup
+    # Map signal times accurately
     signal_time_dict = {s["Symbol"]: s["SignalTime"] for s in (bullish_list + bearish_list)}
 
     if not all_df.empty:
         try:
             top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
-            top_gainer["SignalTime"] = signal_time_dict.get(top_gainer["Symbol"], top_gainer["SignalTime"])
+            if top_gainer["Symbol"] in signal_time_dict:
+                top_gainer["SignalTime"] = signal_time_dict[top_gainer["Symbol"]]
 
             top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
-            top_loser["SignalTime"] = signal_time_dict.get(top_loser["Symbol"], top_loser["SignalTime"])
+            if top_loser["Symbol"] in signal_time_dict:
+                top_loser["SignalTime"] = signal_time_dict[top_loser["Symbol"]]
 
             # MARKET MOVERS: Highest % Gainers (Top 4) + Highest % Losers (Top 4)
             bull_movers = all_df[all_df["ChangePct"] > 0].sort_values(by="ChangePct", ascending=False).head(4).to_dict("records")
@@ -357,7 +359,8 @@ def run_market_scanner():
             
             raw_movers = bull_movers + bear_movers
             for m in raw_movers:
-                m["SignalTime"] = signal_time_dict.get(m["Symbol"], m["SignalTime"])
+                if m["Symbol"] in signal_time_dict:
+                    m["SignalTime"] = signal_time_dict[m["Symbol"]]
                 market_movers.append(m)
 
         except Exception:
@@ -408,7 +411,7 @@ st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 10px; border-color: {bo
 # --- RUN SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
 
-# --- LINE 2: METRICS CARDS ---
+# --- LINE 2: METRICS CARDS (CLEAN WITHOUT 10k LABEL) ---
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
@@ -423,7 +426,7 @@ with c1:
                     </div>
                     <div style="margin-top:4px;">
                         <span class="meta-text-box">🕒 {top_gainer.get('SignalTime', '-')}</span>
-                        <span class="meta-text-box">Qty (₹10k): {top_gainer.get('Qty', 0)}</span>
+                        <span class="meta-text-box">Qty: {top_gainer.get('Qty', 0)}</span>
                     </div>
                 </div>
             </a>""", unsafe_allow_html=True)
@@ -442,7 +445,7 @@ with c2:
                     </div>
                     <div style="margin-top:4px;">
                         <span class="meta-text-box">🕒 {top_loser.get('SignalTime', '-')}</span>
-                        <span class="meta-text-box">Qty (₹10k): {top_loser.get('Qty', 0)}</span>
+                        <span class="meta-text-box">Qty: {top_loser.get('Qty', 0)}</span>
                     </div>
                 </div>
             </a>""", unsafe_allow_html=True)
@@ -502,7 +505,7 @@ with tb_col1:
                 <span>SYMBOL</span>
                 <span>STATUS</span>
                 <span>TIME</span>
-                <span>QTY (₹10K)</span>
+                <span>QTY</span>
                 <span>PRICE</span>
                 <span>CHANGE %</span>
             </div>
@@ -531,7 +534,7 @@ with tb_col2:
                 <span>SYMBOL</span>
                 <span>STATUS</span>
                 <span>TIME</span>
-                <span>QTY (₹10K)</span>
+                <span>QTY</span>
                 <span>PRICE</span>
                 <span>CHANGE %</span>
             </div>
