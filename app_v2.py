@@ -38,50 +38,53 @@ st.markdown(
             display: none !important; visibility: hidden !important; opacity: 0 !important;
         }}
         .block-container {{
-            padding-top: 0.4rem !important; padding-bottom: 0.2rem !important; padding-left: 0.6rem !important; padding-right: 0.6rem !important; max-width: 100% !important;
+            padding-top: 0.3rem !important; padding-bottom: 0.2rem !important; padding-left: 0.5rem !important; padding-right: 0.5rem !important; max-width: 100% !important;
         }}
         body, .stApp {{
             background-color: {bg_color} !important; color: {text_main} !important; font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         }}
         .stButton>button {{
             background-color: {btn_bg} !important; color: {accent_blue} !important; border: 1px solid {border_color} !important;
-            border-radius: 6px !important; font-weight: 800 !important; font-size: 12px !important; padding: 2px 6px !important;
-            height: 36px !important; width: 100% !important;
+            border-radius: 6px !important; font-weight: 800 !important; font-size: 11px !important; padding: 2px 4px !important;
+            height: 32px !important; width: 100% !important;
         }}
         .brand-logo {{
-            font-size: 19px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.5px;
-            font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 36px;
+            font-size: 16px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.5px;
+            font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 32px;
         }}
         .indices-bar-wrapper {{
-            display: flex; align-items: center; justify-content: flex-start; gap: 6px; width: 100%; height: 36px; overflow-x: auto;
+            display: flex; align-items: center; justify-content: flex-start; gap: 4px; width: 100%; height: 32px; overflow-x: auto;
         }}
         .idx-pill {{
-            display: inline-flex; align-items: center; gap: 5px; background-color: {sub_card_bg}; border: 1.5px solid {border_color};
-            border-radius: 6px; padding: 4px 8px; text-decoration: none !important; font-size: 12px; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 4px; background-color: {sub_card_bg}; border: 1px solid {border_color};
+            border-radius: 5px; padding: 2px 6px; text-decoration: none !important; font-size: 11px; white-space: nowrap;
         }}
-        .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 11px; text-transform: uppercase; }}
-        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 13px; }}
-        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 12px; }}
-        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 12px; }}
-        .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 36px; white-space: nowrap; }}
-        .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 36px; font-size: 11px; color: {text_sub}; font-weight: 800; white-space: nowrap; }}
-        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 900; }}
-        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 900; }}
-        .metric-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 12px 14px; height: 100%; box-sizing: border-box; min-height: 82px; display: flex; flex-direction: column; justify-content: center; }}
-        .card-label {{ font-size: 11px; color: {text_sub}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }}
-        .card-value-green {{ font-size: 18px; font-weight: 900; color: #3fb950; margin-top: 3px; }}
-        .card-value-red {{ font-size: 18px; font-weight: 900; color: #f85149; margin-top: 3px; }}
-        .box-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 8px 12px; margin-top: 10px; margin-bottom: 8px; }}
-        .box-title {{ font-size: 14px; font-weight: 900; color: {text_main}; letter-spacing: 0.5px; }}
-        .stock-card {{ background-color: {sub_card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 10px 12px; text-align: left; }}
-        .stock-symbol {{ font-size: 14px; font-weight: 900; color: {accent_blue}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-        .stock-price-up {{ font-size: 15px; font-weight: 900; color: #3fb950; }}
-        .stock-price-down {{ font-size: 15px; font-weight: 900; color: #f85149; }}
-        .setup-box {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 10px; padding: 12px; }}
-        .setup-header-bull {{ font-size: 16px; font-weight: 900; color: #3fb950; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
-        .setup-header-bear {{ font-size: 16px; font-weight: 900; color: #f85149; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
-        .stock-row-item {{ display: flex; justify-content: space-between; align-items: center; background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; text-decoration: none !important; }}
-        .sym-btn-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 5px; padding: 3px 8px; color: {accent_blue}; font-weight: 900; font-size: 13px; display: inline-block; }}
+        .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 10px; text-transform: uppercase; }}
+        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 11px; }}
+        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 11px; }}
+        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 11px; }}
+        .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 32px; white-space: nowrap; }}
+        .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 32px; font-size: 10px; color: {text_sub}; font-weight: 800; white-space: nowrap; }}
+        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.4); padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: 900; }}
+        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.4); padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: 900; }}
+        .metric-container {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 8px 10px; height: 100%; min-height: 75px; display: flex; flex-direction: column; justify-content: center; }}
+        .card-label {{ font-size: 10px; color: {text_sub}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }}
+        .card-value-green {{ font-size: 16px; font-weight: 900; color: #3fb950; margin-top: 2px; }}
+        .card-value-red {{ font-size: 16px; font-weight: 900; color: #f85149; margin-top: 2px; }}
+        .box-container-center {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 6px 10px; margin-top: 8px; margin-bottom: 6px; text-align: center; }}
+        .box-title-center {{ font-size: 13px; font-weight: 900; color: {text_main}; letter-spacing: 0.5px; text-transform: uppercase; }}
+        .stock-card {{ background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 8px; text-align: left; }}
+        .stock-symbol {{ font-size: 12px; font-weight: 900; color: {accent_blue}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+        .stock-price-up {{ font-size: 13px; font-weight: 900; color: #3fb950; }}
+        .stock-price-down {{ font-size: 13px; font-weight: 900; color: #f85149; }}
+        .setup-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 8px; padding: 10px; }}
+        .setup-header-bull {{ font-size: 14px; font-weight: 900; color: #3fb950; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }}
+        .setup-header-bear {{ font-size: 14px; font-weight: 900; color: #f85149; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }}
+        .stock-row-item {{ display: flex; justify-content: space-between; align-items: center; background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 5px; padding: 6px 10px; margin-bottom: 5px; text-decoration: none !important; }}
+        .sym-btn-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 4px; padding: 2px 6px; color: {accent_blue}; font-weight: 900; font-size: 12px; display: inline-block; }}
+        .badge-ready {{ background-color: rgba(63, 185, 80, 0.2); color: #3fb950; border: 1px solid #3fb950; border-radius: 4px; padding: 1px 5px; font-size: 9px; font-weight: 900; }}
+        .badge-watch {{ background-color: rgba(210, 153, 34, 0.2); color: #d29922; border: 1px solid #d29922; border-radius: 4px; padding: 1px 5px; font-size: 9px; font-weight: 900; }}
+        .meta-text {{ font-size: 10px; color: {text_sub}; font-weight: 700; }}
     </style>
 """,
     unsafe_allow_html=True,
@@ -94,13 +97,11 @@ def load_hira_stocks():
     if os.path.exists(csv_filename):
         try:
             df = pd.read_csv(csv_filename)
-            # symbol کالم میں سے اسٹاکس نکال کر Yahoo Finance کا .NS فارمیٹ لگانا
             symbols = df["symbol"].dropna().str.strip().tolist()
             ns_symbols = [s if s.endswith(".NS") else f"{s}.NS" for s in symbols]
             return ns_symbols
         except Exception:
             pass
-    # اگر فائل کسی وجہ سے نہ ملے تو ڈیفالٹ محفوظ فہرست
     return ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS"]
 
 ALL_HIRA_SYMBOLS = load_hira_stocks()
@@ -198,6 +199,8 @@ def run_market_scanner():
             day_change_pct = float(((curr_price - prev_close) / prev_close) * 100)
             change_pts = float(curr_price - prev_close)
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
+            
+            # Intraday Quantity Calculation based on ₹10,000 Capital (with 5x MIS Leverage = ₹50,000 Buying Power)
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
             c1 = today_df.iloc[0]
@@ -205,17 +208,17 @@ def run_market_scanner():
             
             signal_bullish = curr_price > c1_high
             signal_bearish = curr_price < c1_low
+            trigger_time = str(today_df.index[-1].strftime("%I:%M %p"))
 
             res = {
                 "Symbol": str(clean_symbol),
                 "Price": float(curr_price),
                 "ChangePct": float(day_change_pct),
                 "ChangePts": float(round(change_pts, 2)),
-                "SignalTime": str(today_df.index[-1].strftime("%H:%M")),
-                "VolMultiple": 1.2,
+                "SignalTime": trigger_time,
                 "IsBullish": signal_bullish,
                 "IsBearish": signal_bearish,
-                "StatusState": "READY",
+                "StatusState": "READY" if abs(day_change_pct) >= 1.5 else "WATCH",
                 "TVUrl": str(tv_url),
                 "Qty": int(calc_qty),
             }
@@ -232,23 +235,26 @@ def run_market_scanner():
         try:
             top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
             top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
-            balanced_movers = all_df.head(8).to_dict("records")
         except Exception:
             pass
 
-    return bullish_list[:15], bearish_list[:15], top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
+    # Bullish List Sort by highest Gain, Bearish List Sort by lowest Gain
+    bullish_sorted = sorted(bullish_list, key=lambda x: x["ChangePct"], reverse=True)
+    bearish_sorted = sorted(bearish_list, key=lambda x: x["ChangePct"])
 
-# --- HEADER LAYOUT ---
+    return bullish_sorted, bearish_sorted, top_gainer, top_loser, len(bullish_sorted), len(bearish_sorted)
+
+# --- LINE 1: TOP HEADER (Exact order requested) ---
 top_idx = fetch_indices()
 now_time = now_dt.strftime("%d %b | %I:%M %p")
 status_html = '<span class="market-status-open">🟢 OPEN</span>' if is_market_open else '<span class="market-status-closed">🔴 CLOSED</span>'
 
-head_c1, head_c2, head_c3, head_c4, head_c5 = st.columns([0.2, 0.45, 0.1, 0.15, 0.1])
+l1_c1, l1_c2, l1_c3, l1_c4, l1_c5, l1_c6 = st.columns([0.18, 0.40, 0.08, 0.12, 0.11, 0.11])
 
-with head_c1:
+with l1_c1:
     st.markdown('<div class="brand-logo">HIRA MOUNT TRADER</div>', unsafe_allow_html=True)
 
-with head_c2:
+with l1_c2:
     idx_html = '<div class="indices-bar-wrapper">'
     for name, data in top_idx.items():
         cls = "idx-up-p" if data.get("pct", 0) >= 0 else "idx-down-p"
@@ -256,23 +262,29 @@ with head_c2:
     idx_html += '</div>'
     st.markdown(idx_html, unsafe_allow_html=True)
 
-with head_c3:
+with l1_c3:
     st.markdown(f'<div class="header-status-box">{status_html}</div>', unsafe_allow_html=True)
 
-with head_c4:
+with l1_c4:
     st.markdown(f'<div class="header-time-box">🕒 {now_time}</div>', unsafe_allow_html=True)
 
-with head_c5:
-    if st.button("🔄 Refresh"):
+with l1_c5:
+    theme_label = "☀️ Light" if st.session_state.theme == "dark" else "🌙 Dark"
+    if st.button(theme_label, key="theme_toggle"):
+        st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
+        st.rerun()
+
+with l1_c6:
+    if st.button("🔄 Refresh", key="refresh_btn"):
         st.cache_data.clear()
         st.rerun()
 
-st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 10px; border-color: {border_color}; opacity: 0.5;'>", unsafe_allow_html=True)
+st.markdown(f"<hr style='margin-top: 3px; margin-bottom: 8px; border-color: {border_color}; opacity: 0.4;'>", unsafe_allow_html=True)
 
 # --- RUN SCANNER ---
-bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
+bullish_signals, bearish_signals, top_gainer, top_loser, total_bull_cnt, total_bear_cnt = run_market_scanner()
 
-# --- METRICS CARDS ---
+# --- LINE 2: METRICS METRIC CARDS (Top Gainer, Top Loser, Market Sentiment, Scanned Stocks) ---
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
@@ -280,8 +292,11 @@ with c1:
         st.markdown(f"""
             <div class="metric-container">
                 <div class="card-label">TOP GAINER</div>
-                <div style="font-size: 15px; font-weight: 900; color: {accent_blue};">{top_gainer.get('Symbol', '-')}</div>
-                <div class="card-value-green">+{top_gainer.get('ChangePct', 0):.2f}%</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size: 14px; font-weight: 900; color: {accent_blue};">{top_gainer.get('Symbol', '-')}</span>
+                    <span class="card-value-green">+{top_gainer.get('ChangePct', 0):.2f}%</span>
+                </div>
+                <div class="meta-text">Time: {top_gainer.get('SignalTime', '-')} | Qty (₹10k): {top_gainer.get('Qty', 0)}</div>
             </div>""", unsafe_allow_html=True)
     else:
         st.markdown(f'<div class="metric-container"><div class="card-label">TOP GAINER</div><div style="color:{text_sub};">Scanning...</div></div>', unsafe_allow_html=True)
@@ -291,8 +306,11 @@ with c2:
         st.markdown(f"""
             <div class="metric-container">
                 <div class="card-label">TOP LOSER</div>
-                <div style="font-size: 15px; font-weight: 900; color: {accent_blue};">{top_loser.get('Symbol', '-')}</div>
-                <div class="card-value-red">{top_loser.get('ChangePct', 0):.2f}%</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size: 14px; font-weight: 900; color: {accent_blue};">{top_loser.get('Symbol', '-')}</span>
+                    <span class="card-value-red">{top_loser.get('ChangePct', 0):.2f}%</span>
+                </div>
+                <div class="meta-text">Time: {top_loser.get('SignalTime', '-')} | Qty (₹10k): {top_loser.get('Qty', 0)}</div>
             </div>""", unsafe_allow_html=True)
     else:
         st.markdown(f'<div class="metric-container"><div class="card-label">TOP LOSER</div><div style="color:{text_sub};">Scanning...</div></div>', unsafe_allow_html=True)
@@ -301,61 +319,82 @@ with c3:
     st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">MARKET SENTIMENT</div>
-            <div style="font-size: 16px; font-weight: 900; color: {'#3fb950' if total_bull_cnt >= total_bear_cnt else '#f85149'};">
-                {'BULLISH' if total_bull_cnt >= total_bear_cnt else 'BEARISH'}
+            <div style="font-size: 15px; font-weight: 900; color: {'#3fb950' if total_bull_cnt >= total_bear_cnt else '#f85149'};">
+                {'BULLISH 🟢' if total_bull_cnt >= total_bear_cnt else 'BEARISH 🔴'}
             </div>
-            <div style="font-size: 11px; color: {text_sub};">▲ {total_bull_cnt} | ▼ {total_bear_cnt}</div>
+            <div class="meta-text">Bullish: {total_bull_cnt} | Bearish: {total_bear_cnt}</div>
         </div>""", unsafe_allow_html=True)
 
 with c4:
     st.markdown(f"""
         <div class="metric-container">
             <div class="card-label">SCANNED STOCKS</div>
-            <div style="font-size: 17px; font-weight: 900; color: {accent_blue};">{TOTAL_SCANNED_STOCKS} Stocks</div>
-            <div style="font-size: 11px; color: #3fb950;">Active: {total_bull_cnt + total_bear_cnt}</div>
+            <div style="font-size: 15px; font-weight: 900; color: {accent_blue};">{TOTAL_SCANNED_STOCKS} Stocks</div>
+            <div class="meta-text" style="color:#3fb950;">Active Trading Setups: {total_bull_cnt + total_bear_cnt}</div>
         </div>""", unsafe_allow_html=True)
 
-# --- MARKET MOVERS SECTION ---
-st.markdown("""<div class="box-container"><div class="box-title">🔥 MARKET MOVERS</div></div>""", unsafe_allow_html=True)
+# --- LINE 3: MARKET MOVERS (CENTER TITLE + TOP 4 BULLISH & TOP 4 BEARISH) ---
+st.markdown("""<div class="box-container-center"><div class="box-title-center">🔥 MARKET MOVERS</div></div>""", unsafe_allow_html=True)
 
-if market_movers:
-    m_cols = st.columns(min(len(market_movers), 6))
-    for i, m in enumerate(market_movers[:6]):
-        with m_cols[i]:
+top_4_bull = bullish_signals[:4]
+top_4_bear = bearish_signals[:4]
+combined_movers = top_4_bull + top_4_bear
+
+if combined_movers:
+    m_cols = st.columns(len(combined_movers))
+    for idx, m in enumerate(combined_movers):
+        with m_cols[idx]:
             p_cls = "stock-price-up" if m.get("ChangePct", 0) >= 0 else "stock-price-down"
             st.markdown(f"""
                 <a href="{m.get('TVUrl', '#')}" target="_blank" style="text-decoration:none;">
                     <div class="stock-card">
                         <div class="stock-symbol">{m.get('Symbol', '-')}</div>
                         <div class="{p_cls}">₹{m.get('Price', 0):.2f} ({m.get('ChangePct', 0):+.2f}%)</div>
+                        <div class="meta-text">🕒 {m.get('SignalTime', '-')} | Qty: {m.get('Qty', 0)}</div>
                     </div>
                 </a>""", unsafe_allow_html=True)
 
-st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-# --- BULLISH & BEARISH TABLES ---
+# --- LINE 4: TOP 5 BULLISH & TOP 5 BEARISH TABLES ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
-    st.markdown("""<div class="setup-box"><div class="setup-header-bull">🟢 BULLISH SETUPS</div></div>""", unsafe_allow_html=True)
-    if bullish_signals:
-        for s in bullish_signals:
+    st.markdown("""<div class="setup-box"><div class="setup-header-bull">🟢 BULLISH SETUPS (TOP 5)</div></div>""", unsafe_allow_html=True)
+    top_5_bull = bullish_signals[:5]
+    if top_5_bull:
+        for s in top_5_bull:
+            badge_class = "badge-ready" if s.get("StatusState") == "READY" else "badge-watch"
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
-                    <span class="sym-btn-box">{s.get('Symbol')}</span>
-                    <span style="color:#3fb950; font-weight:900;">₹{s.get('Price', 0):.2f} (▲{s.get('ChangePct', 0):.2f}%)</span>
+                    <div>
+                        <span class="sym-btn-box">{s.get('Symbol')}</span>
+                        <span class="{badge_class}">{s.get('StatusState')}</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="color:#3fb950; font-weight:900; font-size:13px;">₹{s.get('Price', 0):.2f} (▲{s.get('ChangePct', 0):.2f}%)</span>
+                        <div class="meta-text">🕒 {s.get('SignalTime')} | Qty (₹10k): {s.get('Qty')}</div>
+                    </div>
                 </a>""", unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:15px;">No active bullish setups right now.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:10px;">No active bullish setups right now.</div>', unsafe_allow_html=True)
 
 with tb_col2:
-    st.markdown("""<div class="setup-box"><div class="setup-header-bear">🔴 BEARISH SETUPS</div></div>""", unsafe_allow_html=True)
-    if bearish_signals:
-        for s in bearish_signals:
+    st.markdown("""<div class="setup-box"><div class="setup-header-bear">🔴 BEARISH SETUPS (TOP 5)</div></div>""", unsafe_allow_html=True)
+    top_5_bear = bearish_signals[:5]
+    if top_5_bear:
+        for s in top_5_bear:
+            badge_class = "badge-ready" if s.get("StatusState") == "READY" else "badge-watch"
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-item">
-                    <span class="sym-btn-box" style="color:#f85149;">{s.get('Symbol')}</span>
-                    <span style="color:#f85149; font-weight:900;">₹{s.get('Price', 0):.2f} (▼{s.get('ChangePct', 0):.2f}%)</span>
+                    <div>
+                        <span class="sym-btn-box" style="color:#f85149;">{s.get('Symbol')}</span>
+                        <span class="{badge_class}">{s.get('StatusState')}</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="color:#f85149; font-weight:900; font-size:13px;">₹{s.get('Price', 0):.2f} (▼{s.get('ChangePct', 0):.2f}%)</span>
+                        <div class="meta-text">🕒 {s.get('SignalTime')} | Qty (₹10k): {s.get('Qty')}</div>
+                    </div>
                 </a>""", unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:15px;">No active bearish setups right now.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center; color:{text_sub}; padding:10px;">No active bearish setups right now.</div>', unsafe_allow_html=True)
