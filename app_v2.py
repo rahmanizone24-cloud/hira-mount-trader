@@ -151,7 +151,7 @@ ETF_KEYWORDS = [
 
 
 # --- 🚀 STRICT NIFTY 500 LOADER ---
-@st.cache_data(ttl=86400, show_spinner=False)
+@st.cache_data(ttl=86400)
 def load_nifty500_stocks():
   try:
     url = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
@@ -646,7 +646,7 @@ is_market_open = (now_dt.weekday() < 5) and (
 cache_ttl_seconds = 15 if is_market_open else 300
 
 
-@st.cache_data(ttl=cache_ttl_seconds, show_spinner=False)
+@st.cache_data(ttl=cache_ttl_seconds)
 def fetch_indices():
   indices = {
       "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
@@ -658,7 +658,7 @@ def fetch_indices():
   res = {}
   try:
     data = yf.download(
-        symbols, period="5d", interval="1d", progress=False, group_by="ticker", threads=False
+        symbols, period="5d", interval="1d", progress=False, group_by="ticker"
     )
     for name, (sym, tv_sym) in indices.items():
       tv_url = f"https://www.tradingview.com/chart/?symbol={tv_sym}"
@@ -693,7 +693,7 @@ def calculate_vwap(df):
   return (tp * df["Volume"]).cumsum() / df["Volume"].cumsum()
 
 
-@st.cache_data(ttl=cache_ttl_seconds, show_spinner=False)
+@st.cache_data(ttl=cache_ttl_seconds)
 def run_market_scanner():
   bullish_list, bearish_list, all_stocks = [], [], []
   per_trade_cap = 10000
@@ -712,7 +712,7 @@ def run_market_scanner():
           interval="5m",
           progress=False,
           group_by="ticker",
-          threads=False,
+          threads=True,
       )
       bulk_1d = yf.download(
           chunk,
@@ -720,7 +720,7 @@ def run_market_scanner():
           interval="1d",
           progress=False,
           group_by="ticker",
-          threads=False,
+          threads=True,
       )
     except Exception:
       continue
