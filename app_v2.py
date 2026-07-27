@@ -74,41 +74,36 @@ st.markdown(
         .box-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 8px 12px; margin-top: 10px; margin-bottom: 8px; }}
         .box-title {{ font-size: 14px; font-weight: 900; color: {text_main}; letter-spacing: 0.5px; }}
         .stock-card {{ background-color: {sub_card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 10px 12px; text-align: left; }}
-        .stock-card-top {{ display: flex; justify-content: space-between; align-items: center; }}
         .stock-symbol {{ font-size: 14px; font-weight: 900; color: {accent_blue}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-        .stock-card-body {{ display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }}
         .stock-price-up {{ font-size: 15px; font-weight: 900; color: #3fb950; }}
         .stock-price-down {{ font-size: 15px; font-weight: 900; color: #f85149; }}
-        .stock-meta {{ font-size: 11px; color: {text_sub}; font-weight: 700; text-align: right; }}
         .setup-box {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 10px; padding: 12px; }}
         .setup-header-bull {{ font-size: 16px; font-weight: 900; color: #3fb950; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
         .setup-header-bear {{ font-size: 16px; font-weight: 900; color: #f85149; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }}
-        .row-header {{ display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; font-size: 11px; font-weight: 900; color: {text_sub}; text-transform: uppercase; border-bottom: 1px solid {border_color}; margin-bottom: 8px; }}
         .stock-row-item {{ display: flex; justify-content: space-between; align-items: center; background-color: {sub_card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; text-decoration: none !important; }}
         .sym-btn-box {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 5px; padding: 3px 8px; color: {accent_blue}; font-weight: 900; font-size: 13px; display: inline-block; }}
-        .status-ready-bull {{ background-color: #006400; color: #FFFFFF; border: 1px solid #004d00; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
-        .status-ready-bear {{ background-color: #8B0000; color: #FFFFFF; border: 1px solid #660000; border-radius: 5px; padding: 3px 8px; font-weight: 900; font-size: 11px; display: inline-block; }}
-        .vol-box {{ background-color: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.4); border-radius: 5px; padding: 2px 6px; font-weight: 900; font-size: 11px; display: inline-block; }}
-        .qty-box {{ background-color: rgba(88, 166, 255, 0.15); color: {accent_blue}; border: 1px solid rgba(88, 166, 255, 0.4); border-radius: 5px; padding: 2px 6px; font-weight: 900; font-size: 11px; display: inline-block; }}
-        .live-blink {{ animation: pulseBlink 6.0s ease-in-out infinite; display: inline-block; }}
-        @keyframes pulseBlink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-# --- SAFE STOCKS LIST ---
+# --- LOAD STOCKS FROM HIRA STOCKS.CSV ---
 @st.cache_data(ttl=86400, show_spinner=False)
-def load_nifty_stocks():
-    return [
-        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS",
-        "BHARTIARTL.NS", "ITC.NS", "SBIN.NS", "LTIM.NS", "LT.NS",
-        "AXISBANK.NS", "KOTAKBANK.NS", "HCLTECH.NS", "M&M.NS", "TATAMOTORS.NS",
-        "SUNPHARMA.NS", "NTPC.NS", "MARUTI.NS", "POWERGRID.NS", "TITAN.NS",
-        "BAJFINANCE.NS", "ULTRACEMCO.NS", "ASIANPAINT.NS", "COALINDIA.NS", "TATASTEEL.NS"
-    ]
+def load_hira_stocks():
+    csv_filename = "Hira Stocks.csv"
+    if os.path.exists(csv_filename):
+        try:
+            df = pd.read_csv(csv_filename)
+            # symbol کالم میں سے اسٹاکس نکال کر Yahoo Finance کا .NS فارمیٹ لگانا
+            symbols = df["symbol"].dropna().str.strip().tolist()
+            ns_symbols = [s if s.endswith(".NS") else f"{s}.NS" for s in symbols]
+            return ns_symbols
+        except Exception:
+            pass
+    # اگر فائل کسی وجہ سے نہ ملے تو ڈیفالٹ محفوظ فہرست
+    return ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS"]
 
-ALL_HIRA_SYMBOLS = load_nifty_stocks()
+ALL_HIRA_SYMBOLS = load_hira_stocks()
 TOTAL_SCANNED_STOCKS = len(ALL_HIRA_SYMBOLS)
 
 # --- MARKET TIME DETECTOR ---
@@ -120,7 +115,6 @@ is_market_open = (now_dt.weekday() < 5) and (market_open_time <= now_dt <= marke
 
 # --- SAFE DATAFRAME EXTRACTOR ---
 def safe_extract_symbol(df_bulk, symbol):
-    """Prevents KeyError crashes during bulk yfinance downloads."""
     try:
         if df_bulk is None or df_bulk.empty:
             return None
@@ -209,7 +203,6 @@ def run_market_scanner():
             c1 = today_df.iloc[0]
             c1_high, c1_low = float(c1["High"]), float(c1["Low"])
             
-            # Basic Breakout Logic
             signal_bullish = curr_price > c1_high
             signal_bearish = curr_price < c1_low
 
@@ -243,7 +236,7 @@ def run_market_scanner():
         except Exception:
             pass
 
-    return bullish_list[:10], bearish_list[:10], top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
+    return bullish_list[:15], bearish_list[:15], top_gainer, top_loser, balanced_movers, len(bullish_list), len(bearish_list)
 
 # --- HEADER LAYOUT ---
 top_idx = fetch_indices()
@@ -278,7 +271,6 @@ st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 10px; border-color: {bo
 
 # --- RUN SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
-sideways_cnt = TOTAL_SCANNED_STOCKS - (total_bull_cnt + total_bear_cnt)
 
 # --- METRICS CARDS ---
 c1, c2, c3, c4 = st.columns(4)
