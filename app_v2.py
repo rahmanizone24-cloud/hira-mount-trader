@@ -45,31 +45,45 @@ st.markdown(
         }}
         .stButton>button {{
             background-color: {btn_bg} !important; color: {accent_blue} !important; border: 1.5px solid {border_color} !important;
-            border-radius: 6px !important; font-weight: 800 !important; font-size: 12px !important; padding: 4px 8px !important;
-            height: 38px !important; width: 100% !important;
+            border-radius: 6px !important; font-weight: 800 !important; font-size: 13px !important; padding: 4px 8px !important;
+            height: 40px !important; width: 100% !important;
         }}
         .brand-logo {{
-            font-size: 18px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.5px;
-            font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 38px;
+            font-size: 19px; font-weight: 900; color: {accent_blue} !important; letter-spacing: 0.5px;
+            font-family: 'Trebuchet MS', sans-serif; text-transform: uppercase; white-space: nowrap; line-height: 40px;
         }}
+        
+        /* INDICES BAR ENHANCEMENTS */
         .indices-bar-wrapper {{
-            display: flex; align-items: center; justify-content: flex-start; gap: 6px; width: 100%; height: 38px; overflow-x: auto;
+            display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; height: 40px; overflow-x: auto;
         }}
         .idx-pill {{
             display: inline-flex; align-items: center; gap: 6px; background-color: {sub_card_bg}; border: 1.5px solid {border_color};
-            border-radius: 6px; padding: 4px 10px; text-decoration: none !important; font-size: 12px; white-space: nowrap;
+            border-radius: 6px; padding: 5px 12px; text-decoration: none !important; font-size: 13px; white-space: nowrap;
         }}
         .idx-lbl {{ color: {text_sub}; font-weight: 800; font-size: 11px; text-transform: uppercase; }}
-        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 12px; }}
-        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 12px; }}
-        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 12px; }}
-        .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 38px; white-space: nowrap; }}
-        .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 38px; font-size: 11px; color: {text_sub}; font-weight: 800; white-space: nowrap; }}
-        .market-status-open {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 900; }}
-        .market-status-closed {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 900; }}
+        .idx-num {{ color: {text_main}; font-weight: 900; font-size: 13px; }}
+        .idx-up-p {{ color: #3fb950; font-weight: 900; font-size: 13px; }}
+        .idx-down-p {{ color: #f85149; font-weight: 900; font-size: 13px; }}
+        
+        /* MARKET STATUS & TIME BOX */
+        .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 40px; white-space: nowrap; }}
+        .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 40px; font-size: 12px; color: {text_sub}; font-weight: 800; white-space: nowrap; background-color:{card_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 0 8px; }}
+        
+        /* BLINKING STATUS BADGES */
+        .market-status-open {{
+            background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.5);
+            padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 900;
+            animation: pulseBlink 2.0s ease-in-out infinite;
+        }}
+        .market-status-closed {{
+            background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.5);
+            padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 900;
+        }}
+        @keyframes pulseBlink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
         
         /* METRIC CARDS */
-        .metric-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 10px 12px; height: 100%; min-height: 82px; display: flex; flex-direction: column; justify-content: center; text-decoration: none !important; }}
+        .metric-container {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 8px; padding: 12px 14px; height: 100%; min-height: 85px; display: flex; flex-direction: column; justify-content: center; text-decoration: none !important; }}
         .card-label {{ font-size: 11px; color: {text_sub}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }}
         .card-value-green {{ font-size: 18px; font-weight: 900; color: #3fb950; margin-top: 2px; }}
         .card-value-red {{ font-size: 18px; font-weight: 900; color: #f85149; margin-top: 2px; }}
@@ -91,10 +105,10 @@ st.markdown(
         .sym-btn-box {{ background-color: {card_bg}; border: 1.5px solid {border_color}; border-radius: 6px; padding: 4px 8px; color: {accent_blue}; font-weight: 900; font-size: 13px; display: inline-block; }}
         .price-box-up {{ background-color: rgba(63, 185, 80, 0.12); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3); border-radius: 6px; padding: 4px 8px; font-weight: 900; font-size: 13px; display: inline-block; }}
         .price-box-down {{ background-color: rgba(248, 81, 73, 0.12); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.3); border-radius: 6px; padding: 4px 8px; font-weight: 900; font-size: 13px; display: inline-block; }}
-        .qty-box {{ background-color: rgba(88, 166, 255, 0.12); color: {accent_blue}; border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 6px; padding: 3px 7px; font-weight: 800; font-size: 11px; display: inline-block; }}
-        .time-box {{ background-color: {card_bg}; color: {text_sub}; border: 1px solid {border_color}; border-radius: 6px; padding: 3px 7px; font-weight: 800; font-size: 11px; display: inline-block; }}
-        .badge-ready {{ background-color: rgba(63, 185, 80, 0.2); color: #3fb950; border: 1px solid #3fb950; border-radius: 5px; padding: 3px 7px; font-size: 10px; font-weight: 900; display: inline-block; }}
-        .badge-watch {{ background-color: rgba(210, 153, 34, 0.2); color: #d29922; border: 1px solid #d29922; border-radius: 5px; padding: 3px 7px; font-size: 10px; font-weight: 900; display: inline-block; }}
+        .qty-box {{ background-color: rgba(88, 166, 255, 0.12); color: {accent_blue}; border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 6px; padding: 4px 8px; font-weight: 800; font-size: 11px; display: inline-block; }}
+        .time-box {{ background-color: {card_bg}; color: {text_sub}; border: 1px solid {border_color}; border-radius: 6px; padding: 4px 8px; font-weight: 800; font-size: 11px; display: inline-block; }}
+        .badge-ready {{ background-color: rgba(63, 185, 80, 0.25); color: #3fb950; border: 1.5px solid #3fb950; border-radius: 5px; padding: 4px 8px; font-size: 10px; font-weight: 900; display: inline-block; animation: pulseBlink 1.5s infinite; }}
+        .badge-watch {{ background-color: rgba(210, 153, 34, 0.25); color: #d29922; border: 1.5px solid #d29922; border-radius: 5px; padding: 4px 8px; font-size: 10px; font-weight: 900; display: inline-block; }}
         .meta-text {{ font-size: 11px; color: {text_sub}; font-weight: 700; }}
     </style>
 """,
@@ -141,7 +155,8 @@ def safe_extract_symbol(df_bulk, symbol):
     except Exception:
         return None
 
-@st.cache_data(ttl=30, show_spinner=False)
+# --- UPDATED INDICES FETCH WITH REALTIME DATA ---
+@st.cache_data(ttl=15, show_spinner=False)
 def fetch_indices():
     indices = {
         "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
@@ -152,10 +167,11 @@ def fetch_indices():
     for name, (sym, tv_sym) in indices.items():
         tv_url = f"https://www.tradingview.com/chart/?symbol={tv_sym}"
         try:
-            df = yf.download(sym, period="5d", interval="1d", progress=False)
+            ticker = yf.Ticker(sym)
+            df = ticker.history(period="5d", interval="1d")
             if df is not None and not df.empty and len(df) >= 2:
-                curr = float(df["Close"].dropna().iloc[-1])
-                prev = float(df["Close"].dropna().iloc[-2])
+                curr = float(df["Close"].iloc[-1])
+                prev = float(df["Close"].iloc[-2])
                 change = curr - prev
                 res[name] = {
                     "val": round(curr, 2),
@@ -174,7 +190,11 @@ def calculate_vwap(df):
     vol = df["Volume"].replace(0, 1)
     return (tp * vol).cumsum() / vol.cumsum()
 
-@st.cache_data(ttl=30, show_spinner=False)
+def calculate_ema(df, period=20):
+    return df["Close"].ewm(span=period, adjust=False).mean()
+
+# --- 10-MIN PAUSE CANDLE + EMA + VWAP STRATEGY SCANNER ---
+@st.cache_data(ttl=20, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_stocks = [], [], []
     per_trade_cap = 10000
@@ -191,10 +211,12 @@ def run_market_scanner():
             df_5m = safe_extract_symbol(bulk_5m, symbol)
             df_daily = safe_extract_symbol(bulk_1d, symbol)
 
-            if df_5m is None or df_daily is None or len(df_5m) < 5 or len(df_daily) < 2:
+            if df_5m is None or df_daily is None or len(df_5m) < 10 or len(df_daily) < 2:
                 continue
 
             df_5m["VWAP"] = calculate_vwap(df_5m)
+            df_5m["EMA20"] = calculate_ema(df_5m, 20)
+
             latest_trading_date = df_5m.index[-1].date()
             today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
 
@@ -210,32 +232,87 @@ def run_market_scanner():
             day_change_pct = float(((curr_price - prev_close) / prev_close) * 100)
             change_pts = float(curr_price - prev_close)
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
-            
-            # Intraday Qty on ₹10,000 Capital (with 5x leverage)
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
+            # 1. First 5-min Candle (9:15 AM)
             c1 = today_df.iloc[0]
             c1_high, c1_low = float(c1["High"]), float(c1["Low"])
-            
-            signal_bullish = curr_price > c1_high
-            signal_bearish = curr_price < c1_low
+            c1_open, c1_close = float(c1["Open"]), float(c1["Close"])
+            c1_ema20 = float(c1["EMA20"])
+
+            c1_range_pct = ((c1_high - c1_low) / c1_low) * 100
+            c1_wick_top = c1_high - max(c1_open, c1_close)
+            c1_wick_bottom = min(c1_open, c1_close) - c1_low
+            c1_body = abs(c1_close - c1_open)
+
+            # Strict 9:15 filters
+            if c1_range_pct > 1.2:  # 1% approx limit
+                continue
+            if abs(((c1_open - prev_close) / prev_close) * 100) > 1.5:  # Avoid huge gap
+                continue
+            if c1_wick_top > (c1_body * 1.5) and c1_wick_bottom > (c1_body * 1.5):  # Avoid huge wicks
+                continue
+
+            # 2. Second 5-min Candle (9:20 AM Pause Candle)
+            c2 = today_df.iloc[1]
+            c2_high, c2_low = float(c2["High"]), float(c2["Low"])
+            c2_close = float(c2["Close"])
+
+            is_inside_pause = (c2_high <= c1_high * 1.002) and (c2_low >= c1_low * 0.998)
+
+            # Signal Evaluation
+            status_state = None
+            is_bullish = False
+            is_bearish = False
             trigger_time = str(today_df.index[-1].strftime("%I:%M %p"))
 
-            res = {
-                "Symbol": str(clean_symbol),
-                "Price": float(curr_price),
-                "ChangePct": float(day_change_pct),
-                "ChangePts": float(round(change_pts, 2)),
-                "SignalTime": trigger_time,
-                "IsBullish": signal_bullish,
-                "IsBearish": signal_bearish,
-                "StatusState": "READY" if abs(day_change_pct) >= 1.5 else "WATCH",
-                "TVUrl": str(tv_url),
-                "Qty": int(calc_qty),
-            }
-            all_stocks.append(res)
-            if signal_bullish: bullish_list.append(res)
-            if signal_bearish: bearish_list.append(res)
+            # --- BULLISH STRATEGY ---
+            if (c1_close > c1_ema20) and (abs(c1_close - c1_ema20) / c1_ema20 <= 0.015):
+                if is_inside_pause:
+                    status_state = "WATCH"
+                    is_bullish = True
+                    trigger_time = str(today_df.index[1].strftime("%I:%M %p"))
+
+                    # Breakout check on subsequent candles
+                    for idx in range(2, len(today_df)):
+                        ck = today_df.iloc[idx]
+                        if float(ck["Close"]) > max(c1_high, c2_high) and float(ck["Close"]) > float(ck["VWAP"]):
+                            status_state = "READY"
+                            trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
+                            break
+
+            # --- BEARISH STRATEGY ---
+            elif (c1_close < c1_ema20) and (abs(c1_close - c1_ema20) / c1_ema20 <= 0.015):
+                if is_inside_pause:
+                    status_state = "WATCH"
+                    is_bearish = True
+                    trigger_time = str(today_df.index[1].strftime("%I:%M %p"))
+
+                    # Breakdown check on subsequent candles
+                    for idx in range(2, len(today_df)):
+                        ck = today_df.iloc[idx]
+                        if float(ck["Close"]) < min(c1_low, c2_low) and float(ck["Close"]) < float(ck["VWAP"]):
+                            status_state = "READY"
+                            trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
+                            break
+
+            if status_state:
+                res = {
+                    "Symbol": str(clean_symbol),
+                    "Price": float(curr_price),
+                    "ChangePct": float(day_change_pct),
+                    "ChangePts": float(round(change_pts, 2)),
+                    "SignalTime": trigger_time,
+                    "IsBullish": is_bullish,
+                    "IsBearish": is_bearish,
+                    "StatusState": status_state,
+                    "TVUrl": str(tv_url),
+                    "Qty": int(calc_qty),
+                }
+                all_stocks.append(res)
+                if is_bullish: bullish_list.append(res)
+                if is_bearish: bearish_list.append(res)
+
         except Exception:
             continue
 
@@ -249,8 +326,8 @@ def run_market_scanner():
         except Exception:
             pass
 
-    bullish_sorted = sorted(bullish_list, key=lambda x: x["ChangePct"], reverse=True)
-    bearish_sorted = sorted(bearish_list, key=lambda x: x["ChangePct"])
+    bullish_sorted = sorted(bullish_list, key=lambda x: (x["StatusState"] == "READY", x["ChangePct"]), reverse=True)
+    bearish_sorted = sorted(bearish_list, key=lambda x: (x["StatusState"] == "READY", -x["ChangePct"]), reverse=True)
 
     return bullish_sorted, bearish_sorted, top_gainer, top_loser, len(bullish_sorted), len(bearish_sorted)
 
@@ -294,7 +371,7 @@ st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 10px; border-color: {bo
 # --- RUN SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, total_bull_cnt, total_bear_cnt = run_market_scanner()
 
-# --- LINE 2: METRICS CARDS (Top Gainer & Top Loser with TradingView Redirect) ---
+# --- LINE 2: METRICS CARDS ---
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
@@ -370,7 +447,7 @@ if combined_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- LINE 4: BULLISH & BEARISH TABLES (With Separated Element Boxes) ---
+# --- LINE 4: BULLISH & BEARISH TABLES ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
