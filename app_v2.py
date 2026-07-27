@@ -206,7 +206,7 @@ def calculate_vwap(df):
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
-# --- OPTIMIZED SCANNER ENGINE WITH STRICT PAUSE CANDLE RULES ---
+# --- OPTIMIZED SCANNER ENGINE WITH STRICT ALERT TIMING MAPPING ---
 @st.cache_data(ttl=15, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
@@ -246,18 +246,6 @@ def run_market_scanner():
             change_pts = float(curr_price - prev_close)
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
-
-            # Store general scanned stock base info
-            base_info = {
-                "Symbol": str(clean_symbol),
-                "Price": float(curr_price),
-                "ChangePct": float(day_change_pct),
-                "ChangePts": float(round(change_pts, 2)),
-                "SignalTime": str(today_df.index[-1].strftime("%I:%M %p")),
-                "TVUrl": str(tv_url),
-                "Qty": int(calc_qty),
-            }
-            all_scanned_stocks.append(base_info)
 
             # --- STRICT CANDLE 1 (9:15 AM) ---
             c1 = today_df.iloc[0]
@@ -322,7 +310,7 @@ def run_market_scanner():
                     "Price": float(curr_price),
                     "ChangePct": float(day_change_pct),
                     "ChangePts": float(round(change_pts, 2)),
-                    "SignalTime": trigger_time,  # Accurate Trigger Time
+                    "SignalTime": trigger_time,  # Precise Trigger Time
                     "IsBullish": is_bullish,
                     "IsBearish": is_bearish,
                     "StatusState": status_state,
@@ -332,13 +320,25 @@ def run_market_scanner():
                 if is_bullish: bullish_list.append(res)
                 if is_bearish: bearish_list.append(res)
 
+            # Record scanned base stock info
+            base_info = {
+                "Symbol": str(clean_symbol),
+                "Price": float(curr_price),
+                "ChangePct": float(day_change_pct),
+                "ChangePts": float(round(change_pts, 2)),
+                "SignalTime": trigger_time if status_state else str(today_df.index[1].strftime("%I:%M %p")),
+                "TVUrl": str(tv_url),
+                "Qty": int(calc_qty),
+            }
+            all_scanned_stocks.append(base_info)
+
         except Exception:
             continue
 
     bullish_sorted = sorted(bullish_list, key=lambda x: (x["StatusState"] == "READY", x["ChangePct"]), reverse=True)
     bearish_sorted = sorted(bearish_list, key=lambda x: (x["StatusState"] == "READY", -x["ChangePct"]), reverse=True)
 
-    # --- ENSURE EXACTLY 4 BULLISH AND 4 BEARISH IN MARKET MOVERS (TOTAL 8) ---
+    # --- MAP ACCURATE TRIGGER TIMES TO MARKET MOVERS & TOP CARDS ---
     all_scanned_df = pd.DataFrame(all_scanned_stocks)
     signal_time_dict = {s["Symbol"]: s["SignalTime"] for s in (bullish_list + bearish_list)}
 
@@ -355,19 +355,19 @@ def run_market_scanner():
             if top_loser["Symbol"] in signal_time_dict:
                 top_loser["SignalTime"] = signal_time_dict[top_loser["Symbol"]]
 
-            # Top 4 Bullish Movers (From Scanned Stocks)
+            # Top 4 Bullish Movers
             bull_movers = all_scanned_df[all_scanned_df["ChangePct"] > 0].sort_values(by="ChangePct", ascending=False).head(4).to_dict("records")
             for bm in bull_movers:
                 if bm["Symbol"] in signal_time_dict:
                     bm["SignalTime"] = signal_time_dict[bm["Symbol"]]
 
-            # Top 4 Bearish Movers (From Scanned Stocks)
+            # Top 4 Bearish Movers
             bear_movers = all_scanned_df[all_scanned_df["ChangePct"] < 0].sort_values(by="ChangePct", ascending=True).head(4).to_dict("records")
             for rm in bear_movers:
                 if rm["Symbol"] in signal_time_dict:
                     rm["SignalTime"] = signal_time_dict[rm["Symbol"]]
 
-            # Combine Exactly 4 Bullish + 4 Bearish = 8 Cards Total
+            # Exactly 4 Bullish + 4 Bearish = 8 Cards Total
             market_movers = bull_movers + bear_movers
 
         except Exception:
