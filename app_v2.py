@@ -209,7 +209,7 @@ def calculate_ema(df, period=20):
 # --- OPTIMIZED SCANNER ENGINE WITH STRICT PAUSE CANDLE RULES ---
 @st.cache_data(ttl=15, show_spinner=False)
 def run_market_scanner():
-    bullish_list, bearish_list = [], []
+    bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
 
     try:
@@ -247,6 +247,18 @@ def run_market_scanner():
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
+            # Store general scanned stock base info
+            base_info = {
+                "Symbol": str(clean_symbol),
+                "Price": float(curr_price),
+                "ChangePct": float(day_change_pct),
+                "ChangePts": float(round(change_pts, 2)),
+                "SignalTime": str(today_df.index[-1].strftime("%I:%M %p")),
+                "TVUrl": str(tv_url),
+                "Qty": int(calc_qty),
+            }
+            all_scanned_stocks.append(base_info)
+
             # --- STRICT CANDLE 1 (9:15 AM) ---
             c1 = today_df.iloc[0]
             c1_high, c1_low = float(c1["High"]), float(c1["Low"])
@@ -277,9 +289,6 @@ def run_market_scanner():
             trigger_time = str(today_df.index[1].strftime("%I:%M %p"))
 
             # 🟢 STRICT BULLISH SETUP RULES
-            # 1. C1 Close Above EMA20
-            # 2. C2 is a Small Red Profit-Booking Candle (c2_close < c2_open)
-            # 3. C2 High does NOT Break C1 High (Inside Pause)
             if (c1_close > c1_ema20) and (abs(c1_close - c1_ema20) / c1_ema20 <= 0.015):
                 if (c2_close <= c2_open) and (c2_high <= c1_high * 1.002) and (c2_low >= c1_low * 0.998):
                     status_state = "WATCH"
@@ -294,9 +303,6 @@ def run_market_scanner():
                             break
 
             # 🔴 STRICT BEARISH SETUP RULES
-            # 1. C1 Close Below EMA20
-            # 2. C2 is a Small Green Profit-Booking Candle (c2_close > c2_open)
-            # 3. C2 Low does NOT Break C1 Low (Inside Pause)
             elif (c1_close < c1_ema20) and (abs(c1_close - c1_ema20) / c1_ema20 <= 0.015):
                 if (c2_close >= c2_open) and (c2_low >= c1_low * 0.998) and (c2_high <= c1_high * 1.002):
                     status_state = "WATCH"
@@ -316,7 +322,7 @@ def run_market_scanner():
                     "Price": float(curr_price),
                     "ChangePct": float(day_change_pct),
                     "ChangePts": float(round(change_pts, 2)),
-                    "SignalTime": trigger_time,  # Accurate Alert Time
+                    "SignalTime": trigger_time,  # Accurate Trigger Time
                     "IsBullish": is_bullish,
                     "IsBearish": is_bearish,
                     "StatusState": status_state,
@@ -332,18 +338,40 @@ def run_market_scanner():
     bullish_sorted = sorted(bullish_list, key=lambda x: (x["StatusState"] == "READY", x["ChangePct"]), reverse=True)
     bearish_sorted = sorted(bearish_list, key=lambda x: (x["StatusState"] == "READY", -x["ChangePct"]), reverse=True)
 
-    # Derive Top Cards & Market Movers Strictly From Validated Signals
-    combined_signals = bullish_sorted + bearish_sorted
+    # --- ENSURE EXACTLY 4 BULLISH AND 4 BEARISH IN MARKET MOVERS (TOTAL 8) ---
+    all_scanned_df = pd.DataFrame(all_scanned_stocks)
+    signal_time_dict = {s["Symbol"]: s["SignalTime"] for s in (bullish_list + bearish_list)}
+
     top_gainer, top_loser, market_movers = None, None, []
 
-    if combined_signals:
-        all_signals_df = pd.DataFrame(combined_signals)
-        top_gainer = all_signals_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
-        top_loser = all_signals_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
+    if not all_scanned_df.empty:
+        try:
+            # Top Cards
+            top_gainer = all_scanned_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
+            if top_gainer["Symbol"] in signal_time_dict:
+                top_gainer["SignalTime"] = signal_time_dict[top_gainer["Symbol"]]
 
-        bull_movers = [s for s in bullish_sorted if s["ChangePct"] > 0][:4]
-        bear_movers = [s for s in bearish_sorted if s["ChangePct"] < 0][:4]
-        market_movers = bull_movers + bear_movers
+            top_loser = all_scanned_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
+            if top_loser["Symbol"] in signal_time_dict:
+                top_loser["SignalTime"] = signal_time_dict[top_loser["Symbol"]]
+
+            # Top 4 Bullish Movers (From Scanned Stocks)
+            bull_movers = all_scanned_df[all_scanned_df["ChangePct"] > 0].sort_values(by="ChangePct", ascending=False).head(4).to_dict("records")
+            for bm in bull_movers:
+                if bm["Symbol"] in signal_time_dict:
+                    bm["SignalTime"] = signal_time_dict[bm["Symbol"]]
+
+            # Top 4 Bearish Movers (From Scanned Stocks)
+            bear_movers = all_scanned_df[all_scanned_df["ChangePct"] < 0].sort_values(by="ChangePct", ascending=True).head(4).to_dict("records")
+            for rm in bear_movers:
+                if rm["Symbol"] in signal_time_dict:
+                    rm["SignalTime"] = signal_time_dict[rm["Symbol"]]
+
+            # Combine Exactly 4 Bullish + 4 Bearish = 8 Cards Total
+            market_movers = bull_movers + bear_movers
+
+        except Exception:
+            pass
 
     return bullish_sorted, bearish_sorted, top_gainer, top_loser, market_movers, len(bullish_sorted), len(bearish_sorted)
 
@@ -451,7 +479,7 @@ with c4:
             </div>
         </div>""", unsafe_allow_html=True)
 
-# --- LINE 3: MARKET MOVERS ---
+# --- LINE 3: MARKET MOVERS (EXACTLY 8 STOCKS: 4 BULLISH + 4 BEARISH) ---
 st.markdown("""<div class="box-container-center"><div class="box-title-center">🔥 MARKET MOVERS</div></div>""", unsafe_allow_html=True)
 
 if market_movers:
