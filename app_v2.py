@@ -70,8 +70,8 @@ st.markdown(
         .header-status-box {{ display: flex; align-items: center; justify-content: center; height: 38px; white-space: nowrap; }}
         .header-time-box {{ display: flex; align-items: center; justify-content: center; height: 38px; font-size: 11px; color: {text_sub}; font-weight: 800; white-space: nowrap; background-color:{card_bg}; border: 1.5px solid {border_color}; border-radius: 6px; padding: 0 10px; }}
         
-        /* VERY SMOOTH ANIMATIONS */
-        @keyframes smoothPulse {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.65; }} 100% {{ opacity: 1; }} }}
+        /* SMOOTH ANIMATIONS */
+        @keyframes smoothPulse {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.7; }} 100% {{ opacity: 1; }} }}
         
         .market-status-open {{
             background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.5);
@@ -114,8 +114,10 @@ st.markdown(
         .cell-pct-up {{ background-color: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1.5px solid rgba(63, 185, 80, 0.4); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; }}
         .cell-pct-down {{ background-color: rgba(248, 81, 73, 0.15); color: #f85149; border: 1.5px solid rgba(248, 81, 73, 0.4); border-radius: 6px; padding: 6px 4px; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; height: 36px; }}
         
-        .badge-ready {{ background-color: rgba(63, 185, 80, 0.25); color: #3fb950; border: 1.5px solid #3fb950; border-radius: 6px; padding: 4px; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; height: 36px; width: 100%; }}
-        .badge-watch {{ background-color: rgba(210, 153, 34, 0.25); color: #d29922; border: 1.5px solid #d29922; border-radius: 6px; padding: 4px; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; height: 36px; width: 100%; }}
+        /* STATUS BOX: DARK BG WITH ONLY TEXT COLOR CHANGED */
+        .badge-ready-bull {{ background-color: {sub_card_bg}; color: #3fb950; border: 1.5px solid #3fb950; border-radius: 6px; padding: 4px; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; height: 36px; width: 100%; }}
+        .badge-ready-bear {{ background-color: {sub_card_bg}; color: #f85149; border: 1.5px solid #f85149; border-radius: 6px; padding: 4px; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; height: 36px; width: 100%; }}
+        .badge-watch {{ background-color: {sub_card_bg}; color: #d29922; border: 1.5px solid #d29922; border-radius: 6px; padding: 4px; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; height: 36px; width: 100%; }}
         
         .meta-text-box {{ font-size: 11px; color: {text_sub}; font-weight: 800; background-color:{sub_card_bg}; border:1px solid {border_color}; border-radius:4px; padding:2px 6px; display:inline-block; margin-top:4px; }}
     </style>
@@ -123,7 +125,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- LOAD STOCKS FROM HIRA STOCKS.CSV ---
+# --- STRICTLY LOAD STOCKS FROM HIRA STOCKS.CSV ONLY ---
 @st.cache_data(ttl=86400, show_spinner=False)
 def load_hira_stocks():
     csv_filename = "Hira Stocks.csv"
@@ -201,7 +203,7 @@ def calculate_vwap(df):
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
-# --- 10-MIN PAUSE CANDLE + EMA + VWAP STRATEGY SCANNER ---
+# --- SCANNER ENGINE ---
 @st.cache_data(ttl=20, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
@@ -233,7 +235,7 @@ def run_market_scanner():
 
             curr_price = float(today_df["Close"].iloc[-1])
             prev_close = float(df_daily["Close"].iloc[-2])
-            tot_volume = float(today_df["Volume"].sum())
+            live_time = str(today_df.index[-1].strftime("%I:%M %p"))
 
             if curr_price <= 0 or prev_close <= 0:
                 continue
@@ -242,6 +244,17 @@ def run_market_scanner():
             change_pts = float(curr_price - prev_close)
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
+
+            stock_info = {
+                "Symbol": str(clean_symbol),
+                "Price": float(curr_price),
+                "ChangePct": float(day_change_pct),
+                "ChangePts": float(round(change_pts, 2)),
+                "SignalTime": live_time,
+                "TVUrl": str(tv_url),
+                "Qty": int(calc_qty)
+            }
+            all_scanned_stocks.append(stock_info)
 
             # 1. First 5-min Candle (9:15 AM)
             c1 = today_df.iloc[0]
@@ -254,20 +267,7 @@ def run_market_scanner():
             c1_wick_bottom = min(c1_open, c1_close) - c1_low
             c1_body = abs(c1_close - c1_open)
 
-            # Record basic stock data for High Volume Movers Selection
-            stock_info = {
-                "Symbol": str(clean_symbol),
-                "Price": float(curr_price),
-                "ChangePct": float(day_change_pct),
-                "ChangePts": float(round(change_pts, 2)),
-                "SignalTime": str(today_df.index[-1].strftime("%I:%M %p")),
-                "TVUrl": str(tv_url),
-                "Qty": int(calc_qty),
-                "Volume": tot_volume
-            }
-            all_scanned_stocks.append(stock_info)
-
-            # Strict 9:15 filters
+            # Filters
             if c1_range_pct > 1.2:  
                 continue
             if abs(((c1_open - prev_close) / prev_close) * 100) > 1.5:  
@@ -284,7 +284,7 @@ def run_market_scanner():
             status_state = None
             is_bullish = False
             is_bearish = False
-            trigger_time = str(today_df.index[-1].strftime("%I:%M %p"))
+            trigger_time = live_time
 
             # --- BULLISH STRATEGY ---
             if (c1_close > c1_ema20) and (abs(c1_close - c1_ema20) / c1_ema20 <= 0.015):
@@ -338,12 +338,13 @@ def run_market_scanner():
 
     if not all_df.empty:
         try:
+            # Sort Top Gainer & Top Loser by ChangePct
             top_gainer = all_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
             top_loser = all_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
 
-            # Separate High Performance/Volume Movers (Top 4 Bullish + Top 4 Bearish by Volume/Change)
-            bull_movers = all_df[all_df["ChangePct"] > 0].sort_values(by="Volume", ascending=False).head(4).to_dict("records")
-            bear_movers = all_df[all_df["ChangePct"] < 0].sort_values(by="Volume", ascending=False).head(4).to_dict("records")
+            # MARKET MOVERS: Selected purely from Hira Stocks by highest % Gain (Top 4) & % Loss (Top 4)
+            bull_movers = all_df[all_df["ChangePct"] > 0].sort_values(by="ChangePct", ascending=False).head(4).to_dict("records")
+            bear_movers = all_df[all_df["ChangePct"] < 0].sort_values(by="ChangePct", ascending=True).head(4).to_dict("records")
             market_movers = bull_movers + bear_movers
         except Exception:
             pass
@@ -393,7 +394,7 @@ st.markdown(f"<hr style='margin-top: 4px; margin-bottom: 10px; border-color: {bo
 # --- RUN SCANNER ---
 bullish_signals, bearish_signals, top_gainer, top_loser, market_movers, total_bull_cnt, total_bear_cnt = run_market_scanner()
 
-# --- LINE 2: METRICS CARDS (CLEAN UNCONGESTED CARDS) ---
+# --- LINE 2: METRICS CARDS ---
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
@@ -406,7 +407,7 @@ with c1:
                         <span style="font-size: 16px; font-weight: 900; color: {accent_blue};">{top_gainer.get('Symbol', '-')}</span>
                         <span class="card-value-green">+{top_gainer.get('ChangePct', 0):.2f}%</span>
                     </div>
-                    <div>
+                    <div style="margin-top:4px;">
                         <span class="meta-text-box">🕒 {top_gainer.get('SignalTime', '-')}</span>
                         <span class="meta-text-box">Qty (₹10k): {top_gainer.get('Qty', 0)}</span>
                     </div>
@@ -425,7 +426,7 @@ with c2:
                         <span style="font-size: 16px; font-weight: 900; color: {accent_blue};">{top_loser.get('Symbol', '-')}</span>
                         <span class="card-value-red">{top_loser.get('ChangePct', 0):.2f}%</span>
                     </div>
-                    <div>
+                    <div style="margin-top:4px;">
                         <span class="meta-text-box">🕒 {top_loser.get('SignalTime', '-')}</span>
                         <span class="meta-text-box">Qty (₹10k): {top_loser.get('Qty', 0)}</span>
                     </div>
@@ -457,8 +458,8 @@ with c4:
             </div>
         </div>""", unsafe_allow_html=True)
 
-# --- LINE 3: HIGH POTENTIAL MARKET MOVERS ---
-st.markdown("""<div class="box-container-center"><div class="box-title-center">🔥 MARKET MOVERS (HIGH VOLUME & POTENTIAL)</div></div>""", unsafe_allow_html=True)
+# --- LINE 3: MARKET MOVERS ---
+st.markdown("""<div class="box-container-center"><div class="box-title-center">🔥 MARKET MOVERS</div></div>""", unsafe_allow_html=True)
 
 if market_movers:
     m_cols = st.columns(len(market_movers))
@@ -476,7 +477,7 @@ if market_movers:
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- LINE 4: BULLISH & BEARISH TABLES (SEPARATE BOX FOR EVERY ELEMENT) ---
+# --- LINE 4: BULLISH & BEARISH TABLES ---
 tb_col1, tb_col2 = st.columns(2)
 
 with tb_col1:
@@ -495,7 +496,7 @@ with tb_col1:
     top_5_bull = bullish_signals[:5]
     if top_5_bull:
         for s in top_5_bull:
-            badge_class = "badge-ready" if s.get("StatusState") == "READY" else "badge-watch"
+            badge_class = "badge-ready-bull" if s.get("StatusState") == "READY" else "badge-watch"
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-grid">
                     <div class="cell-box-sym">{s.get('Symbol')}</div>
@@ -524,7 +525,7 @@ with tb_col2:
     top_5_bear = bearish_signals[:5]
     if top_5_bear:
         for s in top_5_bear:
-            badge_class = "badge-ready" if s.get("StatusState") == "READY" else "badge-watch"
+            badge_class = "badge-ready-bear" if s.get("StatusState") == "READY" else "badge-watch"
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-grid">
                     <div class="cell-box-sym" style="color:#f85149;">{s.get('Symbol')}</div>
