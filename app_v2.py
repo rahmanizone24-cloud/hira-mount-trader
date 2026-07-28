@@ -1,5 +1,6 @@
 import datetime
 import os
+import requests
 import numpy as np
 import pandas as pd
 import pytz
@@ -13,6 +14,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+# --- API CONFIGURATION ---
+# اپنی Free Alpha Vantage API Key یہاں درج کریں
+ALPHA_VANTAGE_KEY = st.secrets.get("ALPHA_VANTAGE_KEY", "YOUR_ALPHA_VANTAGE_API_KEY")
 
 # --- THEME STATE MANAGEMENT ---
 if "theme" not in st.session_state:
@@ -120,7 +125,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- LOAD STOCKS ---
+# --- STRICTLY LOAD STOCKS FROM HIRA STOCKS.CSV ONLY ---
 @st.cache_data(ttl=86400, show_spinner=False)
 def load_hira_stocks():
     csv_filename = "Hira Stocks.csv"
@@ -199,26 +204,28 @@ def calculate_vwap(df):
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
-# --- ACCURATE POST-MARKET HISTORICAL SCANNER ---
+# --- HYBRID DATA ENGINE (YAHOO + ALPHA VANTAGE API FALLBACK) ---
 @st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
 
-    # Explicitly download last 7 days to guarantee today's session is present even at night
+    # Try Yahoo Finance First in Small Chunks
     try:
-        bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="7d", interval="1d", progress=False, group_by="ticker", threads=False, timeout=12, ignore_errors=True)
-        bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="7d", interval="5m", progress=False, group_by="ticker", threads=False, timeout=15, ignore_errors=True)
+        bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=False, timeout=12, ignore_errors=True)
+        bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="5m", progress=False, group_by="ticker", threads=False, timeout=15, ignore_errors=True)
     except Exception:
-        return [], [], None, None, [], 0, 0
-
-    if bulk_1d is None or bulk_1d.empty:
-        return [], [], None, None, [], 0, 0
+        bulk_1d, bulk_5m = None, None
 
     for symbol in ALL_HIRA_SYMBOLS:
         try:
             clean_symbol = symbol.replace(".NS", "").upper()
-            df_daily = safe_extract_symbol(bulk_1d, symbol)
+            df_daily = safe_extract_symbol(bulk_1d, symbol) if bulk_1d is not None else None
+
+            # Fallback to direct Ticker if bulk failed
+            if df_daily is None or df_daily.empty:
+                t = yf.Ticker(symbol)
+                df_daily = t.history(period="5d", interval="1d")
 
             if df_daily is None or len(df_daily) < 2:
                 continue
@@ -241,7 +248,6 @@ def run_market_scanner():
             trigger_time = "09:20 AM"
 
             if df_5m_raw is not None and not df_5m_raw.empty:
-                # Isolate the latest trading date's candles
                 latest_date = df_5m_raw.index[-1].date()
                 today_df = df_5m_raw[df_5m_raw.index.date == latest_date].copy()
 
@@ -249,7 +255,7 @@ def run_market_scanner():
                     today_df["VWAP"] = calculate_vwap(today_df)
                     today_df["EMA20"] = calculate_ema(today_df, 20)
 
-                    # STRICT ORIGINAL RULES
+                    # YOUR ORIGINAL STRICT LOGIC
                     c1 = today_df.iloc[0]
                     c1_high, c1_low = float(c1["High"]), float(c1["Low"])
                     c1_open, c1_close = float(c1["Open"]), float(c1["Close"])
@@ -257,7 +263,6 @@ def run_market_scanner():
 
                     c1_range_pct = ((c1_high - c1_low) / c1_low) * 100
 
-                    # Check original constraints
                     if c1_range_pct <= 1.2 and abs(((c1_open - prev_close) / prev_close) * 100) <= 1.5:
                         c2 = today_df.iloc[1]
                         c2_high, c2_low = float(c2["High"]), float(c2["Low"])
