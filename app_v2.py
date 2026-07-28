@@ -207,16 +207,16 @@ def calculate_vwap(df):
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
-# --- OPTIMIZED SCANNER ENGINE WITH STRICT ALERT TIMING MAPPING ---
+# --- OPTIMIZED SCANNER ENGINE WITH FAULT TOLERANCE & IGNORE ERRORS ---
 @st.cache_data(ttl=30, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
 
     try:
-        # Reduced threads and added timeout to prevent server hanging
-        bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="2d", interval="5m", progress=False, group_by="ticker", threads=False, timeout=10)
-        bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=False, timeout=10)
+        # ignore_errors=True is added to safely skip bad symbols like AXISBNKETF, ASHIKA, etc.
+        bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="2d", interval="5m", progress=False, group_by="ticker", threads=False, timeout=15, ignore_errors=True)
+        bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=False, timeout=15, ignore_errors=True)
     except Exception:
         return [], [], None, None, [], 0, 0
 
