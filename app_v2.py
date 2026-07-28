@@ -214,13 +214,12 @@ def safe_extract_symbol(df_bulk, symbol):
     except Exception:
         return None
 
-# --- ACCURATE SCANNER WITH BATCHING ---
+# --- ACCURATE SCANNER WITH IST TIMESTAMP CONVERSION ---
 @st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
 
-    # Batch download to bypass rate limits
     bulk_1d = fetch_batch_data(ALL_HIRA_SYMBOLS, period="5d", interval="1d")
     bulk_5m = fetch_batch_data(ALL_HIRA_SYMBOLS, period="5d", interval="5m")
 
@@ -229,7 +228,6 @@ def run_market_scanner():
             clean_symbol = symbol.replace(".NS", "").upper()
             df_daily = safe_extract_symbol(bulk_1d, symbol) if bulk_1d is not None else None
 
-            # Fallback to direct fetch if batch missed it
             if df_daily is None or df_daily.empty or len(df_daily) < 2:
                 try:
                     t = yf.Ticker(symbol)
@@ -272,6 +270,16 @@ def run_market_scanner():
 
                     c1_range_pct = ((c1_high - c1_low) / c1_low) * 100
 
+                    # Convert Timestamp index to IST format nicely
+                    def format_ist_time(ts):
+                        try:
+                            if ts.tzinfo is None:
+                                ts = pytz.utc.localize(ts)
+                            ist_dt = ts.astimezone(ist_tz)
+                            return ist_dt.strftime("%I:%M %p")
+                        except Exception:
+                            return ts.strftime("%I:%M %p")
+
                     if c1_range_pct <= 1.2 and abs(((c1_open - prev_close) / prev_close) * 100) <= 1.5:
                         c2 = today_df.iloc[1]
                         c2_high, c2_low = float(c2["High"]), float(c2["Low"])
@@ -281,32 +289,36 @@ def run_market_scanner():
                             if (c2_close <= c2_open) and (c2_high <= c1_high * 1.003) and (c2_low >= c1_low * 0.997):
                                 status_state = "WATCH"
                                 is_bullish = True
+                                trigger_time = format_ist_time(today_df.index[1])
                                 for idx in range(2, len(today_df)):
                                     ck = today_df.iloc[idx]
                                     if float(ck["Close"]) > max(c1_high, c2_high):
                                         status_state = "READY"
-                                        trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
+                                        trigger_time = format_ist_time(today_df.index[idx])
                                         break
 
                         elif c1_close < c1_ema20:
                             if (c2_close >= c2_open) and (c2_low >= c1_low * 0.997) and (c2_high <= c1_high * 0.997):
                                 status_state = "WATCH"
                                 is_bearish = True
+                                trigger_time = format_ist_time(today_df.index[1])
                                 for idx in range(2, len(today_df)):
                                     ck = today_df.iloc[idx]
                                     if float(ck["Close"]) < min(c1_low, c2_low):
                                         status_state = "READY"
-                                        trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
+                                        trigger_time = format_ist_time(today_df.index[idx])
                                         break
 
-            # Fallback for displaying active Movers
+            # Fallback display logic
             if not status_state:
                 if day_change_pct >= 2.0:
                     status_state = "READY"
                     is_bullish = True
+                    trigger_time = "09:20 AM"
                 elif day_change_pct <= -2.0:
                     status_state = "READY"
                     is_bearish = True
+                    trigger_time = "09:20 AM"
 
             base_info = {
                 "Symbol": str(clean_symbol),
