@@ -137,7 +137,8 @@ def load_hira_stocks():
             df = pd.read_csv(csv_filename)
             symbols = df["symbol"].dropna().str.strip().tolist()
             ns_symbols = [s if s.endswith(".NS") else f"{s}.NS" for s in symbols]
-            return ns_symbols
+            if ns_symbols:
+                return ns_symbols
         except Exception:
             pass
     return ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS"]
@@ -169,7 +170,7 @@ def safe_extract_symbol(df_bulk, symbol):
         return None
 
 # --- INDICES FETCH ---
-@st.cache_data(ttl=20, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_indices():
     indices = {
         "NIFTY 50": ("^NSEI", "NSE:NIFTY"),
@@ -181,7 +182,7 @@ def fetch_indices():
         tv_url = f"https://www.tradingview.com/chart/?symbol={tv_sym}"
         try:
             ticker = yf.Ticker(sym)
-            df = ticker.history(period="5d", interval="1d")
+            df = ticker.history(period="5d", interval="1d", timeout=5)
             if df is not None and not df.empty and len(df) >= 2:
                 curr = float(df["Close"].iloc[-1])
                 prev = float(df["Close"].iloc[-2])
@@ -207,15 +208,19 @@ def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
 # --- OPTIMIZED SCANNER ENGINE WITH STRICT ALERT TIMING MAPPING ---
-@st.cache_data(ttl=15, show_spinner=False)
+@st.cache_data(ttl=30, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
 
     try:
-        bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="2d", interval="5m", progress=False, group_by="ticker", threads=True)
-        bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=True)
+        # Reduced threads and added timeout to prevent server hanging
+        bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="2d", interval="5m", progress=False, group_by="ticker", threads=False, timeout=10)
+        bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=False, timeout=10)
     except Exception:
+        return [], [], None, None, [], 0, 0
+
+    if bulk_5m is None or bulk_1d is None or bulk_5m.empty or bulk_1d.empty:
         return [], [], None, None, [], 0, 0
 
     for symbol in ALL_HIRA_SYMBOLS:
