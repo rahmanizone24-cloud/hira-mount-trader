@@ -199,14 +199,14 @@ def calculate_vwap(df):
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
-# --- OPTIMIZED SCANNER ENGINE WITH NIGHT/HISTORICAL DATA FALLBACK ---
+# --- ORIGINAL STRICT SCANNER LOGIC WITH FULL DAY POST-MARKET RECOVERY ---
 @st.cache_data(ttl=30, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
 
     try:
-        # Fetch 5-day history so even at night, today's/last session's intraday bars are fully present
+        # Fetch 5 days history at 5m interval to keep full session candles intact at night
         bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="5m", progress=False, group_by="ticker", threads=False, timeout=15, ignore_errors=True)
         bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=False, timeout=15, ignore_errors=True)
     except Exception:
@@ -218,21 +218,21 @@ def run_market_scanner():
     for symbol in ALL_HIRA_SYMBOLS:
         try:
             clean_symbol = symbol.replace(".NS", "").upper()
-            df_5m = safe_extract_symbol(bulk_5m, symbol)
+            df_5m_raw = safe_extract_symbol(bulk_5m, symbol)
             df_daily = safe_extract_symbol(bulk_1d, symbol)
 
-            if df_5m is None or df_daily is None or len(df_5m) < 5 or len(df_daily) < 2:
+            if df_5m_raw is None or df_daily is None or len(df_5m_raw) < 5 or len(df_daily) < 2:
                 continue
 
-            df_5m["VWAP"] = calculate_vwap(df_5m)
-            df_5m["EMA20"] = calculate_ema(df_5m, 20)
-
-            # Get the most recent trading date available in the intraday dataset
-            latest_trading_date = df_5m.index[-1].date()
-            today_df = df_5m[df_5m.index.date == latest_trading_date].copy()
+            # Extract the last available full trading day's intraday bars
+            latest_date = df_5m_raw.index[-1].date()
+            today_df = df_5m_raw[df_5m_raw.index.date == latest_date].copy()
 
             if len(today_df) < 2:
                 continue
+
+            today_df["VWAP"] = calculate_vwap(today_df)
+            today_df["EMA20"] = calculate_ema(today_df, 20)
 
             curr_price = float(today_df["Close"].iloc[-1])
             prev_close = float(df_daily["Close"].iloc[-2])
@@ -245,24 +245,21 @@ def run_market_scanner():
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
-            # --- CANDLE 1 (9:15 AM OF THE LAST TRADING DAY) ---
+            # --- ORIGINAL STRICT CANDLE 1 FILTERS ---
             c1 = today_df.iloc[0]
             c1_high, c1_low = float(c1["High"]), float(c1["Low"])
             c1_open, c1_close = float(c1["Open"]), float(c1["Close"])
             c1_ema20 = float(c1["EMA20"])
 
             c1_range_pct = ((c1_high - c1_low) / c1_low) * 100
-            c1_wick_top = c1_high - max(c1_open, c1_close)
-            c1_wick_bottom = min(c1_open, c1_close) - c1_low
-            c1_body = abs(c1_close - c1_open)
 
-            # Basic Filters
-            if c1_range_pct > 1.5:
+            # Strict original check (Candle 1 Range <= 1.2% & Gap <= 1.5%)
+            if c1_range_pct > 1.2:
                 continue
-            if abs(((c1_open - prev_close) / prev_close) * 100) > 2.0:
+            if abs(((c1_open - prev_close) / prev_close) * 100) > 1.5:
                 continue
 
-            # --- CANDLE 2 (9:20 AM PAUSE BAR) ---
+            # --- CANDLE 2 (PAUSE BAR) & TRIGGER CHECK ---
             c2 = today_df.iloc[1]
             c2_high, c2_low = float(c2["High"]), float(c2["Low"])
             c2_open, c2_close = float(c2["Open"]), float(c2["Close"])
@@ -272,7 +269,7 @@ def run_market_scanner():
             is_bearish = False
             trigger_time = str(today_df.index[1].strftime("%I:%M %p"))
 
-            # 🟢 BULLISH SETUP RULES
+            # 🟢 STRICT BULLISH SETUP
             if c1_close > c1_ema20:
                 if (c2_close <= c2_open) and (c2_high <= c1_high * 1.003) and (c2_low >= c1_low * 0.997):
                     status_state = "WATCH"
@@ -285,7 +282,7 @@ def run_market_scanner():
                             trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
                             break
 
-            # 🔴 BEARISH SETUP RULES
+            # 🔴 STRICT BEARISH SETUP
             elif c1_close < c1_ema20:
                 if (c2_close >= c2_open) and (c2_low >= c1_low * 0.997) and (c2_high <= c1_high * 1.003):
                     status_state = "WATCH"
@@ -298,33 +295,24 @@ def run_market_scanner():
                             trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
                             break
 
-            if status_state:
-                res = {
-                    "Symbol": str(clean_symbol),
-                    "Price": float(curr_price),
-                    "ChangePct": float(day_change_pct),
-                    "ChangePts": float(round(change_pts, 2)),
-                    "SignalTime": trigger_time,
-                    "IsBullish": is_bullish,
-                    "IsBearish": is_bearish,
-                    "StatusState": status_state,
-                    "TVUrl": str(tv_url),
-                    "Qty": int(calc_qty),
-                }
-                if is_bullish: bullish_list.append(res)
-                if is_bearish: bearish_list.append(res)
-
-            # Record scanned base stock info
             base_info = {
                 "Symbol": str(clean_symbol),
                 "Price": float(curr_price),
                 "ChangePct": float(day_change_pct),
                 "ChangePts": float(round(change_pts, 2)),
-                "SignalTime": trigger_time if status_state else str(today_df.index[1].strftime("%I:%M %p")),
+                "SignalTime": trigger_time,
                 "TVUrl": str(tv_url),
                 "Qty": int(calc_qty),
+                "StatusState": status_state,
+                "IsBullish": is_bullish,
+                "IsBearish": is_bearish,
             }
+
             all_scanned_stocks.append(base_info)
+
+            if status_state:
+                if is_bullish: bullish_list.append(base_info)
+                if is_bearish: bearish_list.append(base_info)
 
         except Exception:
             continue
@@ -333,32 +321,17 @@ def run_market_scanner():
     bearish_sorted = sorted(bearish_list, key=lambda x: (x["StatusState"] == "READY", -x["ChangePct"]), reverse=True)
 
     all_scanned_df = pd.DataFrame(all_scanned_stocks)
-    signal_time_dict = {s["Symbol"]: s["SignalTime"] for s in (bullish_list + bearish_list)}
-
     top_gainer, top_loser, market_movers = None, None, []
 
     if not all_scanned_df.empty:
         try:
             top_gainer = all_scanned_df.sort_values(by="ChangePct", ascending=False).iloc[0].to_dict()
-            if top_gainer["Symbol"] in signal_time_dict:
-                top_gainer["SignalTime"] = signal_time_dict[top_gainer["Symbol"]]
-
             top_loser = all_scanned_df.sort_values(by="ChangePct", ascending=True).iloc[0].to_dict()
-            if top_loser["Symbol"] in signal_time_dict:
-                top_loser["SignalTime"] = signal_time_dict[top_loser["Symbol"]]
 
             bull_movers = all_scanned_df[all_scanned_df["ChangePct"] > 0].sort_values(by="ChangePct", ascending=False).head(4).to_dict("records")
-            for bm in bull_movers:
-                if bm["Symbol"] in signal_time_dict:
-                    bm["SignalTime"] = signal_time_dict[bm["Symbol"]]
-
             bear_movers = all_scanned_df[all_scanned_df["ChangePct"] < 0].sort_values(by="ChangePct", ascending=True).head(4).to_dict("records")
-            for rm in bear_movers:
-                if rm["Symbol"] in signal_time_dict:
-                    rm["SignalTime"] = signal_time_dict[rm["Symbol"]]
 
             market_movers = bull_movers + bear_movers
-
         except Exception:
             pass
 
