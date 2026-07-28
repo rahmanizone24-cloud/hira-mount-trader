@@ -120,7 +120,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- STRICTLY LOAD STOCKS FROM HIRA STOCKS.CSV ONLY ---
+# --- LOAD STOCKS ---
 @st.cache_data(ttl=86400, show_spinner=False)
 def load_hira_stocks():
     csv_filename = "Hira Stocks.csv"
@@ -199,42 +199,31 @@ def calculate_vwap(df):
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
-# --- ORIGINAL STRICT SCANNER LOGIC WITH FULL DAY POST-MARKET RECOVERY ---
-@st.cache_data(ttl=30, show_spinner=False)
+# --- ACCURATE POST-MARKET HISTORICAL SCANNER ---
+@st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
 
+    # Explicitly download last 7 days to guarantee today's session is present even at night
     try:
-        # Fetch 5 days history at 5m interval to keep full session candles intact at night
-        bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="5m", progress=False, group_by="ticker", threads=False, timeout=15, ignore_errors=True)
-        bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="5d", interval="1d", progress=False, group_by="ticker", threads=False, timeout=15, ignore_errors=True)
+        bulk_1d = yf.download(ALL_HIRA_SYMBOLS, period="7d", interval="1d", progress=False, group_by="ticker", threads=False, timeout=12, ignore_errors=True)
+        bulk_5m = yf.download(ALL_HIRA_SYMBOLS, period="7d", interval="5m", progress=False, group_by="ticker", threads=False, timeout=15, ignore_errors=True)
     except Exception:
         return [], [], None, None, [], 0, 0
 
-    if bulk_5m is None or bulk_1d is None or bulk_5m.empty or bulk_1d.empty:
+    if bulk_1d is None or bulk_1d.empty:
         return [], [], None, None, [], 0, 0
 
     for symbol in ALL_HIRA_SYMBOLS:
         try:
             clean_symbol = symbol.replace(".NS", "").upper()
-            df_5m_raw = safe_extract_symbol(bulk_5m, symbol)
             df_daily = safe_extract_symbol(bulk_1d, symbol)
 
-            if df_5m_raw is None or df_daily is None or len(df_5m_raw) < 5 or len(df_daily) < 2:
+            if df_daily is None or len(df_daily) < 2:
                 continue
 
-            # Extract the last available full trading day's intraday bars
-            latest_date = df_5m_raw.index[-1].date()
-            today_df = df_5m_raw[df_5m_raw.index.date == latest_date].copy()
-
-            if len(today_df) < 2:
-                continue
-
-            today_df["VWAP"] = calculate_vwap(today_df)
-            today_df["EMA20"] = calculate_ema(today_df, 20)
-
-            curr_price = float(today_df["Close"].iloc[-1])
+            curr_price = float(df_daily["Close"].iloc[-1])
             prev_close = float(df_daily["Close"].iloc[-2])
 
             if curr_price <= 0 or prev_close <= 0:
@@ -245,55 +234,56 @@ def run_market_scanner():
             tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
-            # --- ORIGINAL STRICT CANDLE 1 FILTERS ---
-            c1 = today_df.iloc[0]
-            c1_high, c1_low = float(c1["High"]), float(c1["Low"])
-            c1_open, c1_close = float(c1["Open"]), float(c1["Close"])
-            c1_ema20 = float(c1["EMA20"])
-
-            c1_range_pct = ((c1_high - c1_low) / c1_low) * 100
-
-            # Strict original check (Candle 1 Range <= 1.2% & Gap <= 1.5%)
-            if c1_range_pct > 1.2:
-                continue
-            if abs(((c1_open - prev_close) / prev_close) * 100) > 1.5:
-                continue
-
-            # --- CANDLE 2 (PAUSE BAR) & TRIGGER CHECK ---
-            c2 = today_df.iloc[1]
-            c2_high, c2_low = float(c2["High"]), float(c2["Low"])
-            c2_open, c2_close = float(c2["Open"]), float(c2["Close"])
-
+            df_5m_raw = safe_extract_symbol(bulk_5m, symbol) if bulk_5m is not None else None
             status_state = None
             is_bullish = False
             is_bearish = False
-            trigger_time = str(today_df.index[1].strftime("%I:%M %p"))
+            trigger_time = "09:20 AM"
 
-            # 🟢 STRICT BULLISH SETUP
-            if c1_close > c1_ema20:
-                if (c2_close <= c2_open) and (c2_high <= c1_high * 1.003) and (c2_low >= c1_low * 0.997):
-                    status_state = "WATCH"
-                    is_bullish = True
+            if df_5m_raw is not None and not df_5m_raw.empty:
+                # Isolate the latest trading date's candles
+                latest_date = df_5m_raw.index[-1].date()
+                today_df = df_5m_raw[df_5m_raw.index.date == latest_date].copy()
 
-                    for idx in range(2, len(today_df)):
-                        ck = today_df.iloc[idx]
-                        if float(ck["Close"]) > max(c1_high, c2_high):
-                            status_state = "READY"
-                            trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
-                            break
+                if len(today_df) >= 2:
+                    today_df["VWAP"] = calculate_vwap(today_df)
+                    today_df["EMA20"] = calculate_ema(today_df, 20)
 
-            # 🔴 STRICT BEARISH SETUP
-            elif c1_close < c1_ema20:
-                if (c2_close >= c2_open) and (c2_low >= c1_low * 0.997) and (c2_high <= c1_high * 1.003):
-                    status_state = "WATCH"
-                    is_bearish = True
+                    # STRICT ORIGINAL RULES
+                    c1 = today_df.iloc[0]
+                    c1_high, c1_low = float(c1["High"]), float(c1["Low"])
+                    c1_open, c1_close = float(c1["Open"]), float(c1["Close"])
+                    c1_ema20 = float(c1["EMA20"])
 
-                    for idx in range(2, len(today_df)):
-                        ck = today_df.iloc[idx]
-                        if float(ck["Close"]) < min(c1_low, c2_low):
-                            status_state = "READY"
-                            trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
-                            break
+                    c1_range_pct = ((c1_high - c1_low) / c1_low) * 100
+
+                    # Check original constraints
+                    if c1_range_pct <= 1.2 and abs(((c1_open - prev_close) / prev_close) * 100) <= 1.5:
+                        c2 = today_df.iloc[1]
+                        c2_high, c2_low = float(c2["High"]), float(c2["Low"])
+                        c2_open, c2_close = float(c2["Open"]), float(c2["Close"])
+
+                        if c1_close > c1_ema20:
+                            if (c2_close <= c2_open) and (c2_high <= c1_high * 1.003) and (c2_low >= c1_low * 0.997):
+                                status_state = "WATCH"
+                                is_bullish = True
+                                for idx in range(2, len(today_df)):
+                                    ck = today_df.iloc[idx]
+                                    if float(ck["Close"]) > max(c1_high, c2_high):
+                                        status_state = "READY"
+                                        trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
+                                        break
+
+                        elif c1_close < c1_ema20:
+                            if (c2_close >= c2_open) and (c2_low >= c1_low * 0.997) and (c2_high <= c1_high * 0.997):
+                                status_state = "WATCH"
+                                is_bearish = True
+                                for idx in range(2, len(today_df)):
+                                    ck = today_df.iloc[idx]
+                                    if float(ck["Close"]) < min(c1_low, c2_low):
+                                        status_state = "READY"
+                                        trigger_time = str(today_df.index[idx].strftime("%I:%M %p"))
+                                        break
 
             base_info = {
                 "Symbol": str(clean_symbol),
@@ -483,7 +473,7 @@ with tb_col1:
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-grid">
                     <div class="cell-box-sym">{s.get('Symbol')}</div>
-                    <div class="{badge_class}">{s.get('StatusState')}</div>
+                    <div class="{badge_class}">{s.get("StatusState")}</div>
                     <div class="cell-box">🕒 {s.get('SignalTime')}</div>
                     <div class="cell-box">Qty: {s.get('Qty')}</div>
                     <div class="cell-price-up">₹{s.get('Price', 0):.2f}</div>
@@ -512,7 +502,7 @@ with tb_col2:
             st.markdown(f"""
                 <a href="{s.get('TVUrl', '#')}" target="_blank" class="stock-row-grid">
                     <div class="cell-box-sym" style="color:#f85149;">{s.get('Symbol')}</div>
-                    <div class="{badge_class}">{s.get('StatusState')}</div>
+                    <div class="{badge_class}">{s.get("StatusState")}</div>
                     <div class="cell-box">🕒 {s.get('SignalTime')}</div>
                     <div class="cell-box">Qty: {s.get('Qty')}</div>
                     <div class="cell-price-down">₹{s.get('Price', 0):.2f}</div>
