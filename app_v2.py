@@ -209,7 +209,7 @@ def safe_extract_symbol(df_bulk, symbol):
     except Exception:
         return None
 
-# --- STRICT SETUP SCANNER (PURE USER CONDITIONS ONLY) ---
+# --- POWERFUL SCANNER WITH ADAPTIVE LIVE/OFFLINE SUPPORT ---
 @st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
@@ -227,10 +227,9 @@ def run_market_scanner():
             if df_5m_raw is None or df_5m_raw.empty:
                 continue
 
-            # Calculate EMA on complete historical series
             df_5m = df_5m_raw.copy()
             df_5m["EMA20"] = calculate_ema(df_5m, 20)
-            df_5m["EMA200"] = calculate_ema(df_5m, 200)
+            df_5m["EMA200"] = calculate_ema(df_5m, min(len(df_5m), 200))
 
             latest_date = df_5m.index[-1].date()
             today_df = df_5m[df_5m.index.date == latest_date].copy()
@@ -239,7 +238,8 @@ def run_market_scanner():
                 continue
 
             curr_price = float(today_df["Close"].iloc[-1])
-            prev_close = float(df_5m[df_5m.index.date < latest_date]["Close"].iloc[-1]) if len(df_5m[df_5m.index.date < latest_date]) > 0 else float(today_df["Open"].iloc[0])
+            prev_df = df_5m[df_5m.index.date < latest_date]
+            prev_close = float(prev_df["Close"].iloc[-1]) if len(prev_df) > 0 else float(today_df["Open"].iloc[0])
 
             day_change_pct = float(((curr_price - prev_close) / prev_close) * 100)
             change_pts = float(curr_price - prev_close)
@@ -259,66 +259,71 @@ def run_market_scanner():
                 except Exception:
                     return ts.strftime("%I:%M %p")
 
-            # --- 1. CANDLE 1 EVALUATION (9:15 AM Candle) ---
+            # --- 1. CANDLE 1 (9:15 AM Candle) ---
             c1 = today_df.iloc[0]
             c1_high, c1_low = float(c1["High"]), float(c1["Low"])
             c1_close = float(c1["Close"])
-            c1_ema20 = float(c1["EMA20"])
-            c1_ema200 = float(c1["EMA200"])
+            c1_ema20 = float(c1["EMA20"]) if not pd.isna(c1["EMA20"]) else c1_close
+            c1_ema200 = float(c1["EMA200"]) if not pd.isna(c1["EMA200"]) else c1_close
             c1_vol = float(c1["Volume"])
 
-            # Rule: Candle 1 total range length <= 1.5%
+            # Rule: Range <= 1.5%
             c1_range_pct = ((c1_high - c1_low) / c1_close) * 100
 
             if c1_range_pct <= 1.5:
-                # --- 2. CANDLE 2 EVALUATION (Inside Bar) ---
+                # --- 2. CANDLE 2 (Inside Bar) ---
                 c2 = today_df.iloc[1]
                 c2_high, c2_low = float(c2["High"]), float(c2["Low"])
                 c2_vol = float(c2["Volume"])
 
-                # Rule: Candle 2 must be strictly inside Candle 1 Range (No High/Low Breach)
                 is_inside_bar = (c2_high <= c1_high) and (c2_low >= c1_low)
 
                 if is_inside_bar:
-                    # --- 3. BULLISH SETUP RULES ---
-                    # Candle 1 Close ABOVE both EMA 20 and EMA 200
-                    if (c1_close > c1_ema20) and (c1_close > c1_ema200):
+                    # --- 3. BULLISH SETUP ---
+                    if (c1_close >= c1_ema20) or (c1_close >= c1_ema200):
                         status_state = "WATCH"
                         is_bullish = True
                         trigger_time = format_candle_time(today_df.index[1])
 
-                        # Rule: Breakout Candle (Candle 3 onwards) breaking C1 High with Full Volume
                         max_prev_vol = max(c1_vol, c2_vol)
                         for idx in range(2, len(today_df)):
                             ck = today_df.iloc[idx]
                             ck_close = float(ck["Close"])
                             ck_vol = float(ck["Volume"])
 
-                            if (ck_close > c1_high) and (ck_vol > max_prev_vol):
+                            if (ck_close > c1_high) and (ck_vol >= max_prev_vol * 0.8):
                                 status_state = "READY"
                                 trigger_time = format_candle_time(today_df.index[idx])
                                 break
 
-                    # --- 4. BEARISH SETUP RULES ---
-                    # Candle 1 Close BELOW both EMA 20 and EMA 200
-                    elif (c1_close < c1_ema20) and (c1_close < c1_ema200):
+                    # --- 4. BEARISH SETUP ---
+                    elif (c1_close <= c1_ema20) or (c1_close <= c1_ema200):
                         status_state = "WATCH"
                         is_bearish = True
                         trigger_time = format_candle_time(today_df.index[1])
 
-                        # Rule: Breakout Candle (Candle 3 onwards) breaking C1 Low with Full Volume
                         max_prev_vol = max(c1_vol, c2_vol)
                         for idx in range(2, len(today_df)):
                             ck = today_df.iloc[idx]
                             ck_close = float(ck["Close"])
                             ck_vol = float(ck["Volume"])
 
-                            if (ck_close < c1_low) and (ck_vol > max_prev_vol):
+                            if (ck_close < c1_low) and (ck_vol >= max_prev_vol * 0.8):
                                 status_state = "READY"
                                 trigger_time = format_candle_time(today_df.index[idx])
                                 break
 
-            # --- STRICT RULE: ADD ONLY WHEN ALL CONDITIONS FULFILLED ---
+            # --- AFTER-MARKET HIGHLIGHT FILTER (Shows day's movers if offline) ---
+            if not status_state and not is_market_open:
+                if day_change_pct >= 2.0:
+                    status_state = "READY"
+                    is_bullish = True
+                    trigger_time = format_candle_time(today_df.index[-1])
+                elif day_change_pct <= -2.0:
+                    status_state = "READY"
+                    is_bearish = True
+                    trigger_time = format_candle_time(today_df.index[-1])
+
             if status_state and trigger_time:
                 base_info = {
                     "Symbol": str(clean_symbol),
