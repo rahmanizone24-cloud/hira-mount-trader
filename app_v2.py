@@ -1,5 +1,6 @@
 import datetime
 import os
+import json
 import numpy as np
 import pandas as pd
 import pytz
@@ -13,6 +14,25 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+# --- BACKUP STORAGE FOR AFTER-MARKET HISTORICAL TIMINGS ---
+CACHE_FILE = "daily_signals_history.json"
+
+def load_saved_signals():
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_signals(data):
+    try:
+        with open(CACHE_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
 
 # --- THEME STATE MANAGEMENT ---
 if "theme" not in st.session_state:
@@ -209,11 +229,14 @@ def safe_extract_symbol(df_bulk, symbol):
     except Exception:
         return None
 
-# --- POWERFUL SCANNER WITH ADAPTIVE LIVE/OFFLINE SUPPORT ---
+# --- POWERFUL SCANNER (WITH BACKUP MEMORY FOR AFTER-MARKET ACCURACY) ---
 @st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
+
+    saved_cache = load_saved_signals()
+    updated_cache = saved_cache.copy()
 
     bulk_5m = fetch_batch_data(ALL_HIRA_SYMBOLS, period="5d", interval="5m")
 
@@ -267,7 +290,6 @@ def run_market_scanner():
             c1_ema200 = float(c1["EMA200"]) if not pd.isna(c1["EMA200"]) else c1_close
             c1_vol = float(c1["Volume"])
 
-            # Rule: Range <= 1.5%
             c1_range_pct = ((c1_high - c1_low) / c1_close) * 100
 
             if c1_range_pct <= 1.5:
@@ -313,16 +335,24 @@ def run_market_scanner():
                                 trigger_time = format_candle_time(today_df.index[idx])
                                 break
 
-            # --- AFTER-MARKET HIGHLIGHT FILTER (Shows day's movers if offline) ---
-            if not status_state and not is_market_open:
-                if day_change_pct >= 2.0:
-                    status_state = "READY"
-                    is_bullish = True
-                    trigger_time = format_candle_time(today_df.index[-1])
-                elif day_change_pct <= -2.0:
-                    status_state = "READY"
-                    is_bearish = True
-                    trigger_time = format_candle_time(today_df.index[-1])
+            # Save Live Session Signals into Cache File for After-Market Persistence
+            if status_state and trigger_time:
+                updated_cache[clean_symbol] = {
+                    "StatusState": status_state,
+                    "TriggerTime": trigger_time,
+                    "IsBullish": is_bullish,
+                    "IsBearish": is_bearish,
+                    "Date": str(latest_date)
+                }
+
+            # Retrieve from Cache if Offline/After-Market and Setup matched today
+            if not status_state and clean_symbol in saved_cache:
+                cached_item = saved_cache[clean_symbol]
+                if cached_item.get("Date") == str(latest_date):
+                    status_state = cached_item.get("StatusState")
+                    trigger_time = cached_item.get("TriggerTime")
+                    is_bullish = cached_item.get("IsBullish", False)
+                    is_bearish = cached_item.get("IsBearish", False)
 
             if status_state and trigger_time:
                 base_info = {
@@ -344,6 +374,8 @@ def run_market_scanner():
 
         except Exception:
             continue
+
+    save_signals(updated_cache)
 
     bullish_sorted = sorted(bullish_list, key=lambda x: (x["StatusState"] == "READY", x["ChangePct"]), reverse=True)
     bearish_sorted = sorted(bearish_list, key=lambda x: (x["StatusState"] == "READY", -x["ChangePct"]), reverse=True)
