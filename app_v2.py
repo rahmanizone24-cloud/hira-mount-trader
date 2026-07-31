@@ -11,10 +11,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # ---------------------------------------------------------
 st.set_page_config(page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="collapsed")
 
-# Auto-Refresh Logic (Every 15 Seconds for Fast Live Updates)
+# Auto-Refresh Logic (Every 30 Seconds)
 try:
     from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=15000, key="hira_mount_refresh_key")
+    st_autorefresh(interval=30000, key="hira_mount_refresh_key")
 except ImportError:
     pass
 
@@ -84,7 +84,7 @@ st.markdown(f"""
     
     .brand-title {{ font-size: 20px; font-weight: 900; color: #00e5ff; letter-spacing: 0.5px; white-space: nowrap; }}
     
-    /* INDEX BADGES */
+    /* VIBRANT HIGH CONTRAST INDEX BADGES */
     .index-badge {{
         background: {badge_bg};
         color: #38bdf8;
@@ -97,8 +97,9 @@ st.markdown(f"""
         white-space: nowrap;
     }}
     .index-badge:hover {{ border-color: #00e5ff; color: #ffffff; }}
+    .neon-green-text {{ color: #00ff87 !important; font-weight: 900; }}
     
-    /* Soft Dot Animation */
+    /* Soft Dot Only Blink Animation */
     @keyframes dotGlow {{
         0% {{ opacity: 1; transform: scale(1); }}
         50% {{ opacity: 0.3; transform: scale(0.9); }}
@@ -163,8 +164,6 @@ st.markdown(f"""
         display: inline-block;
     }}
     
-    /* STATUS BADGES (WATCHLIST vs READY) */
-    .tag-watchlist {{ background-color: #78350f; color: #fde047; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }}
     .tag-ready-bull {{ background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }}
     .tag-ready-bear {{ background-color: #9f1239; color: #fecdd3; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }}
 
@@ -251,7 +250,7 @@ def check_5min_pause_candle_setup(symbol, fyers_obj):
             "cont_flag": "1"
         }
         
-        time.sleep(0.02)
+        time.sleep(0.03)
         res = fyers_obj.history(data=data)
         
         if res.get("s") != "ok" or not res.get("candles"):
@@ -260,11 +259,12 @@ def check_5min_pause_candle_setup(symbol, fyers_obj):
         df = pd.DataFrame(res["candles"], columns=["timestamp", "open", "high", "low", "close", "volume"])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s').dt.tz_localize('UTC').dt.tz_convert('Asia/Kolkata')
 
-        if len(df) < 2:
+        if len(df) < 3:
             return None
 
         df['EMA_20'] = calculate_ema(df, 20)
         df['EMA_200'] = calculate_ema(df, 200)
+        df['Vol_MA_20'] = df['volume'].rolling(window=20, min_periods=1).mean()
 
         # RULE 1: STRICT C1 CANDLE VALIDATION (09:15 AM)
         c1 = df.iloc[0]
@@ -290,73 +290,40 @@ def check_5min_pause_candle_setup(symbol, fyers_obj):
         if not is_strict_inside:
             return None
 
-        # Determine Setup Type
-        setup_type = "BULLISH" if c1_above_ema else "BEARISH"
-
-        # 0.05% BUFFER CALCULATION
-        buffer_val = 0.0005
-        bullish_trigger_price = c1['high'] * (1 + buffer_val)
-        bearish_trigger_price = c1['low'] * (1 - buffer_val)
-
-        # Default state at 09:25 AM is WATCHLIST
-        status = "WATCHLIST"
-        latest_candle = df.iloc[-1]
-        latest_price = latest_candle['close']
-        latest_time_str = latest_candle['timestamp'].strftime("%H:%M")
-        latest_vol = latest_candle['volume']
-
-        # RULE 3: C3+ BREAKOUT & EXPIRY / INVALIDATION LOGIC (09:25 AM to 11:00 AM)
+        # RULE 3: C3+ BREAKOUT VALIDATION
         for i in range(2, len(df)):
             curr = df.iloc[i]
-            curr_time = curr['timestamp'].time()
-
-            # 11:00 AM CUT-OFF RULE
-            if curr_time > datetime.time(11, 0):
-                if status != "READY":
-                    return None  # Expired after 11:00 AM without breakout
-
-            # BULLISH INVALIDATION: Breaks C1 Low -> Discard immediately
-            if setup_type == "BULLISH" and curr['low'] < c1['low']:
-                return None
-
-            # BEARISH INVALIDATION: Breaks C1 High -> Discard immediately
-            if setup_type == "BEARISH" and curr['high'] > c1['high']:
-                return None
-
-            # TRIGGER CHECK WITH 0.05% BUFFER
-            if setup_type == "BULLISH" and curr['high'] >= bullish_trigger_price:
-                status = "READY"
-                latest_price = curr['close']
-                latest_time_str = curr['timestamp'].strftime("%H:%M")
-                latest_vol = curr['volume']
-                break
-
-            elif setup_type == "BEARISH" and curr['low'] <= bearish_trigger_price:
-                status = "READY"
-                latest_price = curr['close']
-                latest_time_str = curr['timestamp'].strftime("%H:%M")
-                latest_vol = curr['volume']
-                break
-
-        # If time is past 11:00 AM and still in Watchlist -> Drop it
-        if now_ist.time() > datetime.time(11, 0) and status == "WATCHLIST":
-            return None
-
-        chg = round(((latest_price - c1['open']) / c1['open']) * 100, 2)
-        
-        return {
-            "symbol": symbol,
-            "type": setup_type,
-            "status": status,
-            "time": latest_time_str,
-            "price": latest_price,
-            "change": chg,
-            "qty": latest_vol,
-            "tv_url": f"https://in.tradingview.com/chart/?symbol=NSE:{symbol}"
-        }
+            
+            # BULLISH BREAKOUT
+            if c1_above_ema and (curr['close'] > c1['high']) and (curr['volume'] > curr['Vol_MA_20']):
+                chg = round(((curr['close'] - c1['open']) / c1['open']) * 100, 2)
+                return {
+                    "symbol": symbol,
+                    "type": "BULLISH",
+                    "time": curr['timestamp'].strftime("%H:%M"),
+                    "price": curr['close'],
+                    "change": chg,
+                    "qty": curr['volume'],
+                    "tv_url": f"https://in.tradingview.com/chart/?symbol=NSE:{symbol}"
+                }
+            
+            # BEARISH BREAKOUT
+            elif c1_below_ema and (curr['close'] < c1['low']) and (curr['volume'] > curr['Vol_MA_20']):
+                chg = round(((curr['close'] - c1['open']) / c1['open']) * 100, 2)
+                return {
+                    "symbol": symbol,
+                    "type": "BEARISH",
+                    "time": curr['timestamp'].strftime("%H:%M"),
+                    "price": curr['close'],
+                    "change": chg,
+                    "qty": curr['volume'],
+                    "tv_url": f"https://in.tradingview.com/chart/?symbol=NSE:{symbol}"
+                }
 
     except Exception:
         return None
+
+    return None
 
 @st.cache_data
 def load_watchlist():
@@ -386,8 +353,8 @@ def execute_scan(stocks):
 df_verified = execute_scan(watchlist)
 
 if not df_verified.empty:
-    bullish_df = df_verified[df_verified['type'] == 'BULLISH'].sort_values(by=['status', 'change'], ascending=[False, False])
-    bearish_df = df_verified[df_verified['type'] == 'BEARISH'].sort_values(by=['status', 'change'], ascending=[False, True])
+    bullish_df = df_verified[df_verified['type'] == 'BULLISH'].sort_values(by='change', ascending=False)
+    bearish_df = df_verified[df_verified['type'] == 'BEARISH'].sort_values(by='change', ascending=True)
 else:
     bullish_df = pd.DataFrame()
     bearish_df = pd.DataFrame()
@@ -395,9 +362,9 @@ else:
 # ---------------------------------------------------------
 # 5. Top 4 KPI Summary Cards
 # ---------------------------------------------------------
-c1_col, c2_col, c3_col, c4_col = st.columns(4)
+c1, c2, c3, c4 = st.columns(4)
 
-with c1_col:
+with c1:
     if not bullish_df.empty:
         top_g = bullish_df.iloc[0]
         st.markdown(f"""
@@ -416,7 +383,7 @@ with c1_col:
     else:
         st.markdown(f'<div class="stat-box"><div class="stat-title">TOP GAINER ⚡</div><div style="font-size:14px; color:{txt_muted}; margin-top:8px;">No Setup Found</div></div>', unsafe_allow_html=True)
 
-with c2_col:
+with c2:
     if not bearish_df.empty:
         top_l = bearish_df.iloc[0]
         st.markdown(f"""
@@ -435,7 +402,7 @@ with c2_col:
     else:
         st.markdown(f'<div class="stat-box"><div class="stat-title">TOP LOSER 📉</div><div style="font-size:14px; color:{txt_muted}; margin-top:8px;">No Setup Found</div></div>', unsafe_allow_html=True)
 
-with c3_col:
+with c3:
     total_bull = len(bullish_df)
     total_bear = len(bearish_df)
     is_bull = total_bull >= total_bear
@@ -453,7 +420,7 @@ with c3_col:
     </div>
     """, unsafe_allow_html=True)
 
-with c4_col:
+with c4:
     st.markdown(f"""
     <div class="stat-box">
         <div class="stat-title">SCANNED STOCKS</div>
@@ -505,7 +472,7 @@ for idx, (_, item) in enumerate(movers_4_bear.iterrows()):
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 7. Setup Tables (WATCHLIST & READY)
+# 7. Setup Tables
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
@@ -516,19 +483,18 @@ with t1:
     <div class="table-header-row">
         <div style="width:20%;">SYMBOL</div>
         <div style="width:18%;">STATUS</div>
-        <div style="width:18%;">TIME</div>
-        <div style="width:16%;">VOLUME</div>
+        <div style="width:18%;">TRIGGER TIME</div>
+        <div style="width:16%;">QTY</div>
         <div style="width:14%;">PRICE</div>
         <div style="width:14%;">CHANGE %</div>
     </div>
     """, unsafe_allow_html=True)
     
     for _, row in bullish_df.iterrows():
-        status_tag = '<span class="tag-ready-bull">READY</span>' if row['status'] == "READY" else '<span class="tag-watchlist">WATCHLIST</span>'
         st.markdown(f"""
         <div class="setup-card">
             <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
-            <div style="width:18%;">{status_tag}</div>
+            <div style="width:18%;"><span class="tag-ready-bull">READY</span></div>
             <div style="width:18%; font-size:13px; color:{txt_muted}; font-weight:600;">🕒 {row['time']}</div>
             <div style="width:16%;"><span class="qty-badge">{row['qty']}</span></div>
             <div style="width:14%; font-size:15px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
@@ -543,19 +509,18 @@ with t2:
     <div class="table-header-row">
         <div style="width:20%;">SYMBOL</div>
         <div style="width:18%;">STATUS</div>
-        <div style="width:18%;">TIME</div>
-        <div style="width:16%;">VOLUME</div>
+        <div style="width:18%;">TRIGGER TIME</div>
+        <div style="width:16%;">QTY</div>
         <div style="width:14%;">PRICE</div>
         <div style="width:14%;">CHANGE %</div>
     </div>
     """, unsafe_allow_html=True)
     
     for _, row in bearish_df.iterrows():
-        status_tag = '<span class="tag-ready-bear">READY</span>' if row['status'] == "READY" else '<span class="tag-watchlist">WATCHLIST</span>'
         st.markdown(f"""
         <div class="setup-card">
             <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
-            <div style="width:18%;">{status_tag}</div>
+            <div style="width:18%;"><span class="tag-ready-bear">READY</span></div>
             <div style="width:18%; font-size:13px; color:{txt_muted}; font-weight:600;">🕒 {row['time']}</div>
             <div style="width:16%;"><span class="qty-badge">{row['qty']}</span></div>
             <div style="width:14%; font-size:15px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
