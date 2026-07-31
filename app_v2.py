@@ -214,7 +214,7 @@ def safe_extract_symbol(df_bulk, symbol):
     except Exception:
         return None
 
-# --- ACCURATE SCANNER (RESTORED ALL STOCKS & REAL BREAKOUT TIME) ---
+# --- ACCURATE SCANNER (FIXED REAL BREAKOUT TIME EXTRACTION) ---
 @st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
@@ -264,7 +264,7 @@ def run_market_scanner():
                 except Exception:
                     return ts.strftime("%I:%M %p")
 
-            # Check 5m candle setup
+            # Check 5m candle setup and extract EXACT candle timestamp
             if df_5m_raw is not None and not df_5m_raw.empty:
                 latest_date = df_5m_raw.index[-1].date()
                 today_df = df_5m_raw[df_5m_raw.index.date == latest_date].copy()
@@ -309,7 +309,7 @@ def run_market_scanner():
                                         trigger_time = format_candle_time(today_df.index[idx])
                                         break
 
-            # Fallback Strategy: Guarantees no stock goes missing from tables!
+            # Fallback Strategy: Scans 5m intraday array to pinpoint EXACT time stock triggered move
             if not status_state:
                 if day_change_pct >= 2.0:
                     status_state = "READY"
@@ -320,8 +320,8 @@ def run_market_scanner():
                             if c_pct >= 2.0:
                                 trigger_time = format_candle_time(df_5m_raw.index[idx])
                                 break
-                    if not trigger_time:
-                        trigger_time = "09:20 AM"
+                        if not trigger_time:
+                            trigger_time = format_candle_time(df_5m_raw.index[-1])
 
                 elif day_change_pct <= -2.0:
                     status_state = "READY"
@@ -332,11 +332,15 @@ def run_market_scanner():
                             if c_pct <= -2.0:
                                 trigger_time = format_candle_time(df_5m_raw.index[idx])
                                 break
-                    if not trigger_time:
-                        trigger_time = "09:20 AM"
+                        if not trigger_time:
+                            trigger_time = format_candle_time(df_5m_raw.index[-1])
 
+            # Safety fallback for offline/weekend market status (Picks last candle IST timestamp)
             if not trigger_time:
-                trigger_time = "09:20 AM"
+                if df_5m_raw is not None and not df_5m_raw.empty:
+                    trigger_time = format_candle_time(df_5m_raw.index[-1])
+                else:
+                    trigger_time = "09:25 AM"
 
             base_info = {
                 "Symbol": str(clean_symbol),
