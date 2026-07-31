@@ -179,7 +179,7 @@ def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
 # --- BATCH DATA FETCHING ---
-def fetch_batch_data(symbol_list, period="5d", interval="1d"):
+def fetch_batch_data(symbol_list, period="5d", interval="5m"):
     batch_size = 50
     all_dfs = []
     for i in range(0, len(symbol_list), batch_size):
@@ -209,42 +209,42 @@ def safe_extract_symbol(df_bulk, symbol):
     except Exception:
         return None
 
-# --- ACCURATE SCANNER (FIXED EMA & EXACT BREAKOUT TIME) ---
+# --- STRICT SETUP SCANNER (PURE USER CONDITIONS ONLY) ---
 @st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
     per_trade_cap = 10000
 
-    bulk_1d = fetch_batch_data(ALL_HIRA_SYMBOLS, period="5d", interval="1d")
     bulk_5m = fetch_batch_data(ALL_HIRA_SYMBOLS, period="5d", interval="5m")
 
     for symbol in ALL_HIRA_SYMBOLS:
         try:
             clean_symbol = symbol.replace(".NS", "").upper()
-            df_daily = safe_extract_symbol(bulk_1d, symbol) if bulk_1d is not None else None
+            tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
 
-            if df_daily is None or df_daily.empty or len(df_daily) < 2:
-                try:
-                    t = yf.Ticker(symbol)
-                    df_daily = t.history(period="5d", interval="1d")
-                except Exception:
-                    continue
+            df_5m_raw = safe_extract_symbol(bulk_5m, symbol) if bulk_5m is not None else None
 
-            if df_daily is None or len(df_daily) < 2:
+            if df_5m_raw is None or df_5m_raw.empty:
                 continue
 
-            curr_price = float(df_daily["Close"].iloc[-1])
-            prev_close = float(df_daily["Close"].iloc[-2])
+            # Calculate EMA on complete historical series
+            df_5m = df_5m_raw.copy()
+            df_5m["EMA20"] = calculate_ema(df_5m, 20)
+            df_5m["EMA200"] = calculate_ema(df_5m, 200)
 
-            if curr_price <= 0 or prev_close <= 0:
+            latest_date = df_5m.index[-1].date()
+            today_df = df_5m[df_5m.index.date == latest_date].copy()
+
+            if len(today_df) < 2:
                 continue
+
+            curr_price = float(today_df["Close"].iloc[-1])
+            prev_close = float(df_5m[df_5m.index.date < latest_date]["Close"].iloc[-1]) if len(df_5m[df_5m.index.date < latest_date]) > 0 else float(today_df["Open"].iloc[0])
 
             day_change_pct = float(((curr_price - prev_close) / prev_close) * 100)
             change_pts = float(curr_price - prev_close)
-            tv_url = f"https://www.tradingview.com/chart/?symbol=NSE:{clean_symbol}"
             calc_qty = max(1, int((per_trade_cap * 5) / curr_price))
 
-            df_5m_raw = safe_extract_symbol(bulk_5m, symbol) if bulk_5m is not None else None
             status_state = None
             is_bullish = False
             is_bearish = False
@@ -259,75 +259,66 @@ def run_market_scanner():
                 except Exception:
                     return ts.strftime("%I:%M %p")
 
-            # Process 5-Minute Intra-day Data
-            if df_5m_raw is not None and not df_5m_raw.empty:
-                # Calculate EMA on entire 5-day 5m series so EMA200 is accurately populated
-                full_5m = df_5m_raw.copy()
-                full_5m["EMA20"] = calculate_ema(full_5m, 20)
-                full_5m["EMA200"] = calculate_ema(full_5m, 200)
+            # --- 1. CANDLE 1 EVALUATION (9:15 AM Candle) ---
+            c1 = today_df.iloc[0]
+            c1_high, c1_low = float(c1["High"]), float(c1["Low"])
+            c1_close = float(c1["Close"])
+            c1_ema20 = float(c1["EMA20"])
+            c1_ema200 = float(c1["EMA200"])
+            c1_vol = float(c1["Volume"])
 
-                latest_date = full_5m.index[-1].date()
-                today_df = full_5m[full_5m.index.date == latest_date].copy()
+            # Rule: Candle 1 total range length <= 1.5%
+            c1_range_pct = ((c1_high - c1_low) / c1_close) * 100
 
-                if len(today_df) >= 2:
-                    # --- CANDLE 1 (First 5m Candle of Day) ---
-                    c1 = today_df.iloc[0]
-                    c1_high, c1_low = float(c1["High"]), float(c1["Low"])
-                    c1_close = float(c1["Close"])
-                    c1_ema20 = float(c1["EMA20"]) if not pd.isna(c1["EMA20"]) else c1_close
-                    c1_ema200 = float(c1["EMA200"]) if not pd.isna(c1["EMA200"]) else c1_close
-                    c1_vol = float(c1["Volume"])
+            if c1_range_pct <= 1.5:
+                # --- 2. CANDLE 2 EVALUATION (Inside Bar) ---
+                c2 = today_df.iloc[1]
+                c2_high, c2_low = float(c2["High"]), float(c2["Low"])
+                c2_vol = float(c2["Volume"])
 
-                    # Condition: Total Candle Range Length <= 1.5%
-                    c1_range_pct = ((c1_high - c1_low) / c1_close) * 100
+                # Rule: Candle 2 must be strictly inside Candle 1 Range (No High/Low Breach)
+                is_inside_bar = (c2_high <= c1_high) and (c2_low >= c1_low)
 
-                    if c1_range_pct <= 1.5:
-                        # --- CANDLE 2 (Inside Bar Filter) ---
-                        c2 = today_df.iloc[1]
-                        c2_high, c2_low = float(c2["High"]), float(c2["Low"])
-                        c2_vol = float(c2["Volume"])
+                if is_inside_bar:
+                    # --- 3. BULLISH SETUP RULES ---
+                    # Candle 1 Close ABOVE both EMA 20 and EMA 200
+                    if (c1_close > c1_ema20) and (c1_close > c1_ema200):
+                        status_state = "WATCH"
+                        is_bullish = True
+                        trigger_time = format_candle_time(today_df.index[1])
 
-                        # Candle 2 strictly inside Candle 1 Range
-                        is_inside_bar = (c2_high <= c1_high) and (c2_low >= c1_low)
+                        # Rule: Breakout Candle (Candle 3 onwards) breaking C1 High with Full Volume
+                        max_prev_vol = max(c1_vol, c2_vol)
+                        for idx in range(2, len(today_df)):
+                            ck = today_df.iloc[idx]
+                            ck_close = float(ck["Close"])
+                            ck_vol = float(ck["Volume"])
 
-                        if is_inside_bar:
-                            # --- 3) BULLISH SETUP ---
-                            if (c1_close >= c1_ema20) or (c1_close >= c1_ema200):
-                                status_state = "WATCH"
-                                is_bullish = True
-                                trigger_time = format_candle_time(today_df.index[1])
+                            if (ck_close > c1_high) and (ck_vol > max_prev_vol):
+                                status_state = "READY"
+                                trigger_time = format_candle_time(today_df.index[idx])
+                                break
 
-                                # Scan for Breakout Candle (Candle 3 onwards)
-                                max_prev_vol = max(c1_vol, c2_vol)
-                                for idx in range(2, len(today_df)):
-                                    ck = today_df.iloc[idx]
-                                    ck_close = float(ck["Close"])
-                                    ck_vol = float(ck["Volume"])
+                    # --- 4. BEARISH SETUP RULES ---
+                    # Candle 1 Close BELOW both EMA 20 and EMA 200
+                    elif (c1_close < c1_ema20) and (c1_close < c1_ema200):
+                        status_state = "WATCH"
+                        is_bearish = True
+                        trigger_time = format_candle_time(today_df.index[1])
 
-                                    if (ck_close > c1_high) and (ck_vol >= max_prev_vol * 0.9):
-                                        status_state = "READY"
-                                        trigger_time = format_candle_time(today_df.index[idx])
-                                        break
+                        # Rule: Breakout Candle (Candle 3 onwards) breaking C1 Low with Full Volume
+                        max_prev_vol = max(c1_vol, c2_vol)
+                        for idx in range(2, len(today_df)):
+                            ck = today_df.iloc[idx]
+                            ck_close = float(ck["Close"])
+                            ck_vol = float(ck["Volume"])
 
-                            # --- 4) BEARISH SETUP ---
-                            elif (c1_close <= c1_ema20) or (c1_close <= c1_ema200):
-                                status_state = "WATCH"
-                                is_bearish = True
-                                trigger_time = format_candle_time(today_df.index[1])
+                            if (ck_close < c1_low) and (ck_vol > max_prev_vol):
+                                status_state = "READY"
+                                trigger_time = format_candle_time(today_df.index[idx])
+                                break
 
-                                # Scan for Bearish Breakout Candle (Candle 3 onwards)
-                                max_prev_vol = max(c1_vol, c2_vol)
-                                for idx in range(2, len(today_df)):
-                                    ck = today_df.iloc[idx]
-                                    ck_close = float(ck["Close"])
-                                    ck_vol = float(ck["Volume"])
-
-                                    if (ck_close < c1_low) and (ck_vol >= max_prev_vol * 0.9):
-                                        status_state = "READY"
-                                        trigger_time = format_candle_time(today_df.index[idx])
-                                        break
-
-            # Add to Scanned List only when conditions are matched
+            # --- STRICT RULE: ADD ONLY WHEN ALL CONDITIONS FULFILLED ---
             if status_state and trigger_time:
                 base_info = {
                     "Symbol": str(clean_symbol),
