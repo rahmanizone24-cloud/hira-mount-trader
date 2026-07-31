@@ -29,6 +29,8 @@ if st.session_state['theme_mode'] == 'Dark':
     txt_main = "#f8fafc"
     txt_muted = "#94a3b8"
     badge_bg = "#1e293b"
+    btn_bg = "#1e293b"
+    btn_txt = "#f8fafc"
 else:
     bg_app = "#f1f5f9"
     bg_card = "#ffffff"
@@ -36,6 +38,8 @@ else:
     txt_main = "#0f172a"
     txt_muted = "#64748b"
     badge_bg = "#e2e8f0"
+    btn_bg = "#e2e8f0"
+    btn_txt = "#0f172a"
 
 st.markdown(f"""
 <style>
@@ -48,6 +52,21 @@ st.markdown(f"""
     
     .stApp {{ background-color: {bg_app}; color: {txt_main}; font-family: 'Inter', sans-serif; }}
     
+    /* FIX STREAMLIT DEFAULT WHITE BUTTONS */
+    div.stButton > button {{
+        background-color: {btn_bg} !important;
+        color: {btn_txt} !important;
+        border: 1px solid {border_clr} !important;
+        border-radius: 6px !important;
+        padding: 4px 10px !important;
+        font-weight: 700 !important;
+        box-shadow: none !important;
+    }}
+    div.stButton > button:hover {{
+        border-color: #00e5ff !important;
+        color: #00e5ff !important;
+    }}
+
     /* Top Header Bar */
     .top-bar-container {{
         background-color: {bg_card};
@@ -62,17 +81,20 @@ st.markdown(f"""
     
     .brand-title {{ font-size: 20px; font-weight: 900; color: #00e5ff; letter-spacing: 0.5px; white-space: nowrap; }}
     
+    /* VIBRANT HIGH CONTRAST INDEX BADGES */
     .index-badge {{
         background: {badge_bg};
-        color: {txt_muted};
-        padding: 5px 12px;
+        color: #38bdf8;
+        padding: 6px 12px;
         border-radius: 6px;
-        font-size: 12px;
+        font-size: 13px;
         text-decoration: none;
         border: 1px solid {border_clr};
-        font-weight: 700;
+        font-weight: 800;
         white-space: nowrap;
     }}
+    .index-badge:hover {{ border-color: #00e5ff; color: #ffffff; }}
+    .neon-green-text {{ color: #00ff87 !important; font-weight: 900; }}
     
     /* Soft Dot Only Blink Animation */
     @keyframes dotGlow {{
@@ -80,7 +102,7 @@ st.markdown(f"""
         50% {{ opacity: 0.3; transform: scale(0.9); }}
         100% {{ opacity: 1; transform: scale(1); }}
     }}
-    .dot-green {{ display: inline-block; width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; animation: dotGlow 2.5s infinite; margin-right: 6px; }}
+    .dot-green {{ display: inline-block; width: 8px; height: 8px; background-color: #00ff87; border-radius: 50%; animation: dotGlow 2.5s infinite; margin-right: 6px; }}
     .dot-red {{ display: inline-block; width: 8px; height: 8px; background-color: #f43f5e; border-radius: 50%; animation: dotGlow 2.5s infinite; margin-right: 6px; }}
 
     /* KPI Stat Boxes */
@@ -166,7 +188,7 @@ else:
 time_str = now_ist.strftime("%d %b | %I:%M %p")
 
 # ---------------------------------------------------------
-# 3. Top Header Bar
+# 3. Top Header Bar Layout
 # ---------------------------------------------------------
 col_top1, col_top_theme, col_top_ref = st.columns([10, 1, 1])
 
@@ -174,11 +196,11 @@ with col_top1:
     st.markdown(f"""
     <div class="top-bar-container">
         <span class="brand-title">HIRA MOUNT TRADER</span>
-        <a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge">NIFTY 50: <b style="color:#10b981;">24,199.60 (+0.85%)</b></a>
-        <a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge">BANK NIFTY: <b style="color:#10b981;">57,096.50 (+0.02%)</b></a>
-        <a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge">SENSEX: <b style="color:#10b981;">79,486.20 (+0.78%)</b></a>
+        <a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge">NIFTY 50: <b class="neon-green-text">24,199.60 (+0.85%)</b></a>
+        <a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge">BANK NIFTY: <b class="neon-green-text">57,096.50 (+0.02%)</b></a>
+        <a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge">SENSEX: <b class="neon-green-text">79,486.20 (+0.78%)</b></a>
         {market_status_html}
-        <span class="index-badge" style="color:#38bdf8;">🕒 {time_str}</span>
+        <span class="index-badge" style="color:#00e5ff;">🕒 {time_str}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -193,7 +215,7 @@ with col_top_ref:
         st.rerun()
 
 # ---------------------------------------------------------
-# 4. Strict 10-Min Pause Candle Engine (5 Bullish + 5 Bearish)
+# 4. Strict 10-Min Pause Candle Engine
 # ---------------------------------------------------------
 def get_verified_setups():
     all_candidates = [
@@ -244,7 +266,7 @@ with c1:
         <div class="stat-title">TOP GAINER ⚡</div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
             <a href="{top_g['tv_url']}" target="_blank" class="stock-title-link" style="font-size:18px;">{top_g['symbol']}</a>
-            <span style="font-size:18px; font-weight:900; color:#10b981;">+{top_g['change']}%</span>
+            <span style="font-size:18px; font-weight:900; color:#00ff87;">+{top_g['change']}%</span>
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:12px; color:{txt_muted};">🕒 {top_g['time']}</span>
@@ -272,7 +294,7 @@ with c2:
 with c3:
     is_bull = len(bullish_df) >= len(bearish_df)
     s_txt = "BULLISH" if is_bull else "BEARISH"
-    s_clr = "#10b981" if is_bull else "#f43f5e"
+    s_clr = "#00ff87" if is_bull else "#f43f5e"
     d_class = "dot-green" if is_bull else "dot-red"
     
     st.markdown(f"""
@@ -290,7 +312,7 @@ with c4:
     <div class="stat-box">
         <div class="stat-title">SCANNED STOCKS</div>
         <div style="font-size:18px; font-weight:900; color:#00e5ff; margin-top:4px;">500 Stocks</div>
-        <div style="margin-top:8px; font-size:12px; color:#10b981; font-weight:700;">Active Setups: {len(df_verified)}</div>
+        <div style="margin-top:8px; font-size:12px; color:#00ff87; font-weight:700;">Active Setups: {len(df_verified)}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -310,8 +332,8 @@ for idx, (_, item) in enumerate(movers_4_bull.iterrows()):
         st.markdown(f"""
         <div class="mover-box">
             <a href="{item['tv_url']}" target="_blank" class="stock-title-link" style="font-size:14px;">{item['symbol']}</a><br>
-            <div style="font-size:13px; color:#10b981; font-weight:bold; margin-top:2px;">₹{item['price']}</div>
-            <div style="font-size:11px; color:#10b981; font-weight:bold;">(+{item['change']}%)</div>
+            <div style="font-size:13px; color:#00ff87; font-weight:bold; margin-top:2px;">₹{item['price']}</div>
+            <div style="font-size:11px; color:#00ff87; font-weight:bold;">(+{item['change']}%)</div>
             <div style="margin-top:4px; display:flex; justify-content:center; gap:4px; align-items:center;">
                 <span class="qty-badge">{item['qty']}</span>
                 <span style="font-size:10px; color:{txt_muted};">🕒 {item['time']}</span>
@@ -342,7 +364,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 t1, t2 = st.columns(2)
 
 with t1:
-    st.markdown("<h4 style='color:#10b981; margin-bottom:10px; font-weight:800;'>🟢 BULLISH SETUPS</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color:#00ff87; margin-bottom:10px; font-weight:800;'>🟢 BULLISH SETUPS</h4>", unsafe_allow_html=True)
     
     st.markdown(f"""
     <div class="table-header-row">
@@ -363,7 +385,7 @@ with t1:
             <div style="width:18%; font-size:13px; color:{txt_muted}; font-weight:600;">🕒 {row['time']}</div>
             <div style="width:16%;"><span class="qty-badge">{row['qty']}</span></div>
             <div style="width:14%; font-size:15px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
-            <div style="width:14%; font-size:15px; font-weight:bold; color:#10b981;">+{row['change']}%</div>
+            <div style="width:14%; font-size:15px; font-weight:bold; color:#00ff87;">+{row['change']}%</div>
         </div>
         """, unsafe_allow_html=True)
 
