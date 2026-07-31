@@ -214,7 +214,7 @@ def safe_extract_symbol(df_bulk, symbol):
     except Exception:
         return None
 
-# --- ACCURATE SCANNER WITH FIXED CANDLE TIME EXTRACTION ---
+# --- ACCURATE SCANNER WITH IST TIMESTAMP CONVERSION ---
 @st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
@@ -253,17 +253,7 @@ def run_market_scanner():
             status_state = None
             is_bullish = False
             is_bearish = False
-            trigger_time = None
-
-            # Helper function for IST time formatting without current time fallback
-            def format_ist_time(ts):
-                try:
-                    if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
-                        ts = pytz.utc.localize(ts)
-                    ist_dt = ts.astimezone(ist_tz)
-                    return ist_dt.strftime("%I:%M %p")
-                except Exception:
-                    return ts.strftime("%I:%M %p")
+            trigger_time = "09:20 AM"
 
             if df_5m_raw is not None and not df_5m_raw.empty:
                 latest_date = df_5m_raw.index[-1].date()
@@ -279,6 +269,16 @@ def run_market_scanner():
                     c1_ema20 = float(c1["EMA20"])
 
                     c1_range_pct = ((c1_high - c1_low) / c1_low) * 100
+
+                    # Convert Timestamp index to IST format nicely
+                    def format_ist_time(ts):
+                        try:
+                            if ts.tzinfo is None:
+                                ts = pytz.utc.localize(ts)
+                            ist_dt = ts.astimezone(ist_tz)
+                            return ist_dt.strftime("%I:%M %p")
+                        except Exception:
+                            return ts.strftime("%I:%M %p")
 
                     if c1_range_pct <= 1.2 and abs(((c1_open - prev_close) / prev_close) * 100) <= 1.5:
                         c2 = today_df.iloc[1]
@@ -309,35 +309,16 @@ def run_market_scanner():
                                         trigger_time = format_ist_time(today_df.index[idx])
                                         break
 
-                    # If setup condition not met, find exact candle when price crossed 2% threshold in 5-min chart
-                    if not status_state:
-                        if day_change_pct >= 2.0:
-                            status_state = "READY"
-                            is_bullish = True
-                            # Find first 5m candle where close was above 2% threshold
-                            for idx in range(len(today_df)):
-                                c_pct = ((float(today_df.iloc[idx]["Close"]) - prev_close) / prev_close) * 100
-                                if c_pct >= 2.0:
-                                    trigger_time = format_ist_time(today_df.index[idx])
-                                    break
-                            if not trigger_time:
-                                trigger_time = format_ist_time(today_df.index[0])
-
-                        elif day_change_pct <= -2.0:
-                            status_state = "READY"
-                            is_bearish = True
-                            # Find first 5m candle where close fell below -2% threshold
-                            for idx in range(len(today_df)):
-                                c_pct = ((float(today_df.iloc[idx]["Close"]) - prev_close) / prev_close) * 100
-                                if c_pct <= -2.0:
-                                    trigger_time = format_ist_time(today_df.index[idx])
-                                    break
-                            if not trigger_time:
-                                trigger_time = format_ist_time(today_df.index[0])
-
-            # Strict market-time fallback (09:20 AM instead of current time)
-            if not trigger_time:
-                trigger_time = "09:20 AM"
+            # Fallback display logic
+            if not status_state:
+                if day_change_pct >= 2.0:
+                    status_state = "READY"
+                    is_bullish = True
+                    trigger_time = "09:20 AM"
+                elif day_change_pct <= -2.0:
+                    status_state = "READY"
+                    is_bearish = True
+                    trigger_time = "09:20 AM"
 
             base_info = {
                 "Symbol": str(clean_symbol),
