@@ -2,11 +2,19 @@ import streamlit as st
 import pandas as pd
 from fyers_apiv3 import fyersModel
 import datetime
+import time
 
 # ---------------------------------------------------------
-# Page Configuration
+# Page Configuration & Theme Logic
 # ---------------------------------------------------------
 st.set_page_config(page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="expanded")
+
+# Auto-Refresh Logic (Every 30 Seconds = 30000 ms)
+try:
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=30000, key="datarefresh")
+except ImportError:
+    pass
 
 # Theme Switcher Logic via Sidebar
 if 'theme' not in st.session_state:
@@ -15,7 +23,7 @@ if 'theme' not in st.session_state:
 theme_choice = st.sidebar.radio("🎨 Theme Mode:", ["Dark", "Light"], index=0 if st.session_state['theme'] == 'Dark' else 1)
 st.session_state['theme'] = theme_choice
 
-# Define CSS based on Theme Choice
+# Define CSS based on Theme
 if st.session_state['theme'] == 'Dark':
     bg_color = "#0b0e14"
     card_bg = "#121824"
@@ -68,13 +76,7 @@ st.markdown(f"""
     .index-link:hover {{ border-color: #38bdf8; color: {text_primary}; }}
     .badge-green {{ color: #22c55e; font-weight: bold; }}
     
-    /* Blinking Status Dot */
-    @keyframes blink {{
-        0% {{ opacity: 1; }}
-        50% {{ opacity: 0.3; }}
-        100% {{ opacity: 1; }}
-    }}
-    .status-open {{ background: #064e3b; color: #34d399; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; animation: blink 1.5s infinite; }}
+    .status-open {{ background: #064e3b; color: #34d399; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; }}
     .status-closed {{ background: #7f1d1d; color: #fca5a5; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; }}
 
     /* KPI Cards */
@@ -113,7 +115,7 @@ st.markdown(f"""
         color: #e2e8f0;
     }}
     
-    .time-tag {{ font-size: 11px; color: {text_secondary}; font-weight: 500; }}
+    .time-tag {{ font-size: 12px; color: {text_secondary}; font-weight: 600; }}
     .tag-ready {{ background-color: #064e3b; color: #34d399; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; }}
     .tag-bearish-ready {{ background-color: #7f1d1d; color: #fca5a5; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; }}
 
@@ -128,7 +130,8 @@ st.sidebar.title("🔐 Fyers Authentication")
 access_token = st.sidebar.text_input("Enter Today's Access Token:", type="password")
 client_id = st.sidebar.text_input("Client ID:", value="8L18MZNAIT-200")
 
-if st.sidebar.button("🔄 Refresh Data"):
+# Manual Refresh Button in Sidebar & Header
+if st.sidebar.button("🔄 Manual Refresh"):
     st.rerun()
 
 # ---------------------------------------------------------
@@ -146,7 +149,8 @@ if is_weekday and is_market_hours:
 else:
     market_status_html = '<span class="status-closed">🔴 CLOSED</span>'
 
-now_str = now.strftime("%d %b %Y | %I:%M:%S %p")
+# Clean Time Format (Hour:Minute)
+now_str = now.strftime("%d %b | %H:%M")
 
 # ---------------------------------------------------------
 # Centered Top Header Navigation
@@ -161,28 +165,34 @@ st.markdown(f"""
         <a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-link">BANK NIFTY: <b class="badge-green">57,096.50 (+0.02%)</b></a>
         <a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-link">SENSEX: <b class="badge-green">79,486.20 (+0.78%)</b></a>
     </div>
-    <div style="flex:1; text-align:right;">
+    <div style="flex:1; text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:8px;">
         {market_status_html}
-        <span class="index-link" style="margin-left:8px; color:#38bdf8;">🕒 {now_str}</span>
+        <span class="index-link" style="color:#38bdf8;">🕒 {now_str}</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
+# Top Bar Manual Refresh Button Layout
+col_ref1, col_ref2 = st.columns([11, 1])
+with col_ref2:
+    if st.button("🔄 Refresh"):
+        st.rerun()
+
 # ---------------------------------------------------------
-# Dataset with Exact Breakout Timestamps
+# Dataset with Cleaned Short Timestamp Format (HH:MM)
 # ---------------------------------------------------------
 stocks_data = [
-    {"symbol": "ASHIKA", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ASHIKA", "status": "READY", "time": "09:20:15 AM", "qty": 101, "price": 690.30, "change": 14.12, "type": "BULLISH"},
-    {"symbol": "KNEW", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:KNEW", "status": "READY", "time": "09:20:42 AM", "qty": 33, "price": 2724.80, "change": 12.23, "type": "BULLISH"},
-    {"symbol": "ARIHANT", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ARIHANT", "status": "READY", "time": "09:21:05 AM", "qty": 41, "price": 1206.90, "change": 11.61, "type": "BULLISH"},
-    {"symbol": "NEWGEN", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:NEWGEN", "status": "READY", "time": "09:22:10 AM", "qty": 85, "price": 583.60, "change": 11.07, "type": "BULLISH"},
-    {"symbol": "GALLANTT", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:GALLANTT", "status": "READY", "time": "09:23:00 AM", "qty": 82, "price": 603.30, "change": 10.24, "type": "BULLISH"},
+    {"symbol": "ASHIKA", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ASHIKA", "status": "READY", "time": "09:20", "qty": 101, "price": 690.30, "change": 14.12, "type": "BULLISH"},
+    {"symbol": "KNEW", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:KNEW", "status": "READY", "time": "09:20", "qty": 33, "price": 2724.80, "change": 12.23, "type": "BULLISH"},
+    {"symbol": "ARIHANT", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ARIHANT", "status": "READY", "time": "09:21", "qty": 41, "price": 1206.90, "change": 11.61, "type": "BULLISH"},
+    {"symbol": "NEWGEN", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:NEWGEN", "status": "READY", "time": "09:22", "qty": 85, "price": 583.60, "change": 11.07, "type": "BULLISH"},
+    {"symbol": "GALLANTT", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:GALLANTT", "status": "READY", "time": "09:23", "qty": 82, "price": 603.30, "change": 10.24, "type": "BULLISH"},
     
-    {"symbol": "AURIONPRO", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO", "status": "READY", "time": "09:20:10 AM", "qty": 67, "price": 739.95, "change": -11.56, "type": "BEARISH"},
-    {"symbol": "EVERESTIND", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND", "status": "READY", "time": "09:20:55 AM", "qty": 141, "price": 492.55, "change": -8.90, "type": "BEARISH"},
-    {"symbol": "CLEANMAX", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX", "status": "READY", "time": "09:21:30 AM", "qty": 37, "price": 1316.00, "change": -8.55, "type": "BEARISH"},
-    {"symbol": "SUNCLAY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY", "status": "READY", "time": "09:22:15 AM", "qty": 38, "price": 1289.30, "change": -7.89, "type": "BEARISH"},
-    {"symbol": "RAMCOSYS", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS", "status": "READY", "time": "09:24:00 AM", "qty": 84, "price": 394.30, "change": -7.03, "type": "BEARISH"},
+    {"symbol": "AURIONPRO", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO", "status": "READY", "time": "09:20", "qty": 67, "price": 739.95, "change": -11.56, "type": "BEARISH"},
+    {"symbol": "EVERESTIND", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND", "status": "READY", "time": "09:20", "qty": 141, "price": 492.55, "change": -8.90, "type": "BEARISH"},
+    {"symbol": "CLEANMAX", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX", "status": "READY", "time": "09:21", "qty": 37, "price": 1316.00, "change": -8.55, "type": "BEARISH"},
+    {"symbol": "SUNCLAY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY", "status": "READY", "time": "09:22", "qty": 38, "price": 1289.30, "change": -7.89, "type": "BEARISH"},
+    {"symbol": "RAMCOSYS", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS", "status": "READY", "time": "09:24", "qty": 84, "price": 394.30, "change": -7.03, "type": "BEARISH"},
 ]
 
 df = pd.DataFrame(stocks_data)
@@ -201,7 +211,7 @@ with c1:
             <span class="stat-val-green">+14.12%</span>
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
-            <span class="time-tag">🕒 Trigger: 09:20:15 AM</span>
+            <span class="time-tag">🕒 09:20</span>
             <span class="qty-box">Vol: 101</span>
         </div>
     </div>
@@ -216,7 +226,7 @@ with c2:
             <span class="stat-val-red">-11.56%</span>
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
-            <span class="time-tag">🕒 Trigger: 09:20:10 AM</span>
+            <span class="time-tag">🕒 09:20</span>
             <span class="qty-box">Vol: 67</span>
         </div>
     </div>
@@ -241,7 +251,7 @@ with c4:
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Bullish & Bearish High Quality Setup Boxes
+# Bullish & Bearish Setups
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
@@ -254,8 +264,8 @@ with t1:
         <div class="setup-box">
             <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title">{row['symbol']}</a></div>
             <div style="width:18%;"><span class="tag-ready">{row['status']}</span></div>
-            <div style="width:22%;" class="time-tag">🕒 {row['time']}</div>
-            <div style="width:15%;"><span class="qty-box">Vol: {row['qty']}</span></div>
+            <div style="width:20%;" class="time-tag">🕒 {row['time']}</div>
+            <div style="width:17%;"><span class="qty-box">Vol: {row['qty']}</span></div>
             <div style="width:13%; font-size:14px; font-weight:bold; color:{text_primary};">₹{row['price']}</div>
             <div style="width:12%; font-size:14px; font-weight:bold; color:#22c55e;">+{row['change']}%</div>
         </div>
@@ -270,8 +280,8 @@ with t2:
         <div class="setup-box">
             <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title">{row['symbol']}</a></div>
             <div style="width:18%;"><span class="tag-bearish-ready">{row['status']}</span></div>
-            <div style="width:22%;" class="time-tag">🕒 {row['time']}</div>
-            <div style="width:15%;"><span class="qty-box">Vol: {row['qty']}</span></div>
+            <div style="width:20%;" class="time-tag">🕒 {row['time']}</div>
+            <div style="width:17%;"><span class="qty-box">Vol: {row['qty']}</span></div>
             <div style="width:13%; font-size:14px; font-weight:bold; color:{text_primary};">₹{row['price']}</div>
             <div style="width:12%; font-size:14px; font-weight:bold; color:#ef4444;">{row['change']}%</div>
         </div>
