@@ -220,15 +220,15 @@ def get_verified_setups():
     # Primary Fallback Setups (To ensure UI NEVER Breaks)
     fallback_candidates = [
         {"symbol": "ASHIKA", "price": 690.30, "change": 14.12, "qty": 101, "time": "09:25", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ASHIKA"},
-        {"symbol": "KNEW", "price": 2724.80, "change": 12.23, "qty": 33, "time": "09:25", "type": "BULLISH", "status": "WATCHLIST", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:KNEW"},
+        {"symbol": "KNEW", "price": 2724.80, "change": 12.23, "qty": 33, "time": "09:25", "type": "BULLISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:KNEW"},
         {"symbol": "ARIHANT", "price": 1206.90, "change": 11.61, "qty": 41, "time": "09:28", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ARIHANT"},
-        {"symbol": "NEWGEN", "price": 583.60, "change": 11.07, "qty": 85, "time": "09:25", "type": "BULLISH", "status": "WATCHLIST", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:NEWGEN"},
+        {"symbol": "NEWGEN", "price": 583.60, "change": 11.07, "qty": 85, "time": "09:25", "type": "BULLISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:NEWGEN"},
         {"symbol": "GALLANTT", "price": 603.30, "change": 10.24, "qty": 82, "time": "09:30", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:GALLANTT"},
         
         {"symbol": "AURIONPRO", "price": 739.95, "change": -11.56, "qty": 67, "time": "09:25", "type": "BEARISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO"},
-        {"symbol": "EVERESTIND", "price": 492.55, "change": -8.90, "qty": 141, "time": "09:25", "type": "BEARISH", "status": "WATCHLIST", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND"},
+        {"symbol": "EVERESTIND", "price": 492.55, "change": -8.90, "qty": 141, "time": "09:25", "type": "BEARISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND"},
         {"symbol": "CLEANMAX", "price": 1316.00, "change": -8.55, "qty": 37, "time": "09:27", "type": "BEARISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX"},
-        {"symbol": "SUNCLAY", "price": 1289.30, "change": -7.89, "qty": 38, "time": "09:25", "type": "BEARISH", "status": "WATCHLIST", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY"},
+        {"symbol": "SUNCLAY", "price": 1289.30, "change": -7.89, "qty": 38, "time": "09:25", "type": "BEARISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY"},
         {"symbol": "RAMCOSYS", "price": 394.30, "change": -7.03, "qty": 84, "time": "09:32", "type": "BEARISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS"},
     ]
     return pd.DataFrame(fallback_candidates)
@@ -360,7 +360,7 @@ with t1:
     """, unsafe_allow_html=True)
     
     for _, row in bullish_df.iterrows():
-        status_tag = '<span class="tag-ready-bull">READY</span>' if row['status'] == "READY" else '<span class="tag-watchlist">WATCHLIST</span>'
+        status_tag = '<span class="tag-ready-bull">READY</span>' if row['status'] == "READY" else '<span class="tag-watchlist">WATCH</span>'
         st.markdown(f"""
         <div class="setup-card">
             <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
@@ -387,7 +387,7 @@ with t2:
     """, unsafe_allow_html=True)
     
     for _, row in bearish_df.iterrows():
-        status_tag = '<span class="tag-ready-bear">READY</span>' if row['status'] == "READY" else '<span class="tag-watchlist">WATCHLIST</span>'
+        status_tag = '<span class="tag-ready-bear">READY</span>' if row['status'] == "READY" else '<span class="tag-watchlist">WATCH</span>'
         st.markdown(f"""
         <div class="setup-card">
             <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
