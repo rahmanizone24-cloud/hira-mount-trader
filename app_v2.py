@@ -2,124 +2,138 @@ import streamlit as st
 import pandas as pd
 from fyers_apiv3 import fyersModel
 import datetime
-import time
+import pytz
 
 # ---------------------------------------------------------
-# Page Configuration & Theme Logic
+# Page Configuration & Full Width Setup
 # ---------------------------------------------------------
-st.set_page_config(page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="collapsed")
 
-# Auto-Refresh Logic (Every 30 Seconds = 30000 ms)
+# Auto-Refresh Logic (Every 30 Seconds)
 try:
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=30000, key="datarefresh")
 except ImportError:
     pass
 
-# Theme Switcher Logic via Sidebar
+# Theme State Management
 if 'theme' not in st.session_state:
     st.session_state['theme'] = 'Dark'
 
-theme_choice = st.sidebar.radio("🎨 Theme Mode:", ["Dark", "Light"], index=0 if st.session_state['theme'] == 'Dark' else 1)
-st.session_state['theme'] = theme_choice
-
-# Define CSS based on Theme
-if st.session_state['theme'] == 'Dark':
-    bg_color = "#0b0e14"
-    card_bg = "#121824"
-    border_color = "#1f293d"
-    text_primary = "#f8fafc"
-    text_secondary = "#94a3b8"
-    cell_bg = "#1a2234"
-else:
-    bg_color = "#f8fafc"
-    card_bg = "#ffffff"
-    border_color = "#cbd5e1"
-    text_primary = "#0f172a"
-    text_secondary = "#475569"
-    cell_bg = "#f1f5f9"
-
-st.markdown(f"""
+# Custom CSS for Full Screen Spread & Vibrant High-Contrast Colors
+st.markdown("""
 <style>
-    .stApp {{ background-color: {bg_color}; color: {text_primary}; font-family: 'Inter', sans-serif; }}
+    /* Maximize container width */
+    .main .block-container {
+        max-width: 100% !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        padding-top: 1rem !important;
+    }
     
-    /* Top Bar Styling */
-    .top-header {{
-        background-color: {card_bg};
+    .stApp { background-color: #080b11; color: #f1f5f9; font-family: 'Inter', sans-serif; }
+    
+    /* Top Header Bar Single Line Layout */
+    .top-bar-container {
+        background-color: #0f172a;
         padding: 10px 20px;
         border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        border: 1px solid {border_color};
+        border: 1px solid #1e293b;
         margin-bottom: 20px;
-    }}
-    .brand-title {{ font-size: 20px; font-weight: 900; color: #3b82f6; letter-spacing: 0.5px; }}
+        gap: 10px;
+    }
     
-    .indices-container {{
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin: 0 auto;
-    }}
+    .brand-title { font-size: 20px; font-weight: 900; color: #00e5ff; letter-spacing: 0.5px; white-space: nowrap; }
     
-    .index-link {{
-        background: {cell_bg};
-        color: {text_secondary};
-        padding: 6px 12px;
+    .index-badge {
+        background: #1e293b;
+        color: #cbd5e1;
+        padding: 5px 12px;
         border-radius: 6px;
         font-size: 12px;
         text-decoration: none;
-        border: 1px solid {border_color};
-        font-weight: 600;
-    }}
-    .index-link:hover {{ border-color: #38bdf8; color: {text_primary}; }}
-    .badge-green {{ color: #22c55e; font-weight: bold; }}
+        border: 1px solid #334155;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .index-badge:hover { border-color: #00e5ff; color: #ffffff; }
+    .neon-green { color: #10b981; font-weight: bold; }
+    .neon-red { color: #f43f5e; font-weight: bold; }
     
-    .status-open {{ background: #064e3b; color: #34d399; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; }}
-    .status-closed {{ background: #7f1d1d; color: #fca5a5; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; }}
+    /* Blinking Status Animation */
+    @keyframes subtleBlink {
+        0% { opacity: 1; }
+        50% { opacity: 0.4; }
+        100% { opacity: 1; }
+    }
+    .status-open { background: #064e3b; color: #34d399; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; animation: subtleBlink 1.5s infinite; }
+    .status-closed { background: #881337; color: #fecdd3; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; animation: subtleBlink 2s infinite; }
 
-    /* KPI Cards */
-    .stat-box {{
-        background: {card_bg};
-        border: 1px solid {border_color};
+    /* Top Summary Stat Box */
+    .stat-box {
+        background: #0f172a;
+        border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 14px 18px;
         margin-bottom: 15px;
-    }}
-    .stat-title {{ font-size: 11px; color: {text_secondary}; font-weight: bold; letter-spacing: 0.5px; }}
-    .stat-val-green {{ font-size: 18px; font-weight: bold; color: #22c55e; }}
-    .stat-val-red {{ font-size: 18px; font-weight: bold; color: #ef4444; }}
+    }
+    .stat-title { font-size: 11px; color: #94a3b8; font-weight: bold; letter-spacing: 0.5px; }
+    .stat-val-green { font-size: 20px; font-weight: 900; color: #10b981; }
+    .stat-val-red { font-size: 20px; font-weight: 900; color: #f43f5e; }
 
-    /* Stock Setup Card Boxed UI */
-    .setup-box {{
-        background-color: {card_bg};
-        border: 1px solid {border_color};
+    /* Market Movers Cards */
+    .mover-box {
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+    }
+
+    /* Table Column Header */
+    .table-header-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 16px;
+        font-size: 11px;
+        font-weight: 800;
+        color: #64748b;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    /* Boxed Grid Trading Setups */
+    .setup-card {
+        background-color: #0f172a;
+        border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 12px 16px;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-    }}
-    .stock-title {{ font-size: 15px; font-weight: bold; color: #38bdf8; text-decoration: none; }}
-    .stock-title:hover {{ text-decoration: underline; color: #60a5fa; }}
+    }
     
-    .qty-box {{
-        background-color: {cell_bg};
-        border: 1px solid {border_color};
+    .stock-title-link { font-size: 16px; font-weight: 800; color: #38bdf8; text-decoration: none; }
+    .stock-title-link:hover { text-decoration: underline; color: #7dd3fc; }
+    
+    .vol-badge {
+        background-color: #1e293b;
+        border: 1px solid #334155;
         padding: 4px 10px;
         border-radius: 6px;
-        font-size: 11px;
-        font-weight: bold;
-        color: #e2e8f0;
-    }}
+        font-size: 12px;
+        font-weight: 700;
+        color: #f1f5f9;
+    }
     
-    .time-tag {{ font-size: 12px; color: {text_secondary}; font-weight: 600; }}
-    .tag-ready {{ background-color: #064e3b; color: #34d399; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; }}
-    .tag-bearish-ready {{ background-color: #7f1d1d; color: #fca5a5; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; }}
+    .tag-ready-bull { background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }
+    .tag-ready-bear { background-color: #9f1239; color: #fecdd3; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }
 
-    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}}
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -130,56 +144,48 @@ st.sidebar.title("🔐 Fyers Authentication")
 access_token = st.sidebar.text_input("Enter Today's Access Token:", type="password")
 client_id = st.sidebar.text_input("Client ID:", value="8L18MZNAIT-200")
 
-# Manual Refresh Button in Sidebar & Header
-if st.sidebar.button("🔄 Manual Refresh"):
-    st.rerun()
-
 # ---------------------------------------------------------
-# Real-time Market Status Calculation
+# Indian Real-Time Clock & Market Status
 # ---------------------------------------------------------
-now = datetime.datetime.now()
-market_open_time = now.replace(hour=9, minute=15, second=0, microsecond=0)
-market_close_time = now.replace(hour=15, minute=30, second=0, microsecond=0)
+ist = pytz.timezone('Asia/Kolkata')
+now_ist = datetime.datetime.now(ist)
 
-is_weekday = now.weekday() < 5
-is_market_hours = market_open_time <= now <= market_close_time
+market_open_time = now_ist.replace(hour=9, minute=15, second=0, microsecond=0)
+market_close_time = now_ist.replace(hour=15, minute=30, second=0, microsecond=0)
+
+is_weekday = now_ist.weekday() < 5
+is_market_hours = market_open_time <= now_ist <= market_close_time
 
 if is_weekday and is_market_hours:
     market_status_html = '<span class="status-open">🟢 OPEN</span>'
 else:
     market_status_html = '<span class="status-closed">🔴 CLOSED</span>'
 
-# Clean Time Format (Hour:Minute)
-now_str = now.strftime("%d %b | %H:%M")
+time_str = now_ist.strftime("%d %b | %I:%M %p")
 
 # ---------------------------------------------------------
-# Centered Top Header Navigation
+# SINGLE LINE TOP HEADER
 # ---------------------------------------------------------
-st.markdown(f"""
-<div class="top-header">
-    <div style="flex:1;">
+col_top1, col_top2 = st.columns([11, 1])
+
+with col_top1:
+    st.markdown(f"""
+    <div class="top-bar-container">
         <span class="brand-title">HIRA MOUNT TRADER</span>
-    </div>
-    <div class="indices-container">
-        <a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-link">NIFTY 50: <b class="badge-green">24,199.60 (+0.85%)</b></a>
-        <a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-link">BANK NIFTY: <b class="badge-green">57,096.50 (+0.02%)</b></a>
-        <a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-link">SENSEX: <b class="badge-green">79,486.20 (+0.78%)</b></a>
-    </div>
-    <div style="flex:1; text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+        <a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge">NIFTY 50: <b class="neon-green">24,199.60 (+0.85%)</b></a>
+        <a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge">BANK NIFTY: <b class="neon-green">57,096.50 (+0.02%)</b></a>
+        <a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge">SENSEX: <b class="neon-green">79,486.20 (+0.78%)</b></a>
         {market_status_html}
-        <span class="index-link" style="color:#38bdf8;">🕒 {now_str}</span>
+        <span class="index-badge" style="color:#38bdf8;">🕒 {time_str}</span>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# Top Bar Manual Refresh Button Layout
-col_ref1, col_ref2 = st.columns([11, 1])
-with col_ref2:
-    if st.button("🔄 Refresh"):
+with col_top2:
+    if st.button("🔄 Refresh", use_container_width=True):
         st.rerun()
 
 # ---------------------------------------------------------
-# Dataset with Cleaned Short Timestamp Format (HH:MM)
+# Dataset
 # ---------------------------------------------------------
 stocks_data = [
     {"symbol": "ASHIKA", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ASHIKA", "status": "READY", "time": "09:20", "qty": 101, "price": 690.30, "change": 14.12, "type": "BULLISH"},
@@ -198,7 +204,7 @@ stocks_data = [
 df = pd.DataFrame(stocks_data)
 
 # ---------------------------------------------------------
-# Top Gainer / Loser KPI Cards
+# Top Summary Cards (4 Columns)
 # ---------------------------------------------------------
 c1, c2, c3, c4 = st.columns(4)
 
@@ -207,12 +213,12 @@ with c1:
     <div class="stat-box">
         <div class="stat-title">TOP GAINER ⚡</div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-            <a href="https://in.tradingview.com/chart/?symbol=NSE:ASHIKA" target="_blank" class="stock-title" style="font-size:18px;">ASHIKA</a>
+            <a href="https://in.tradingview.com/chart/?symbol=NSE:ASHIKA" target="_blank" class="stock-title-link" style="font-size:20px;">ASHIKA</a>
             <span class="stat-val-green">+14.12%</span>
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
-            <span class="time-tag">🕒 09:20</span>
-            <span class="qty-box">Vol: 101</span>
+            <span style="font-size:12px; color:#cbd5e1;">🕒 09:20</span>
+            <span class="vol-badge">Vol: 101</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -222,12 +228,12 @@ with c2:
     <div class="stat-box">
         <div class="stat-title">TOP LOSER 📉</div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-            <a href="https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO" target="_blank" class="stock-title" style="font-size:18px; color:#ef4444;">AURIONPRO</a>
+            <a href="https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO" target="_blank" class="stock-title-link" style="font-size:20px; color:#f43f5e;">AURIONPRO</a>
             <span class="stat-val-red">-11.56%</span>
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
-            <span class="time-tag">🕒 09:20</span>
-            <span class="qty-box">Vol: 67</span>
+            <span style="font-size:12px; color:#cbd5e1;">🕒 09:20</span>
+            <span class="vol-badge">Vol: 67</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -236,8 +242,8 @@ with c3:
     st.markdown("""
     <div class="stat-box">
         <div class="stat-title">MARKET SENTIMENT</div>
-        <div style="font-size:18px; font-weight:bold; color:#22c55e; margin-top:4px;">BULLISH 🟢</div>
-        <div style="margin-top:8px;" class="time-tag">Bullish: 112 | Bearish: 96</div>
+        <div style="font-size:20px; font-weight:900; color:#10b981; margin-top:4px;">BULLISH 🟢</div>
+        <div style="margin-top:8px; font-size:12px; color:#cbd5e1;">Bullish: 112 | Bearish: 96</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -245,44 +251,89 @@ with c4:
     st.markdown("""
     <div class="stat-box">
         <div class="stat-title">SCANNED STOCKS</div>
-        <div style="font-size:18px; font-weight:bold; color:#38bdf8; margin-top:4px;">853 Stocks</div>
-        <div style="margin-top:8px; color:#22c55e;" class="time-tag">Active Setups: 208</div>
+        <div style="font-size:20px; font-weight:900; color:#00e5ff; margin-top:4px;">853 Stocks</div>
+        <div style="margin-top:8px; font-size:12px; color:#10b981; font-weight:700;">Active Trading Setups: 208</div>
     </div>
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Bullish & Bearish Setups
+# 🔥 MARKET MOVERS SECTION (4 Bullish + 4 Bearish Cards)
+# ---------------------------------------------------------
+st.markdown("<h4 style='color:#f8fafc; margin-top:15px; font-weight:800;'>🔥 MARKET MOVERS</h4>", unsafe_allow_html=True)
+m_cols = st.columns(8)
+
+for idx, item in df.head(8).iterrows():
+    with m_cols[idx]:
+        clr = "#10b981" if item['change'] > 0 else "#f43f5e"
+        sgn = "+" if item['change'] > 0 else ""
+        st.markdown(f"""
+        <div class="mover-box">
+            <a href="{item['tv_url']}" target="_blank" class="stock-title-link" style="font-size:13px;">{item['symbol']}</a><br>
+            <span style="font-size:12px; color:{clr}; font-weight:bold;">₹{item['price']}</span><br>
+            <span style="font-size:11px; color:{clr}; font-weight:bold;">({sgn}{item['change']}%)</span><br>
+            <span style="font-size:10px; color:#94a3b8;">Vol: {item['qty']}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# Bullish & Bearish Setups with Column Headers
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
 with t1:
-    st.markdown("<h4 style='color:#22c55e; margin-bottom:12px;'>🟢 BULLISH SETUPS</h4>", unsafe_allow_html=True)
-    bullish_list = df[df['type'] == 'BULLISH']
+    st.markdown("<h4 style='color:#10b981; margin-bottom:10px; font-weight:800;'>🟢 BULLISH SETUPS</h4>", unsafe_allow_html=True)
     
+    # Table Header Row
+    st.markdown("""
+    <div class="table-header-row">
+        <div style="width:20%;">SYMBOL</div>
+        <div style="width:18%;">STATUS</div>
+        <div style="width:18%;">TRIGGER TIME</div>
+        <div style="width:16%;">VOLUME</div>
+        <div style="width:14%;">PRICE</div>
+        <div style="width:14%;">CHANGE %</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    bullish_list = df[df['type'] == 'BULLISH']
     for _, row in bullish_list.iterrows():
         st.markdown(f"""
-        <div class="setup-box">
-            <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title">{row['symbol']}</a></div>
-            <div style="width:18%;"><span class="tag-ready">{row['status']}</span></div>
-            <div style="width:20%;" class="time-tag">🕒 {row['time']}</div>
-            <div style="width:17%;"><span class="qty-box">Vol: {row['qty']}</span></div>
-            <div style="width:13%; font-size:14px; font-weight:bold; color:{text_primary};">₹{row['price']}</div>
-            <div style="width:12%; font-size:14px; font-weight:bold; color:#22c55e;">+{row['change']}%</div>
+        <div class="setup-card">
+            <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
+            <div style="width:18%;"><span class="tag-ready-bull">{row['status']}</span></div>
+            <div style="width:18%; font-size:13px; color:#cbd5e1; font-weight:600;">🕒 {row['time']}</div>
+            <div style="width:16%;"><span class="vol-badge">Vol: {row['qty']}</span></div>
+            <div style="width:14%; font-size:15px; font-weight:bold; color:#f8fafc;">₹{row['price']}</div>
+            <div style="width:14%; font-size:15px; font-weight:bold; color:#10b981;">+{row['change']}%</div>
         </div>
         """, unsafe_allow_html=True)
 
 with t2:
-    st.markdown("<h4 style='color:#ef4444; margin-bottom:12px;'>🔴 BEARISH SETUPS</h4>", unsafe_allow_html=True)
-    bearish_list = df[df['type'] == 'BEARISH']
+    st.markdown("<h4 style='color:#f43f5e; margin-bottom:10px; font-weight:800;'>🔴 BEARISH SETUPS</h4>", unsafe_allow_html=True)
     
+    # Table Header Row
+    st.markdown("""
+    <div class="table-header-row">
+        <div style="width:20%;">SYMBOL</div>
+        <div style="width:18%;">STATUS</div>
+        <div style="width:18%;">TRIGGER TIME</div>
+        <div style="width:16%;">VOLUME</div>
+        <div style="width:14%;">PRICE</div>
+        <div style="width:14%;">CHANGE %</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    bearish_list = df[df['type'] == 'BEARISH']
     for _, row in bearish_list.iterrows():
         st.markdown(f"""
-        <div class="setup-box">
-            <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title">{row['symbol']}</a></div>
-            <div style="width:18%;"><span class="tag-bearish-ready">{row['status']}</span></div>
-            <div style="width:20%;" class="time-tag">🕒 {row['time']}</div>
-            <div style="width:17%;"><span class="qty-box">Vol: {row['qty']}</span></div>
-            <div style="width:13%; font-size:14px; font-weight:bold; color:{text_primary};">₹{row['price']}</div>
-            <div style="width:12%; font-size:14px; font-weight:bold; color:#ef4444;">{row['change']}%</div>
+        <div class="setup-card">
+            <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
+            <div style="width:18%;"><span class="tag-ready-bear">{row['status']}</span></div>
+            <div style="width:18%; font-size:13px; color:#cbd5e1; font-weight:600;">🕒 {row['time']}</div>
+            <div style="width:16%;"><span class="vol-badge">Vol: {row['qty']}</span></div>
+            <div style="width:14%; font-size:15px; font-weight:bold; color:#f8fafc;">₹{row['price']}</div>
+            <div style="width:14%; font-size:15px; font-weight:bold; color:#f43f5e;">{row['change']}%</div>
         </div>
         """, unsafe_allow_html=True)
