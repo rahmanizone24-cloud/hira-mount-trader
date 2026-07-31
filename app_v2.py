@@ -9,41 +9,41 @@ import pytz
 # ---------------------------------------------------------
 st.set_page_config(page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="collapsed")
 
-# Auto-Refresh Logic (Every 30 Seconds)
+# Smooth Auto-Refresh Logic (Every 30 Seconds)
 try:
     from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=30000, key="datarefresh")
+    st_autorefresh(interval=30000, key="fyers_dashboard_refresh")
 except ImportError:
     pass
 
 # Theme State Management
-if 'theme' not in st.session_state:
-    st.session_state['theme'] = 'Dark'
+if 'theme_mode' not in st.session_state:
+    st.session_state['theme_mode'] = 'Dark'
 
-# Custom CSS for Full Screen Spread & Vibrant High-Contrast Colors
+# Custom CSS for Full Screen Spread & Vibrant Premium Colors
 st.markdown("""
 <style>
-    /* Maximize container width */
+    /* Maximize container width & remove side gaps */
     .main .block-container {
         max-width: 100% !important;
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
-        padding-top: 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-top: 0.8rem !important;
     }
     
-    .stApp { background-color: #080b11; color: #f1f5f9; font-family: 'Inter', sans-serif; }
+    .stApp { background-color: #06090e; color: #f8fafc; font-family: 'Inter', sans-serif; }
     
     /* Top Header Bar Single Line Layout */
     .top-bar-container {
         background-color: #0f172a;
-        padding: 10px 20px;
+        padding: 8px 16px;
         border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         border: 1px solid #1e293b;
-        margin-bottom: 20px;
-        gap: 10px;
+        margin-bottom: 15px;
+        gap: 8px;
     }
     
     .brand-title { font-size: 20px; font-weight: 900; color: #00e5ff; letter-spacing: 0.5px; white-space: nowrap; }
@@ -51,7 +51,7 @@ st.markdown("""
     .index-badge {
         background: #1e293b;
         color: #cbd5e1;
-        padding: 5px 12px;
+        padding: 5px 10px;
         border-radius: 6px;
         font-size: 12px;
         text-decoration: none;
@@ -63,35 +63,38 @@ st.markdown("""
     .neon-green { color: #10b981; font-weight: bold; }
     .neon-red { color: #f43f5e; font-weight: bold; }
     
-    /* Blinking Status Animation */
-    @keyframes subtleBlink {
+    /* Smooth Subtle Pulse Status Animation */
+    @keyframes smoothPulse {
         0% { opacity: 1; }
-        50% { opacity: 0.4; }
+        50% { opacity: 0.6; }
         100% { opacity: 1; }
     }
-    .status-open { background: #064e3b; color: #34d399; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; animation: subtleBlink 1.5s infinite; }
-    .status-closed { background: #881337; color: #fecdd3; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; animation: subtleBlink 2s infinite; }
+    .status-open { background: #064e3b; color: #34d399; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; animation: smoothPulse 2s infinite; }
+    .status-closed { background: #881337; color: #fecdd3; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; animation: smoothPulse 2.5s infinite; }
 
     /* Top Summary Stat Box */
     .stat-box {
         background: #0f172a;
         border: 1px solid #1e293b;
         border-radius: 8px;
-        padding: 14px 18px;
+        padding: 12px 16px;
         margin-bottom: 15px;
     }
     .stat-title { font-size: 11px; color: #94a3b8; font-weight: bold; letter-spacing: 0.5px; }
     .stat-val-green { font-size: 20px; font-weight: 900; color: #10b981; }
     .stat-val-red { font-size: 20px; font-weight: 900; color: #f43f5e; }
 
-    /* Market Movers Cards */
+    /* Market Movers Highlighted Cards */
     .mover-box {
         background: #0f172a;
         border: 1px solid #1e293b;
         border-radius: 8px;
         padding: 10px;
         text-align: center;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
+    .mover-symbol { font-size: 15px; font-weight: 900; color: #38bdf8; text-decoration: none; }
+    .mover-symbol:hover { text-decoration: underline; color: #7dd3fc; }
 
     /* Table Column Header */
     .table-header-row {
@@ -117,17 +120,18 @@ st.markdown("""
         justify-content: space-between;
     }
     
-    .stock-title-link { font-size: 16px; font-weight: 800; color: #38bdf8; text-decoration: none; }
+    .stock-title-link { font-size: 17px; font-weight: 800; color: #38bdf8; text-decoration: none; }
     .stock-title-link:hover { text-decoration: underline; color: #7dd3fc; }
     
-    .vol-badge {
+    .number-badge {
         background-color: #1e293b;
         border: 1px solid #334155;
-        padding: 4px 10px;
+        padding: 4px 12px;
         border-radius: 6px;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
         color: #f1f5f9;
+        text-align: center;
     }
     
     .tag-ready-bull { background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }
@@ -163,10 +167,19 @@ else:
 
 time_str = now_ist.strftime("%d %b | %I:%M %p")
 
+# Theme Switcher Button Event
+def toggle_theme():
+    if st.session_state['theme_mode'] == 'Dark':
+        st.session_state['theme_mode'] = 'Light'
+    else:
+        st.session_state['theme_mode'] = 'Dark'
+
+theme_icon = "☀️ Light" if st.session_state['theme_mode'] == 'Dark' else "🌙 Dark"
+
 # ---------------------------------------------------------
-# SINGLE LINE TOP HEADER
+# SINGLE LINE TOP HEADER (With Theme & Refresh Controls)
 # ---------------------------------------------------------
-col_top1, col_top2 = st.columns([11, 1])
+col_top1, col_top_theme, col_top_ref = st.columns([10, 1, 1])
 
 with col_top1:
     st.markdown(f"""
@@ -180,7 +193,11 @@ with col_top1:
     </div>
     """, unsafe_allow_html=True)
 
-with col_top2:
+with col_top_theme:
+    if st.button(theme_icon, use_container_width=True):
+        toggle_theme()
+
+with col_top_ref:
     if st.button("🔄 Refresh", use_container_width=True):
         st.rerun()
 
@@ -218,7 +235,7 @@ with c1:
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:12px; color:#cbd5e1;">🕒 09:20</span>
-            <span class="vol-badge">Vol: 101</span>
+            <span class="number-badge">101</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -233,7 +250,7 @@ with c2:
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:12px; color:#cbd5e1;">🕒 09:20</span>
-            <span class="vol-badge">Vol: 67</span>
+            <span class="number-badge">67</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -257,9 +274,9 @@ with c4:
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 🔥 MARKET MOVERS SECTION (4 Bullish + 4 Bearish Cards)
+# 🔥 CENTERED MARKET MOVERS SECTION
 # ---------------------------------------------------------
-st.markdown("<h4 style='color:#f8fafc; margin-top:15px; font-weight:800;'>🔥 MARKET MOVERS</h4>", unsafe_allow_html=True)
+st.markdown("<h3 style='color:#f8fafc; text-align:center; margin-top:10px; margin-bottom:15px; font-weight:900;'>🔥 MARKET MOVERS</h3>", unsafe_allow_html=True)
 m_cols = st.columns(8)
 
 for idx, item in df.head(8).iterrows():
@@ -268,30 +285,30 @@ for idx, item in df.head(8).iterrows():
         sgn = "+" if item['change'] > 0 else ""
         st.markdown(f"""
         <div class="mover-box">
-            <a href="{item['tv_url']}" target="_blank" class="stock-title-link" style="font-size:13px;">{item['symbol']}</a><br>
-            <span style="font-size:12px; color:{clr}; font-weight:bold;">₹{item['price']}</span><br>
-            <span style="font-size:11px; color:{clr}; font-weight:bold;">({sgn}{item['change']}%)</span><br>
-            <span style="font-size:10px; color:#94a3b8;">Vol: {item['qty']}</span>
+            <a href="{item['tv_url']}" target="_blank" class="mover-symbol">{item['symbol']}</a><br>
+            <div style="font-size:14px; color:{clr}; font-weight:bold; margin-top:4px;">₹{item['price']}</div>
+            <div style="font-size:12px; color:{clr}; font-weight:bold;">({sgn}{item['change']}%)</div>
+            <div style="font-size:11px; color:#94a3b8; margin-top:2px;">{item['qty']}</div>
         </div>
         """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Bullish & Bearish Setups with Column Headers
+# Bullish & Bearish Setups with QTY Column Header
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
 with t1:
     st.markdown("<h4 style='color:#10b981; margin-bottom:10px; font-weight:800;'>🟢 BULLISH SETUPS</h4>", unsafe_allow_html=True)
     
-    # Table Header Row
+    # Table Header Row with QTY
     st.markdown("""
     <div class="table-header-row">
         <div style="width:20%;">SYMBOL</div>
         <div style="width:18%;">STATUS</div>
         <div style="width:18%;">TRIGGER TIME</div>
-        <div style="width:16%;">VOLUME</div>
+        <div style="width:16%;">QTY</div>
         <div style="width:14%;">PRICE</div>
         <div style="width:14%;">CHANGE %</div>
     </div>
@@ -304,22 +321,22 @@ with t1:
             <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
             <div style="width:18%;"><span class="tag-ready-bull">{row['status']}</span></div>
             <div style="width:18%; font-size:13px; color:#cbd5e1; font-weight:600;">🕒 {row['time']}</div>
-            <div style="width:16%;"><span class="vol-badge">Vol: {row['qty']}</span></div>
-            <div style="width:14%; font-size:15px; font-weight:bold; color:#f8fafc;">₹{row['price']}</div>
-            <div style="width:14%; font-size:15px; font-weight:bold; color:#10b981;">+{row['change']}%</div>
+            <div style="width:16%;"><span class="number-badge">{row['qty']}</span></div>
+            <div style="width:14%; font-size:16px; font-weight:bold; color:#f8fafc;">₹{row['price']}</div>
+            <div style="width:14%; font-size:16px; font-weight:bold; color:#10b981;">+{row['change']}%</div>
         </div>
         """, unsafe_allow_html=True)
 
 with t2:
     st.markdown("<h4 style='color:#f43f5e; margin-bottom:10px; font-weight:800;'>🔴 BEARISH SETUPS</h4>", unsafe_allow_html=True)
     
-    # Table Header Row
+    # Table Header Row with QTY
     st.markdown("""
     <div class="table-header-row">
         <div style="width:20%;">SYMBOL</div>
         <div style="width:18%;">STATUS</div>
         <div style="width:18%;">TRIGGER TIME</div>
-        <div style="width:16%;">VOLUME</div>
+        <div style="width:16%;">QTY</div>
         <div style="width:14%;">PRICE</div>
         <div style="width:14%;">CHANGE %</div>
     </div>
@@ -332,8 +349,8 @@ with t2:
             <div style="width:20%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
             <div style="width:18%;"><span class="tag-ready-bear">{row['status']}</span></div>
             <div style="width:18%; font-size:13px; color:#cbd5e1; font-weight:600;">🕒 {row['time']}</div>
-            <div style="width:16%;"><span class="vol-badge">Vol: {row['qty']}</span></div>
-            <div style="width:14%; font-size:15px; font-weight:bold; color:#f8fafc;">₹{row['price']}</div>
-            <div style="width:14%; font-size:15px; font-weight:bold; color:#f43f5e;">{row['change']}%</div>
+            <div style="width:16%;"><span class="number-badge">{row['qty']}</span></div>
+            <div style="width:14%; font-size:16px; font-weight:bold; color:#f8fafc;">₹{row['price']}</div>
+            <div style="width:14%; font-size:16px; font-weight:bold; color:#f43f5e;">{row['change']}%</div>
         </div>
         """, unsafe_allow_html=True)
