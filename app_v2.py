@@ -183,7 +183,7 @@ def calculate_vwap(df):
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
-# --- BATCH DATA FETCHING TO PREVENT YAHOO RATE-LIMITING ---
+# --- BATCH DATA FETCHING ---
 def fetch_batch_data(symbol_list, period="5d", interval="1d"):
     batch_size = 50
     all_dfs = []
@@ -214,7 +214,7 @@ def safe_extract_symbol(df_bulk, symbol):
     except Exception:
         return None
 
-# --- ACCURATE SCANNER WITH IST TIMESTAMP CONVERSION ---
+# --- ACCURATE SCANNER (FIXED EXACT TRIGGER TIME PER CANDLE) ---
 @st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
@@ -253,7 +253,17 @@ def run_market_scanner():
             status_state = None
             is_bullish = False
             is_bearish = False
-            trigger_time = "09:20 AM"
+            trigger_time = None
+
+            # Helper function: Convert timestamp of candle index directly to IST formatted string
+            def format_candle_time(ts):
+                try:
+                    if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
+                        ts = pytz.utc.localize(ts)
+                    ist_dt = ts.astimezone(ist_tz)
+                    return ist_dt.strftime("%I:%M %p")
+                except Exception:
+                    return ts.strftime("%I:%M %p")
 
             if df_5m_raw is not None and not df_5m_raw.empty:
                 latest_date = df_5m_raw.index[-1].date()
@@ -270,16 +280,7 @@ def run_market_scanner():
 
                     c1_range_pct = ((c1_high - c1_low) / c1_low) * 100
 
-                    # Convert Timestamp index to IST format nicely
-                    def format_ist_time(ts):
-                        try:
-                            if ts.tzinfo is None:
-                                ts = pytz.utc.localize(ts)
-                            ist_dt = ts.astimezone(ist_tz)
-                            return ist_dt.strftime("%I:%M %p")
-                        except Exception:
-                            return ts.strftime("%I:%M %p")
-
+                    # Primary Setup Evaluation
                     if c1_range_pct <= 1.2 and abs(((c1_open - prev_close) / prev_close) * 100) <= 1.5:
                         c2 = today_df.iloc[1]
                         c2_high, c2_low = float(c2["High"]), float(c2["Low"])
@@ -289,36 +290,56 @@ def run_market_scanner():
                             if (c2_close <= c2_open) and (c2_high <= c1_high * 1.003) and (c2_low >= c1_low * 0.997):
                                 status_state = "WATCH"
                                 is_bullish = True
-                                trigger_time = format_ist_time(today_df.index[1])
+                                trigger_time = format_candle_time(today_df.index[1])
                                 for idx in range(2, len(today_df)):
                                     ck = today_df.iloc[idx]
                                     if float(ck["Close"]) > max(c1_high, c2_high):
                                         status_state = "READY"
-                                        trigger_time = format_ist_time(today_df.index[idx])
+                                        trigger_time = format_candle_time(today_df.index[idx])
                                         break
 
                         elif c1_close < c1_ema20:
                             if (c2_close >= c2_open) and (c2_low >= c1_low * 0.997) and (c2_high <= c1_high * 0.997):
                                 status_state = "WATCH"
                                 is_bearish = True
-                                trigger_time = format_ist_time(today_df.index[1])
+                                trigger_time = format_candle_time(today_df.index[1])
                                 for idx in range(2, len(today_df)):
                                     ck = today_df.iloc[idx]
                                     if float(ck["Close"]) < min(c1_low, c2_low):
                                         status_state = "READY"
-                                        trigger_time = format_ist_time(today_df.index[idx])
+                                        trigger_time = format_candle_time(today_df.index[idx])
                                         break
 
-            # Fallback display logic
-            if not status_state:
-                if day_change_pct >= 2.0:
-                    status_state = "READY"
-                    is_bullish = True
-                    trigger_time = "09:20 AM"
-                elif day_change_pct <= -2.0:
-                    status_state = "READY"
-                    is_bearish = True
-                    trigger_time = "09:20 AM"
+                    # Fallback evaluation: Find exact 5-min candle timestamp where stock hit +2% / -2% threshold
+                    if not status_state:
+                        if day_change_pct >= 2.0:
+                            status_state = "READY"
+                            is_bullish = True
+                            for idx in range(len(today_df)):
+                                c_pct = ((float(today_df.iloc[idx]["Close"]) - prev_close) / prev_close) * 100
+                                if c_pct >= 2.0:
+                                    trigger_time = format_candle_time(today_df.index[idx])
+                                    break
+                            if not trigger_time:
+                                trigger_time = format_candle_time(today_df.index[0])
+
+                        elif day_change_pct <= -2.0:
+                            status_state = "READY"
+                            is_bearish = True
+                            for idx in range(len(today_df)):
+                                c_pct = ((float(today_df.iloc[idx]["Close"]) - prev_close) / prev_close) * 100
+                                if c_pct <= -2.0:
+                                    trigger_time = format_candle_time(today_df.index[idx])
+                                    break
+                            if not trigger_time:
+                                trigger_time = format_candle_time(today_df.index[0])
+
+            # Ensure time is extracted strictly from candle data if available
+            if not trigger_time:
+                if df_5m_raw is not None and not df_5m_raw.empty:
+                    trigger_time = format_candle_time(df_5m_raw.index[0])
+                else:
+                    trigger_time = "09:15 AM"
 
             base_info = {
                 "Symbol": str(clean_symbol),
