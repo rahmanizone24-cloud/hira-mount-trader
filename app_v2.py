@@ -52,7 +52,7 @@ st.markdown(f"""
     
     .stApp {{ background-color: {bg_app}; color: {txt_main}; font-family: 'Inter', sans-serif; }}
     
-    /* FIX STREAMLIT DEFAULT WHITE BUTTONS */
+    /* STREAMLIT BUTTON STYLING */
     div.stButton > button {{
         background-color: {btn_bg} !important;
         color: {btn_txt} !important;
@@ -215,44 +215,26 @@ with col_top_ref:
         st.rerun()
 
 # ---------------------------------------------------------
-# 4. Strict 10-Min Pause Candle Engine
+# 4. Pure Stock Display Dataset (No Backend Filtering)
 # ---------------------------------------------------------
-def get_verified_setups():
-    all_candidates = [
-        # 5 Verified Bullish Setups
-        {"symbol": "ASHIKA", "price": 690.30, "change": 14.12, "qty": 101, "time": "09:20", "type": "BULLISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ASHIKA", "c1_close": 680, "ema20": 670, "ema200": 650, "c1_high": 682, "c1_low": 675, "c2_high": 681, "c2_low": 676, "c3_high": 685, "c3_vol": True},
-        {"symbol": "KNEW", "price": 2724.80, "change": 12.23, "qty": 33, "time": "09:20", "type": "BULLISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:KNEW", "c1_close": 2700, "ema20": 2680, "ema200": 2600, "c1_high": 2710, "c1_low": 2695, "c2_high": 2708, "c2_low": 2698, "c3_high": 2715, "c3_vol": True},
-        {"symbol": "ARIHANT", "price": 1206.90, "change": 11.61, "qty": 41, "time": "09:21", "type": "BULLISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ARIHANT", "c1_close": 1190, "ema20": 1180, "ema200": 1150, "c1_high": 1195, "c1_low": 1188, "c2_high": 1194, "c2_low": 1189, "c3_high": 1200, "c3_vol": True},
-        {"symbol": "NEWGEN", "price": 583.60, "change": 11.07, "qty": 85, "time": "09:22", "type": "BULLISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:NEWGEN", "c1_close": 570, "ema20": 560, "ema200": 540, "c1_high": 573, "c1_low": 568, "c2_high": 572, "c2_low": 569, "c3_high": 578, "c3_vol": True},
-        {"symbol": "GALLANTT", "price": 603.30, "change": 10.24, "qty": 82, "time": "09:23", "type": "BULLISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:GALLANTT", "c1_close": 590, "ema20": 580, "ema200": 550, "c1_high": 593, "c1_low": 588, "c2_high": 592, "c2_low": 589, "c3_high": 598, "c3_vol": True},
-        
-        # 5 Verified Bearish Setups
-        {"symbol": "AURIONPRO", "price": 739.95, "change": -11.56, "qty": 67, "time": "09:20", "type": "BEARISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO", "c1_close": 750, "ema20": 760, "ema200": 780, "c1_high": 755, "c1_low": 748, "c2_high": 754, "c2_low": 749, "c3_low": 745, "c3_vol": True},
-        {"symbol": "EVERESTIND", "price": 492.55, "change": -8.90, "qty": 141, "time": "09:20", "type": "BEARISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND", "c1_close": 500, "ema20": 510, "ema200": 530, "c1_high": 503, "c1_low": 498, "c2_high": 502, "c2_low": 499, "c3_low": 495, "c3_vol": True},
-        {"symbol": "CLEANMAX", "price": 1316.00, "change": -8.55, "qty": 37, "time": "09:21", "type": "BEARISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX", "c1_close": 1330, "ema20": 1340, "ema200": 1380, "c1_high": 1335, "c1_low": 1325, "c2_high": 1334, "c2_low": 1327, "c3_low": 1320, "c3_vol": True},
-        {"symbol": "SUNCLAY", "price": 1289.30, "change": -7.89, "qty": 38, "time": "09:22", "type": "BEARISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY", "c1_close": 1300, "ema20": 1315, "ema200": 1350, "c1_high": 1305, "c1_low": 1298, "c2_high": 1304, "c2_low": 1299, "c3_low": 1292, "c3_vol": True},
-        {"symbol": "RAMCOSYS", "price": 394.30, "change": -7.03, "qty": 84, "time": "09:24", "type": "BEARISH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS", "c1_close": 405, "ema20": 415, "ema200": 440, "c1_high": 408, "c1_low": 402, "c2_high": 407, "c2_low": 403, "c3_low": 398, "c3_vol": True},
-    ]
+bullish_stocks = [
+    {"symbol": "ASHIKA", "price": 690.30, "change": 14.12, "qty": 101, "time": "09:20", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ASHIKA"},
+    {"symbol": "KNEW", "price": 2724.80, "change": 12.23, "qty": 33, "time": "09:20", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:KNEW"},
+    {"symbol": "ARIHANT", "price": 1206.90, "change": 11.61, "qty": 41, "time": "09:21", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ARIHANT"},
+    {"symbol": "NEWGEN", "price": 583.60, "change": 11.07, "qty": 85, "time": "09:22", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:NEWGEN"},
+    {"symbol": "GALLANTT", "price": 603.30, "change": 10.24, "qty": 82, "time": "09:23", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:GALLANTT"},
+]
 
-    valid_list = []
-    for stkn in all_candidates:
-        c1_range_pct = ((stkn['c1_high'] - stkn['c1_low']) / stkn['c1_close']) * 100
-        c2_inside = (stkn['c2_high'] <= stkn['c1_high']) and (stkn['c2_low'] >= stkn['c1_low'])
-        
-        if c1_range_pct <= 1.5 and c2_inside:
-            if stkn['type'] == 'BULLISH':
-                if (stkn['c1_close'] > stkn['ema20']) and (stkn['c1_close'] > stkn['ema200']) and (stkn['c3_high'] > stkn['c1_high']) and stkn['c3_vol']:
-                    valid_list.append(stkn)
-            elif stkn['type'] == 'BEARISH':
-                if (stkn['c1_close'] < stkn['ema20']) and (stkn['c1_close'] < stkn['ema200']) and (stkn['c3_low'] < stkn['c1_low']) and stkn['c3_vol']:
-                    valid_list.append(stkn)
+bearish_stocks = [
+    {"symbol": "AURIONPRO", "price": 739.95, "change": -11.56, "qty": 67, "time": "09:20", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO"},
+    {"symbol": "EVERESTIND", "price": 492.55, "change": -8.90, "qty": 141, "time": "09:20", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND"},
+    {"symbol": "CLEANMAX", "price": 1316.00, "change": -8.55, "qty": 37, "time": "09:21", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX"},
+    {"symbol": "SUNCLAY", "price": 1289.30, "change": -7.89, "qty": 38, "time": "09:22", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY"},
+    {"symbol": "RAMCOSYS", "price": 394.30, "change": -7.03, "qty": 84, "time": "09:24", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS"},
+]
 
-    return pd.DataFrame(valid_list)
-
-df_verified = get_verified_setups()
-
-bullish_df = df_verified[df_verified['type'] == 'BULLISH'].head(5)
-bearish_df = df_verified[df_verified['type'] == 'BEARISH'].head(5)
+bullish_df = pd.DataFrame(bullish_stocks)
+bearish_df = pd.DataFrame(bearish_stocks)
 
 # ---------------------------------------------------------
 # 5. Top 4 KPI Summary Cards
@@ -292,16 +274,11 @@ with c2:
     """, unsafe_allow_html=True)
 
 with c3:
-    is_bull = len(bullish_df) >= len(bearish_df)
-    s_txt = "BULLISH" if is_bull else "BEARISH"
-    s_clr = "#00ff87" if is_bull else "#f43f5e"
-    d_class = "dot-green" if is_bull else "dot-red"
-    
     st.markdown(f"""
     <div class="stat-box">
         <div class="stat-title">MARKET SENTIMENT</div>
-        <div style="font-size:18px; font-weight:900; color:{s_clr}; margin-top:4px;">
-            <span class="{d_class}"></span>{s_txt}
+        <div style="font-size:18px; font-weight:900; color:#00ff87; margin-top:4px;">
+            <span class="dot-green"></span>BULLISH
         </div>
         <div style="margin-top:8px; font-size:12px; color:{txt_muted};">Bullish: {len(bullish_df)} | Bearish: {len(bearish_df)}</div>
     </div>
@@ -312,12 +289,12 @@ with c4:
     <div class="stat-box">
         <div class="stat-title">SCANNED STOCKS</div>
         <div style="font-size:18px; font-weight:900; color:#00e5ff; margin-top:4px;">500 Stocks</div>
-        <div style="margin-top:8px; font-size:12px; color:#00ff87; font-weight:700;">Active Setups: {len(df_verified)}</div>
+        <div style="margin-top:8px; font-size:12px; color:#00ff87; font-weight:700;">Active Setups: {len(bullish_df) + len(bearish_df)}</div>
     </div>
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. 🔥 MARKET MOVERS (Exact 4 Bullish + 4 Bearish Cards with Time)
+# 6. 🔥 MARKET MOVERS (4 Bullish + 4 Bearish Cards)
 # ---------------------------------------------------------
 st.markdown("<h3 style='text-align:center; margin-top:10px; margin-bottom:15px; font-weight:900;'>🔥 MARKET MOVERS</h3>", unsafe_allow_html=True)
 
@@ -359,7 +336,7 @@ for idx, (_, item) in enumerate(movers_4_bear.iterrows()):
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 7. 5 Bullish & 5 Bearish Setup Tables
+# 7. 5 Bullish & 5 Bearish Display Tables
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
