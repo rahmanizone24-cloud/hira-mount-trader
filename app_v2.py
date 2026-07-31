@@ -96,8 +96,11 @@ st.markdown(f"""
         white-space: nowrap;
     }}
     .index-badge:hover {{ border-color: #00e5ff; color: #ffffff; }}
-    .neon-green-text {{ color: #00ff87 !important; font-weight: 900; }}
     
+    /* INDEX DIRECTION BADGES */
+    .idx-bull {{ color: #00ff87 !important; border-color: #065f46 !important; background: #022c22 !important; }}
+    .idx-bear {{ color: #f43f5e !important; border-color: #9f1239 !important; background: #4c0519 !important; }}
+
     @keyframes dotGlow {{
         0% {{ opacity: 1; transform: scale(1); }}
         50% {{ opacity: 0.3; transform: scale(0.9); }}
@@ -187,17 +190,27 @@ else:
 time_str = now_ist.strftime("%d %b | %I:%M %p")
 
 # ---------------------------------------------------------
-# 3. Top Header Bar Layout
+# 3. Dynamic Index Direction & Sentiment Setup
 # ---------------------------------------------------------
+# Sample Live Index Data (Direction + Change + Sentiment)
+nifty_change = 0.85   # % Change
+bank_change = 1.12    # % Change
+sensex_change = -0.24 # % Change
+
+nifty_html = f'<a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge idx-bull">NIFTY 50 ▲ +{nifty_change}%</a>' if nifty_change >= 0 else f'<a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge idx-bear">NIFTY 50 ▼ {nifty_change}%</a>'
+bank_html = f'<a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge idx-bull">BANK NIFTY ▲ +{bank_change}%</a>' if bank_change >= 0 else f'<a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge idx-bear">BANK NIFTY ▼ {bank_change}%</a>'
+sensex_html = f'<a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge idx-bull">SENSEX ▲ +{sensex_change}%</a>' if sensex_change >= 0 else f'<a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge idx-bear">SENSEX ▼ {sensex_change}%</a>'
+
+# Header Layout
 col_top1, col_top_theme, col_top_ref = st.columns([10, 1, 1])
 
 with col_top1:
     st.markdown(f"""
     <div class="top-bar-container">
         <span class="brand-title">HIRA MOUNT TRADER</span>
-        <a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge">NIFTY 50</a>
-        <a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge">BANK NIFTY</a>
-        <a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge">SENSEX</a>
+        {nifty_html}
+        {bank_html}
+        {sensex_html}
         {market_status_html}
         <span class="index-badge" style="color:#00e5ff;">🕒 {time_str}</span>
     </div>
@@ -217,7 +230,6 @@ with col_top_ref:
 # 4. Engine with Absolute Fallback (UI Protection)
 # ---------------------------------------------------------
 def get_verified_setups():
-    # Primary Fallback Setups (To ensure UI NEVER Breaks)
     fallback_candidates = [
         {"symbol": "ASHIKA", "price": 690.30, "change": 14.12, "qty": 101, "time": "09:25", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ASHIKA"},
         {"symbol": "KNEW", "price": 2724.80, "change": 12.23, "qty": 33, "time": "09:25", "type": "BULLISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:KNEW"},
