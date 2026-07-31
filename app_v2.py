@@ -11,7 +11,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # ---------------------------------------------------------
 st.set_page_config(page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="collapsed")
 
-# Auto-Refresh Logic (Every 30 Seconds)
 try:
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=30000, key="hira_mount_refresh_key")
@@ -24,7 +23,6 @@ if 'theme_mode' not in st.session_state:
 def toggle_theme():
     st.session_state['theme_mode'] = 'Light' if st.session_state['theme_mode'] == 'Dark' else 'Dark'
 
-# Dynamic Themes Styling
 if st.session_state['theme_mode'] == 'Dark':
     bg_app = "#06090e"
     bg_card = "#0f172a"
@@ -52,10 +50,7 @@ st.markdown(f"""
         padding-right: 1rem !important;
         padding-top: 0.8rem !important;
     }}
-    
     .stApp {{ background-color: {bg_app}; color: {txt_main}; font-family: 'Inter', sans-serif; }}
-    
-    /* STREAMLIT BUTTON STYLING */
     div.stButton > button {{
         background-color: {btn_bg} !important;
         color: {btn_txt} !important;
@@ -63,14 +58,8 @@ st.markdown(f"""
         border-radius: 6px !important;
         padding: 4px 10px !important;
         font-weight: 700 !important;
-        box-shadow: none !important;
     }}
-    div.stButton > button:hover {{
-        border-color: #00e5ff !important;
-        color: #00e5ff !important;
-    }}
-
-    /* Top Header Bar */
+    div.stButton > button:hover {{ border-color: #00e5ff !important; color: #00e5ff !important; }}
     .top-bar-container {{
         background-color: {bg_card};
         padding: 8px 16px;
@@ -81,10 +70,7 @@ st.markdown(f"""
         border: 1px solid {border_clr};
         margin-bottom: 15px;
     }}
-    
     .brand-title {{ font-size: 20px; font-weight: 900; color: #00e5ff; letter-spacing: 0.5px; white-space: nowrap; }}
-    
-    /* VIBRANT HIGH CONTRAST INDEX BADGES */
     .index-badge {{
         background: {badge_bg};
         color: #38bdf8;
@@ -98,8 +84,6 @@ st.markdown(f"""
     }}
     .index-badge:hover {{ border-color: #00e5ff; color: #ffffff; }}
     .neon-green-text {{ color: #00ff87 !important; font-weight: 900; }}
-    
-    /* Soft Dot Only Blink Animation */
     @keyframes dotGlow {{
         0% {{ opacity: 1; transform: scale(1); }}
         50% {{ opacity: 0.3; transform: scale(0.9); }}
@@ -107,8 +91,6 @@ st.markdown(f"""
     }}
     .dot-green {{ display: inline-block; width: 8px; height: 8px; background-color: #00ff87; border-radius: 50%; animation: dotGlow 2.5s infinite; margin-right: 6px; }}
     .dot-red {{ display: inline-block; width: 8px; height: 8px; background-color: #f43f5e; border-radius: 50%; animation: dotGlow 2.5s infinite; margin-right: 6px; }}
-
-    /* KPI Stat Boxes */
     .stat-box {{
         background: {bg_card};
         border: 1px solid {border_clr};
@@ -117,8 +99,6 @@ st.markdown(f"""
         margin-bottom: 15px;
     }}
     .stat-title {{ font-size: 11px; color: {txt_muted}; font-weight: bold; letter-spacing: 0.5px; }}
-    
-    /* Market Movers Card Box */
     .mover-box {{
         background: {bg_card};
         border: 1px solid {border_clr};
@@ -126,11 +106,8 @@ st.markdown(f"""
         padding: 10px;
         text-align: center;
     }}
-    
     .stock-title-link {{ font-size: 16px; font-weight: 800; color: #38bdf8; text-decoration: none; }}
     .stock-title-link:hover {{ text-decoration: underline; color: #7dd3fc; }}
-    
-    /* Table Headers & Setup Cards */
     .table-header-row {{
         display: flex;
         justify-content: space-between;
@@ -141,7 +118,6 @@ st.markdown(f"""
         letter-spacing: 0.5px;
         margin-bottom: 6px;
     }}
-
     .setup-card {{
         background-color: {bg_card};
         border: 1px solid {border_clr};
@@ -152,7 +128,6 @@ st.markdown(f"""
         align-items: center;
         justify-content: space-between;
     }}
-    
     .qty-badge {{
         background-color: {badge_bg};
         border: 1px solid {border_clr};
@@ -163,10 +138,8 @@ st.markdown(f"""
         color: {txt_main};
         display: inline-block;
     }}
-    
     .tag-ready-bull {{ background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }}
     .tag-ready-bear {{ background-color: #9f1239; color: #fecdd3; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }}
-
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
@@ -218,26 +191,54 @@ with col_top_ref:
         st.rerun()
 
 # ---------------------------------------------------------
-# 4. Core Filtration Engine & Fyers Integration
+# 4. Watchlist Loading Logic (Fix for 0 Stocks Issue)
+# ---------------------------------------------------------
+def load_watchlist():
+    watchlist = []
+    # 1. Direct Local Path Check
+    possible_paths = ["hira_stocks.csv", "./hira_stocks.csv", "data/hira_stocks.csv"]
+    for p in possible_paths:
+        if os.path.exists(p):
+            try:
+                df = pd.read_csv(p)
+                col = df.columns[0]
+                watchlist = df[col].dropna().astype(str).tolist()
+                if watchlist:
+                    return watchlist
+            except Exception:
+                pass
+    return watchlist
+
+watchlist = load_watchlist()
+
+# Sidebar Backup File Uploader (If CSV path fails)
+if not watchlist:
+    st.sidebar.warning("⚠️ `hira_stocks.csv` nahi mili. Yahan upload karein:")
+    uploaded_file = st.sidebar.file_uploader("Upload Stocks CSV", type=["csv"])
+    if uploaded_file:
+        df_up = pd.read_csv(uploaded_file)
+        watchlist = df_up[df_up.columns[0]].dropna().astype(str).tolist()
+
+# ---------------------------------------------------------
+# 5. Fyers API & Technical Setup Engine
 # ---------------------------------------------------------
 @st.cache_resource
 def init_fyers():
-    from fyers_apiv3 import fyersModel
-    client_id = os.environ.get("FYERS_CLIENT_ID", "YOUR_CLIENT_ID")
-    access_token = os.environ.get("FYERS_ACCESS_TOKEN", "YOUR_ACCESS_TOKEN")
-    return fyersModel.FyersModel(client_id=client_id, is_async=False, token=access_token, log_path="")
+    try:
+        from fyers_apiv3 import fyersModel
+        client_id = os.environ.get("FYERS_CLIENT_ID", "YOUR_CLIENT_ID")
+        access_token = os.environ.get("FYERS_ACCESS_TOKEN", "YOUR_ACCESS_TOKEN")
+        return fyersModel.FyersModel(client_id=client_id, is_async=False, token=access_token, log_path="")
+    except Exception:
+        return None
 
-fyers = None
-try:
-    fyers = init_fyers()
-except Exception:
-    pass
+fyers = init_fyers()
 
 def calculate_ema(df, length):
     return df['close'].ewm(span=length, adjust=False).mean()
 
-def check_5min_pause_candle_setup(symbol, fyers_obj):
-    if fyers_obj is None:
+def check_5min_pause_candle_setup(symbol):
+    if fyers is None:
         return None
     try:
         today_str = datetime.date.today().strftime("%Y-%m-%d")
@@ -249,9 +250,8 @@ def check_5min_pause_candle_setup(symbol, fyers_obj):
             "range_to": today_str,
             "cont_flag": "1"
         }
-        
         time.sleep(0.03)
-        res = fyers_obj.history(data=data)
+        res = fyers.history(data=data)
         
         if res.get("s") != "ok" or not res.get("candles"):
             return None
@@ -266,7 +266,7 @@ def check_5min_pause_candle_setup(symbol, fyers_obj):
         df['EMA_200'] = calculate_ema(df, 200)
         df['Vol_MA_20'] = df['volume'].rolling(window=20, min_periods=1).mean()
 
-        # RULE 1: STRICT C1 CANDLE VALIDATION (09:15 AM)
+        # RULE 1: STRICT C1 (09:15 AM)
         c1 = df.iloc[0]
         if c1['timestamp'].strftime("%H:%M") != "09:15":
             return None
@@ -281,7 +281,7 @@ def check_5min_pause_candle_setup(symbol, fyers_obj):
         if not (c1_above_ema or c1_below_ema):
             return None
 
-        # RULE 2: STRICT C2 INSIDE CANDLE VALIDATION (09:20 AM)
+        # RULE 2: STRICT C2 INSIDE CANDLE (09:20 AM)
         c2 = df.iloc[1]
         if c2['timestamp'].strftime("%H:%M") != "09:20":
             return None
@@ -290,11 +290,9 @@ def check_5min_pause_candle_setup(symbol, fyers_obj):
         if not is_strict_inside:
             return None
 
-        # RULE 3: C3+ BREAKOUT VALIDATION
+        # RULE 3: C3+ BREAKOUT
         for i in range(2, len(df)):
             curr = df.iloc[i]
-            
-            # BULLISH BREAKOUT
             if c1_above_ema and (curr['close'] > c1['high']) and (curr['volume'] > curr['Vol_MA_20']):
                 chg = round(((curr['close'] - c1['open']) / c1['open']) * 100, 2)
                 return {
@@ -306,8 +304,6 @@ def check_5min_pause_candle_setup(symbol, fyers_obj):
                     "qty": curr['volume'],
                     "tv_url": f"https://in.tradingview.com/chart/?symbol=NSE:{symbol}"
                 }
-            
-            # BEARISH BREAKOUT
             elif c1_below_ema and (curr['close'] < c1['low']) and (curr['volume'] > curr['Vol_MA_20']):
                 chg = round(((curr['close'] - c1['open']) / c1['open']) * 100, 2)
                 return {
@@ -319,48 +315,33 @@ def check_5min_pause_candle_setup(symbol, fyers_obj):
                     "qty": curr['volume'],
                     "tv_url": f"https://in.tradingview.com/chart/?symbol=NSE:{symbol}"
                 }
-
     except Exception:
         return None
-
     return None
 
-@st.cache_data
-def load_watchlist():
-    csv_path = "hira_stocks.csv"
-    if os.path.exists(csv_path):
-        df_csv = pd.read_csv(csv_path)
-        col = df_csv.columns[0]
-        return df_csv[col].dropna().astype(str).tolist()
-    return []
-
-watchlist = load_watchlist()
-
-def execute_scan(stocks):
+def run_scanner(stocks):
     results = []
     if not stocks or fyers is None:
         return pd.DataFrame()
-
     with ThreadPoolExecutor(max_workers=15) as executor:
-        futures = {executor.submit(check_5min_pause_candle_setup, sym, fyers): sym for sym in stocks}
+        futures = {executor.submit(check_5min_pause_candle_setup, sym): sym for sym in stocks}
         for future in as_completed(futures):
             res = future.result()
             if res:
                 results.append(res)
-
     return pd.DataFrame(results)
 
-df_verified = execute_scan(watchlist)
+df_results = run_scanner(watchlist)
 
-if not df_verified.empty:
-    bullish_df = df_verified[df_verified['type'] == 'BULLISH'].sort_values(by='change', ascending=False)
-    bearish_df = df_verified[df_verified['type'] == 'BEARISH'].sort_values(by='change', ascending=True)
+if not df_results.empty:
+    bullish_df = df_results[df_results['type'] == 'BULLISH'].sort_values(by='change', ascending=False)
+    bearish_df = df_results[df_results['type'] == 'BEARISH'].sort_values(by='change', ascending=True)
 else:
     bullish_df = pd.DataFrame()
     bearish_df = pd.DataFrame()
 
 # ---------------------------------------------------------
-# 5. Top 4 KPI Summary Cards
+# 6. KPI Stat Boxes
 # ---------------------------------------------------------
 c1, c2, c3, c4 = st.columns(4)
 
@@ -378,8 +359,7 @@ with c1:
                 <span style="font-size:12px; color:{txt_muted};">🕒 {top_g['time']}</span>
                 <span class="qty-badge">{top_g['qty']}</span>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
     else:
         st.markdown(f'<div class="stat-box"><div class="stat-title">TOP GAINER ⚡</div><div style="font-size:14px; color:{txt_muted}; margin-top:8px;">No Setup Found</div></div>', unsafe_allow_html=True)
 
@@ -397,8 +377,7 @@ with c2:
                 <span style="font-size:12px; color:{txt_muted};">🕒 {top_l['time']}</span>
                 <span class="qty-badge">{top_l['qty']}</span>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
     else:
         st.markdown(f'<div class="stat-box"><div class="stat-title">TOP LOSER 📉</div><div style="font-size:14px; color:{txt_muted}; margin-top:8px;">No Setup Found</div></div>', unsafe_allow_html=True)
 
@@ -409,7 +388,6 @@ with c3:
     s_txt = "BULLISH" if is_bull else "BEARISH"
     s_clr = "#00ff87" if is_bull else "#f43f5e"
     d_class = "dot-green" if is_bull else "dot-red"
-    
     st.markdown(f"""
     <div class="stat-box">
         <div class="stat-title">MARKET SENTIMENT</div>
@@ -417,8 +395,7 @@ with c3:
             <span class="{d_class}"></span>{s_txt}
         </div>
         <div style="margin-top:8px; font-size:12px; color:{txt_muted};">Bullish: {total_bull} | Bearish: {total_bear}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
 
 with c4:
     st.markdown(f"""
@@ -426,18 +403,16 @@ with c4:
         <div class="stat-title">SCANNED STOCKS</div>
         <div style="font-size:18px; font-weight:900; color:#00e5ff; margin-top:4px;">{len(watchlist)} Stocks</div>
         <div style="margin-top:8px; font-size:12px; color:#00ff87; font-weight:700;">Active Setups: {total_bull + total_bear}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. 🔥 MARKET MOVERS
+# 7. Market Movers & Tables
 # ---------------------------------------------------------
 st.markdown("<h3 style='text-align:center; margin-top:10px; margin-bottom:15px; font-weight:900;'>🔥 MARKET MOVERS</h3>", unsafe_allow_html=True)
 
+m_cols = st.columns(8)
 movers_4_bull = bullish_df.head(4)
 movers_4_bear = bearish_df.head(4)
-
-m_cols = st.columns(8)
 
 for idx, (_, item) in enumerate(movers_4_bull.iterrows()):
     if idx < 4:
@@ -451,8 +426,7 @@ for idx, (_, item) in enumerate(movers_4_bull.iterrows()):
                     <span class="qty-badge">{item['qty']}</span>
                     <span style="font-size:10px; color:{txt_muted};">🕒 {item['time']}</span>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+            </div>""", unsafe_allow_html=True)
 
 for idx, (_, item) in enumerate(movers_4_bear.iterrows()):
     if idx < 4:
@@ -466,20 +440,15 @@ for idx, (_, item) in enumerate(movers_4_bear.iterrows()):
                     <span class="qty-badge">{item['qty']}</span>
                     <span style="font-size:10px; color:{txt_muted};">🕒 {item['time']}</span>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+            </div>""", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 7. Setup Tables
-# ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
 with t1:
     st.markdown("<h4 style='color:#00ff87; margin-bottom:10px; font-weight:800;'>🟢 BULLISH SETUPS</h4>", unsafe_allow_html=True)
-    
-    st.markdown(f"""
+    st.markdown("""
     <div class="table-header-row">
         <div style="width:20%;">SYMBOL</div>
         <div style="width:18%;">STATUS</div>
@@ -487,8 +456,7 @@ with t1:
         <div style="width:16%;">QTY</div>
         <div style="width:14%;">PRICE</div>
         <div style="width:14%;">CHANGE %</div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
     
     for _, row in bullish_df.iterrows():
         st.markdown(f"""
@@ -499,13 +467,11 @@ with t1:
             <div style="width:16%;"><span class="qty-badge">{row['qty']}</span></div>
             <div style="width:14%; font-size:15px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
             <div style="width:14%; font-size:15px; font-weight:bold; color:#00ff87;">+{row['change']}%</div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
 with t2:
     st.markdown("<h4 style='color:#f43f5e; margin-bottom:10px; font-weight:800;'>🔴 BEARISH SETUPS</h4>", unsafe_allow_html=True)
-    
-    st.markdown(f"""
+    st.markdown("""
     <div class="table-header-row">
         <div style="width:20%;">SYMBOL</div>
         <div style="width:18%;">STATUS</div>
@@ -513,8 +479,7 @@ with t2:
         <div style="width:16%;">QTY</div>
         <div style="width:14%;">PRICE</div>
         <div style="width:14%;">CHANGE %</div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
     
     for _, row in bearish_df.iterrows():
         st.markdown(f"""
@@ -525,5 +490,4 @@ with t2:
             <div style="width:16%;"><span class="qty-badge">{row['qty']}</span></div>
             <div style="width:14%; font-size:15px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
             <div style="width:14%; font-size:15px; font-weight:bold; color:#f43f5e;">{row['change']}%</div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
