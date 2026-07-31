@@ -163,8 +163,27 @@ st.markdown(f"""
     }}
     
     .tag-watchlist {{ background-color: #78350f; color: #fde047; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }}
-    .tag-ready-bull {{ background-color: #065f46; color: #34d399; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }}
-    .tag-ready-bear {{ background-color: #9f1239; color: #fecdd3; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }}
+    
+    /* VIBRANT NEON GREEN READY BADGE */
+    .tag-ready-bull {{ 
+        background-color: #00ff87 !important; 
+        color: #022c22 !important; 
+        padding: 4px 10px; 
+        border-radius: 5px; 
+        font-size: 11px; 
+        font-weight: 900; 
+        box-shadow: 0 0 8px rgba(0, 255, 135, 0.4);
+    }}
+    
+    .tag-ready-bear {{ 
+        background-color: #f43f5e !important; 
+        color: #ffffff !important; 
+        padding: 4px 10px; 
+        border-radius: 5px; 
+        font-size: 11px; 
+        font-weight: 900; 
+        box-shadow: 0 0 8px rgba(244, 63, 94, 0.4);
+    }}
 
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}}
 </style>
@@ -192,7 +211,6 @@ time_str = now_ist.strftime("%d %b | %I:%M %p")
 # ---------------------------------------------------------
 # 3. Dynamic Index Direction & Sentiment Setup
 # ---------------------------------------------------------
-# Sample Live Index Data (Direction + Change + Sentiment)
 nifty_change = 0.85   # % Change
 bank_change = 1.12    # % Change
 sensex_change = -0.24 # % Change
