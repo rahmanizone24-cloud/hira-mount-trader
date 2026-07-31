@@ -175,11 +175,6 @@ def fetch_indices():
             res[name] = {"val": 0.0, "change": 0.0, "pct": 0.0, "url": tv_url}
     return res
 
-def calculate_vwap(df):
-    tp = (df["High"] + df["Low"] + df["Close"]) / 3
-    vol = df["Volume"].replace(0, 1)
-    return (tp * vol).cumsum() / vol.cumsum()
-
 def calculate_ema(df, period=20):
     return df["Close"].ewm(span=period, adjust=False).mean()
 
@@ -214,7 +209,7 @@ def safe_extract_symbol(df_bulk, symbol):
     except Exception:
         return None
 
-# --- ACCURATE SCANNER (FIXED REAL BREAKOUT TIME EXTRACTION) ---
+# --- STRICT NEW SETUP SCANNER (NO FALLBACKS, EXACT TIME) ---
 @st.cache_data(ttl=60, show_spinner=False)
 def run_market_scanner():
     bullish_list, bearish_list, all_scanned_stocks = [], [], []
@@ -264,100 +259,90 @@ def run_market_scanner():
                 except Exception:
                     return ts.strftime("%I:%M %p")
 
-            # Check 5m candle setup and extract EXACT candle timestamp
+            # Evaluate STRICT 5-Minute Setup Rules
             if df_5m_raw is not None and not df_5m_raw.empty:
                 latest_date = df_5m_raw.index[-1].date()
                 today_df = df_5m_raw[df_5m_raw.index.date == latest_date].copy()
 
                 if len(today_df) >= 2:
-                    today_df["VWAP"] = calculate_vwap(today_df)
                     today_df["EMA20"] = calculate_ema(today_df, 20)
+                    today_df["EMA200"] = calculate_ema(today_df, 200)
 
+                    # --- CANDLE 1 (First 5m Candle of Day) ---
                     c1 = today_df.iloc[0]
                     c1_high, c1_low = float(c1["High"]), float(c1["Low"])
-                    c1_open, c1_close = float(c1["Open"]), float(c1["Close"])
+                    c1_close = float(c1["Close"])
                     c1_ema20 = float(c1["EMA20"])
+                    c1_ema200 = float(c1["EMA200"])
+                    c1_vol = float(c1["Volume"])
 
-                    c1_range_pct = ((c1_high - c1_low) / c1_low) * 100
+                    # Condition: Total Candle Range Length <= 1.5%
+                    c1_range_pct = ((c1_high - c1_low) / c1_close) * 100
 
-                    if c1_range_pct <= 1.2 and abs(((c1_open - prev_close) / prev_close) * 100) <= 1.5:
+                    if c1_range_pct <= 1.5:
+                        # --- CANDLE 2 (Inside Bar Filter) ---
                         c2 = today_df.iloc[1]
                         c2_high, c2_low = float(c2["High"]), float(c2["Low"])
-                        c2_open, c2_close = float(c2["Open"]), float(c2["Close"])
+                        c2_vol = float(c2["Volume"])
 
-                        if c1_close > c1_ema20:
-                            if (c2_close <= c2_open) and (c2_high <= c1_high * 1.003) and (c2_low >= c1_low * 0.997):
+                        # Candle 2 must be strictly inside Candle 1 (No High/Low breach of Candle 1)
+                        is_inside_bar = (c2_high <= c1_high) and (c2_low >= c1_low)
+
+                        if is_inside_bar:
+                            # --- 3) BULLISH CONDITION ---
+                            # First Candle Close ABOVE EMA 20 AND EMA 200
+                            if (c1_close > c1_ema20) and (c1_close > c1_ema200):
                                 status_state = "WATCH"
                                 is_bullish = True
                                 trigger_time = format_candle_time(today_df.index[1])
+
+                                # Scan for Breakout Candle (Candle 3 onwards breaking Candle 1 High with Volume)
+                                max_prev_vol = max(c1_vol, c2_vol)
                                 for idx in range(2, len(today_df)):
                                     ck = today_df.iloc[idx]
-                                    if float(ck["Close"]) > max(c1_high, c2_high):
+                                    ck_close = float(ck["Close"])
+                                    ck_vol = float(ck["Volume"])
+
+                                    if (ck_close > c1_high) and (ck_vol > max_prev_vol):
                                         status_state = "READY"
                                         trigger_time = format_candle_time(today_df.index[idx])
                                         break
 
-                        elif c1_close < c1_ema20:
-                            if (c2_close >= c2_open) and (c2_low >= c1_low * 0.997) and (c2_high <= c1_high * 0.997):
+                            # --- 4) BEARISH CONDITION ---
+                            # First Candle Close BELOW EMA 20 AND EMA 200
+                            elif (c1_close < c1_ema20) and (c1_close < c1_ema200):
                                 status_state = "WATCH"
                                 is_bearish = True
                                 trigger_time = format_candle_time(today_df.index[1])
+
+                                # Scan for Bearish Breakout Candle (Candle 3 onwards breaking Candle 1 Low with Volume)
+                                max_prev_vol = max(c1_vol, c2_vol)
                                 for idx in range(2, len(today_df)):
                                     ck = today_df.iloc[idx]
-                                    if float(ck["Close"]) < min(c1_low, c2_low):
+                                    ck_close = float(ck["Close"])
+                                    ck_vol = float(ck["Volume"])
+
+                                    if (ck_close < c1_low) and (ck_vol > max_prev_vol):
                                         status_state = "READY"
                                         trigger_time = format_candle_time(today_df.index[idx])
                                         break
 
-            # Fallback Strategy: Scans 5m intraday array to pinpoint EXACT time stock triggered move
-            if not status_state:
-                if day_change_pct >= 2.0:
-                    status_state = "READY"
-                    is_bullish = True
-                    if df_5m_raw is not None and not df_5m_raw.empty:
-                        for idx in range(len(df_5m_raw)):
-                            c_pct = ((float(df_5m_raw.iloc[idx]["Close"]) - prev_close) / prev_close) * 100
-                            if c_pct >= 2.0:
-                                trigger_time = format_candle_time(df_5m_raw.index[idx])
-                                break
-                        if not trigger_time:
-                            trigger_time = format_candle_time(df_5m_raw.index[-1])
+            # STRICT RULE 6: Do NOT add any stock to setups list unless ALL conditions match!
+            if status_state and trigger_time:
+                base_info = {
+                    "Symbol": str(clean_symbol),
+                    "Price": float(curr_price),
+                    "ChangePct": float(day_change_pct),
+                    "ChangePts": float(round(change_pts, 2)),
+                    "SignalTime": trigger_time,
+                    "TVUrl": str(tv_url),
+                    "Qty": int(calc_qty),
+                    "StatusState": status_state,
+                    "IsBullish": is_bullish,
+                    "IsBearish": is_bearish,
+                }
 
-                elif day_change_pct <= -2.0:
-                    status_state = "READY"
-                    is_bearish = True
-                    if df_5m_raw is not None and not df_5m_raw.empty:
-                        for idx in range(len(df_5m_raw)):
-                            c_pct = ((float(df_5m_raw.iloc[idx]["Close"]) - prev_close) / prev_close) * 100
-                            if c_pct <= -2.0:
-                                trigger_time = format_candle_time(df_5m_raw.index[idx])
-                                break
-                        if not trigger_time:
-                            trigger_time = format_candle_time(df_5m_raw.index[-1])
-
-            # Safety fallback for offline/weekend market status (Picks last candle IST timestamp)
-            if not trigger_time:
-                if df_5m_raw is not None and not df_5m_raw.empty:
-                    trigger_time = format_candle_time(df_5m_raw.index[-1])
-                else:
-                    trigger_time = "09:25 AM"
-
-            base_info = {
-                "Symbol": str(clean_symbol),
-                "Price": float(curr_price),
-                "ChangePct": float(day_change_pct),
-                "ChangePts": float(round(change_pts, 2)),
-                "SignalTime": trigger_time,
-                "TVUrl": str(tv_url),
-                "Qty": int(calc_qty),
-                "StatusState": status_state,
-                "IsBullish": is_bullish,
-                "IsBearish": is_bearish,
-            }
-
-            all_scanned_stocks.append(base_info)
-
-            if status_state:
+                all_scanned_stocks.append(base_info)
                 if is_bullish: bullish_list.append(base_info)
                 if is_bearish: bearish_list.append(base_info)
 
