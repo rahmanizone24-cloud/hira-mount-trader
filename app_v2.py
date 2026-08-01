@@ -7,7 +7,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ---------------------------------------------------------
-# 1. Page Configuration & Full-Width Margin Removal
+# 1. Page Configuration & Theme Initialization
 # ---------------------------------------------------------
 st.set_page_config(page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="collapsed")
 
@@ -21,6 +21,9 @@ except ImportError:
 if 'theme_mode' not in st.session_state:
     st.session_state['theme_mode'] = 'Dark'
 
+def toggle_theme():
+    st.session_state['theme_mode'] = 'Light' if st.session_state['theme_mode'] == 'Dark' else 'Dark'
+
 # Dynamic Themes Styling
 if st.session_state['theme_mode'] == 'Dark':
     bg_app = "#06090e"
@@ -29,6 +32,8 @@ if st.session_state['theme_mode'] == 'Dark':
     txt_main = "#f8fafc"
     txt_muted = "#94a3b8"
     badge_bg = "#1e293b"
+    btn_bg = "#1e293b"
+    btn_txt = "#f8fafc"
 else:
     bg_app = "#f1f5f9"
     bg_card = "#ffffff"
@@ -36,32 +41,45 @@ else:
     txt_main = "#0f172a"
     txt_muted = "#64748b"
     badge_bg = "#e2e8f0"
+    btn_bg = "#e2e8f0"
+    btn_txt = "#0f172a"
 
-# ZERO MARGIN CSS FOR FULL SCREEN FIT
 st.markdown(f"""
 <style>
-    /* Full Screen stretch & remove padding */
     .main .block-container {{
         max-width: 100% !important;
-        padding-left: 0.2rem !important;
-        padding-right: 0.2rem !important;
-        padding-top: 0.2rem !important;
-        padding-bottom: 0.2rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-top: 0.8rem !important;
     }}
     
     .stApp {{ background-color: {bg_app}; color: {txt_main}; font-family: 'Inter', sans-serif; }}
     
-    /* Integrated Header Bar */
+    /* STREAMLIT BUTTON STYLING */
+    div.stButton > button {{
+        background-color: {btn_bg} !important;
+        color: {btn_txt} !important;
+        border: 1px solid {border_clr} !important;
+        border-radius: 6px !important;
+        padding: 4px 10px !important;
+        font-weight: 700 !important;
+        box-shadow: none !important;
+    }}
+    div.stButton > button:hover {{
+        border-color: #00e5ff !important;
+        color: #00e5ff !important;
+    }}
+
+    /* Top Header Bar */
     .top-bar-container {{
         background-color: {bg_card};
-        padding: 8px 14px;
+        padding: 8px 16px;
         border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         border: 1px solid {border_clr};
-        margin-bottom: 12px;
-        width: 100%;
+        margin-bottom: 15px;
     }}
     
     .brand-title {{ font-size: 20px; font-weight: 900; color: #00e5ff; letter-spacing: 0.5px; white-space: nowrap; }}
@@ -69,15 +87,17 @@ st.markdown(f"""
     .index-badge {{
         background: {badge_bg};
         color: #38bdf8;
-        padding: 5px 10px;
+        padding: 6px 12px;
         border-radius: 6px;
-        font-size: 12px;
+        font-size: 13px;
         text-decoration: none;
         border: 1px solid {border_clr};
         font-weight: 800;
         white-space: nowrap;
     }}
+    .index-badge:hover {{ border-color: #00e5ff; color: #ffffff; }}
     
+    /* INDEX DIRECTION BADGES */
     .idx-bull {{ color: #00ff87 !important; border-color: #065f46 !important; background: #022c22 !important; }}
     .idx-bear {{ color: #f43f5e !important; border-color: #9f1239 !important; background: #4c0519 !important; }}
 
@@ -94,7 +114,7 @@ st.markdown(f"""
         border: 1px solid {border_clr};
         border-radius: 8px;
         padding: 12px 16px;
-        margin-bottom: 12px;
+        margin-bottom: 15px;
     }}
     .stat-title {{ font-size: 11px; color: {txt_muted}; font-weight: bold; letter-spacing: 0.5px; }}
     
@@ -102,11 +122,11 @@ st.markdown(f"""
         background: {bg_card};
         border: 1px solid {border_clr};
         border-radius: 8px;
-        padding: 8px;
+        padding: 10px;
         text-align: center;
     }}
     
-    .stock-title-link {{ font-size: 15px; font-weight: 800; color: #38bdf8; text-decoration: none; }}
+    .stock-title-link {{ font-size: 16px; font-weight: 800; color: #38bdf8; text-decoration: none; }}
     .stock-title-link:hover {{ text-decoration: underline; color: #7dd3fc; }}
     
     .table-header-row {{
@@ -124,8 +144,8 @@ st.markdown(f"""
         background-color: {bg_card};
         border: 1px solid {border_clr};
         border-radius: 8px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -134,16 +154,17 @@ st.markdown(f"""
     .qty-badge {{
         background-color: {badge_bg};
         border: 1px solid {border_clr};
-        padding: 3px 8px;
+        padding: 3px 10px;
         border-radius: 6px;
         font-size: 12px;
         font-weight: 700;
-        color: #00e5ff;
+        color: {txt_main};
         display: inline-block;
     }}
     
     .tag-watchlist {{ background-color: #78350f; color: #fde047; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 800; }}
     
+    /* VIBRANT NEON GREEN READY BADGE */
     .tag-ready-bull {{ 
         background-color: #00ff87 !important; 
         color: #022c22 !important; 
@@ -164,7 +185,7 @@ st.markdown(f"""
         box-shadow: 0 0 8px rgba(244, 63, 94, 0.4);
     }}
 
-    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
+    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -181,63 +202,66 @@ is_weekday = now_ist.weekday() < 5
 is_market_hours = market_open_time <= now_ist <= market_close_time
 
 if is_weekday and is_market_hours:
-    market_status_html = '<span style="background:#064e3b; color:#34d399; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold;"><span class="dot-green"></span>OPEN</span>'
+    market_status_html = '<span style="background:#064e3b; color:#34d399; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:bold;"><span class="dot-green"></span>OPEN</span>'
 else:
-    market_status_html = '<span style="background:#881337; color:#fecdd3; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold;"><span class="dot-red"></span>CLOSED</span>'
+    market_status_html = '<span style="background:#881337; color:#fecdd3; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:bold;"><span class="dot-red"></span>CLOSED</span>'
 
 time_str = now_ist.strftime("%d %b | %I:%M %p")
 
 # ---------------------------------------------------------
-# 3. Dynamic Index Direction Setup
+# 3. Dynamic Index Direction & Sentiment Setup
 # ---------------------------------------------------------
-nifty_change = 0.85
-bank_change = 1.12
-sensex_change = -0.24
+nifty_change = 0.85   # % Change
+bank_change = 1.12    # % Change
+sensex_change = -0.24 # % Change
 
 nifty_html = f'<a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge idx-bull">NIFTY 50 ▲ +{nifty_change}%</a>' if nifty_change >= 0 else f'<a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge idx-bear">NIFTY 50 ▼ {nifty_change}%</a>'
 bank_html = f'<a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge idx-bull">BANK NIFTY ▲ +{bank_change}%</a>' if bank_change >= 0 else f'<a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge idx-bear">BANK NIFTY ▼ {bank_change}%</a>'
 sensex_html = f'<a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge idx-bull">SENSEX ▲ +{sensex_change}%</a>' if sensex_change >= 0 else f'<a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge idx-bear">SENSEX ▼ {sensex_change}%</a>'
 
-# Integrated Clean Header (No Separate Top Buttons)
-st.markdown(f"""
-<div class="top-bar-container">
-    <span class="brand-title">HIRA MOUNT TRADER</span>
-    {nifty_html}
-    {bank_html}
-    {sensex_html}
-    {market_status_html}
-    <span class="index-badge" style="color:#00e5ff;">🕒 {time_str}</span>
-</div>
-""", unsafe_allow_html=True)
+# Header Layout
+col_top1, col_top_theme, col_top_ref = st.columns([10, 1, 1])
+
+with col_top1:
+    st.markdown(f"""
+    <div class="top-bar-container">
+        <span class="brand-title">HIRA MOUNT TRADER</span>
+        {nifty_html}
+        {bank_html}
+        {sensex_html}
+        {market_status_html}
+        <span class="index-badge" style="color:#00e5ff;">🕒 {time_str}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_top_theme:
+    theme_label = "☀️ Light" if st.session_state['theme_mode'] == 'Dark' else "🌙 Dark"
+    if st.button(theme_label, use_container_width=True):
+        toggle_theme()
+        st.rerun()
+
+with col_top_ref:
+    if st.button("🔄 Refresh", use_container_width=True):
+        st.rerun()
 
 # ---------------------------------------------------------
-# 4. Engine & 5X Leverage QTY Calculation (Capital: ₹10,000)
+# 4. Engine with Absolute Fallback (UI Protection)
 # ---------------------------------------------------------
-def calculate_5x_qty(price):
-    if price <= 0:
-        return 1
-    # 10,000 capital * 5x leverage = 50,000 buying power
-    return max(1, int(50000 / price))
-
 def get_verified_setups():
     fallback_candidates = [
-        {"symbol": "ASHIKA", "price": 690.30, "change": 14.12, "time": "09:25", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ASHIKA"},
-        {"symbol": "KNEW", "price": 2724.80, "change": 12.23, "time": "09:25", "type": "BULLISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:KNEW"},
-        {"symbol": "ARIHANT", "price": 1206.90, "change": 11.61, "time": "09:28", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ARIHANT"},
-        {"symbol": "NEWGEN", "price": 583.60, "change": 11.07, "time": "09:25", "type": "BULLISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:NEWGEN"},
-        {"symbol": "GALLANTT", "price": 603.30, "change": 10.24, "time": "09:30", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:GALLANTT"},
+        {"symbol": "ASHIKA", "price": 690.30, "change": 14.12, "qty": 101, "time": "09:25", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ASHIKA"},
+        {"symbol": "KNEW", "price": 2724.80, "change": 12.23, "qty": 33, "time": "09:25", "type": "BULLISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:KNEW"},
+        {"symbol": "ARIHANT", "price": 1206.90, "change": 11.61, "qty": 41, "time": "09:28", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ARIHANT"},
+        {"symbol": "NEWGEN", "price": 583.60, "change": 11.07, "qty": 85, "time": "09:25", "type": "BULLISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:NEWGEN"},
+        {"symbol": "GALLANTT", "price": 603.30, "change": 10.24, "qty": 82, "time": "09:30", "type": "BULLISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:GALLANTT"},
         
-        {"symbol": "AURIONPRO", "price": 739.95, "change": -11.56, "time": "09:25", "type": "BEARISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO"},
-        {"symbol": "EVERESTIND", "price": 492.55, "change": -8.90, "time": "09:25", "type": "BEARISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND"},
-        {"symbol": "CLEANMAX", "price": 1316.00, "change": -8.55, "time": "09:27", "type": "BEARISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX"},
-        {"symbol": "SUNCLAY", "price": 1289.30, "change": -7.89, "time": "09:25", "type": "BEARISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY"},
-        {"symbol": "RAMCOSYS", "price": 394.30, "change": -7.03, "time": "09:32", "type": "BEARISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS"},
+        {"symbol": "AURIONPRO", "price": 739.95, "change": -11.56, "qty": 67, "time": "09:25", "type": "BEARISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO"},
+        {"symbol": "EVERESTIND", "price": 492.55, "change": -8.90, "qty": 141, "time": "09:25", "type": "BEARISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND"},
+        {"symbol": "CLEANMAX", "price": 1316.00, "change": -8.55, "qty": 37, "time": "09:27", "type": "BEARISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX"},
+        {"symbol": "SUNCLAY", "price": 1289.30, "change": -7.89, "qty": 38, "time": "09:25", "type": "BEARISH", "status": "WATCH", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY"},
+        {"symbol": "RAMCOSYS", "price": 394.30, "change": -7.03, "qty": 84, "time": "09:32", "type": "BEARISH", "status": "READY", "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS"},
     ]
-    
-    df = pd.DataFrame(fallback_candidates)
-    # Calculate exact 5X Quantity based on Price
-    df['qty'] = df['price'].apply(calculate_5x_qty)
-    return df
+    return pd.DataFrame(fallback_candidates)
 
 df_verified = get_verified_setups()
 
@@ -260,7 +284,7 @@ with c1:
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:12px; color:{txt_muted};">🕒 {top_g['time']}</span>
-            <span class="qty-badge">QTY: {top_g['qty']}</span>
+            <span class="qty-badge">{top_g['qty']}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -276,7 +300,7 @@ with c2:
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:12px; color:{txt_muted};">🕒 {top_l['time']}</span>
-            <span class="qty-badge">QTY: {top_l['qty']}</span>
+            <span class="qty-badge">{top_l['qty']}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -309,7 +333,7 @@ with c4:
 # ---------------------------------------------------------
 # 6. 🔥 MARKET MOVERS
 # ---------------------------------------------------------
-st.markdown("<h3 style='text-align:center; margin-top:5px; margin-bottom:12px; font-weight:900;'>🔥 MARKET MOVERS</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align:center; margin-top:10px; margin-bottom:15px; font-weight:900;'>🔥 MARKET MOVERS</h3>", unsafe_allow_html=True)
 
 movers_4_bull = bullish_df.head(4)
 movers_4_bear = bearish_df.head(4)
@@ -320,11 +344,11 @@ for idx, (_, item) in enumerate(movers_4_bull.iterrows()):
     with m_cols[idx]:
         st.markdown(f"""
         <div class="mover-box">
-            <a href="{item['tv_url']}" target="_blank" class="stock-title-link">{item['symbol']}</a><br>
+            <a href="{item['tv_url']}" target="_blank" class="stock-title-link" style="font-size:14px;">{item['symbol']}</a><br>
             <div style="font-size:13px; color:#00ff87; font-weight:bold; margin-top:2px;">₹{item['price']}</div>
             <div style="font-size:11px; color:#00ff87; font-weight:bold;">(+{item['change']}%)</div>
             <div style="margin-top:4px; display:flex; justify-content:center; gap:4px; align-items:center;">
-                <span class="qty-badge">{item['qty']} QTY</span>
+                <span class="qty-badge">{item['qty']}</span>
                 <span style="font-size:10px; color:{txt_muted};">🕒 {item['time']}</span>
             </div>
         </div>
@@ -334,11 +358,11 @@ for idx, (_, item) in enumerate(movers_4_bear.iterrows()):
     with m_cols[idx + 4]:
         st.markdown(f"""
         <div class="mover-box">
-            <a href="{item['tv_url']}" target="_blank" class="stock-title-link" style="color:#f43f5e;">{item['symbol']}</a><br>
+            <a href="{item['tv_url']}" target="_blank" class="stock-title-link" style="font-size:14px; color:#f43f5e;">{item['symbol']}</a><br>
             <div style="font-size:13px; color:#f43f5e; font-weight:bold; margin-top:2px;">₹{item['price']}</div>
             <div style="font-size:11px; color:#f43f5e; font-weight:bold;">({item['change']}%)</div>
             <div style="margin-top:4px; display:flex; justify-content:center; gap:4px; align-items:center;">
-                <span class="qty-badge">{item['qty']} QTY</span>
+                <span class="qty-badge">{item['qty']}</span>
                 <span style="font-size:10px; color:{txt_muted};">🕒 {item['time']}</span>
             </div>
         </div>
@@ -347,19 +371,19 @@ for idx, (_, item) in enumerate(movers_4_bear.iterrows()):
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 7. Setup Tables (Replaced VOLUME with QTY)
+# 7. Setup Tables (Dynamic Status BADGES)
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
 with t1:
-    st.markdown("<h4 style='color:#00ff87; margin-bottom:8px; font-weight:800;'>🟢 BULLISH SETUPS</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color:#00ff87; margin-bottom:10px; font-weight:800;'>🟢 BULLISH SETUPS</h4>", unsafe_allow_html=True)
     
     st.markdown(f"""
     <div class="table-header-row">
         <div style="width:20%;">SYMBOL</div>
         <div style="width:18%;">STATUS</div>
         <div style="width:18%;">TIME</div>
-        <div style="width:16%;">QTY</div>
+        <div style="width:16%;">VOLUME</div>
         <div style="width:14%;">PRICE</div>
         <div style="width:14%;">CHANGE %</div>
     </div>
@@ -379,14 +403,14 @@ with t1:
         """, unsafe_allow_html=True)
 
 with t2:
-    st.markdown("<h4 style='color:#f43f5e; margin-bottom:8px; font-weight:800;'>🔴 BEARISH SETUPS</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color:#f43f5e; margin-bottom:10px; font-weight:800;'>🔴 BEARISH SETUPS</h4>", unsafe_allow_html=True)
     
     st.markdown(f"""
     <div class="table-header-row">
         <div style="width:20%;">SYMBOL</div>
         <div style="width:18%;">STATUS</div>
         <div style="width:18%;">TIME</div>
-        <div style="width:16%;">QTY</div>
+        <div style="width:16%;">VOLUME</div>
         <div style="width:14%;">PRICE</div>
         <div style="width:14%;">CHANGE %</div>
     </div>
