@@ -64,7 +64,7 @@ else:
     btn_txt = "#0f172a"
 
 # ---------------------------------------------------------
-# CSS (Corrected)
+# CSS (Fully Corrected)
 # ---------------------------------------------------------
 st.markdown(
     f"""
@@ -227,7 +227,7 @@ def get_fyers():
 fyers = get_fyers()
 
 # ---------------------------------------------------------
-# 3. Time & Market Status + Target Date Logic
+# 3. Time & Market Status
 # ---------------------------------------------------------
 ist = pytz.timezone("Asia/Kolkata")
 now_ist = datetime.datetime.now(ist)
@@ -243,26 +243,6 @@ else:
     market_status_html = '<span style="background:#881337;color:#fecdd3;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:bold;"><span class="dot-red"></span>CLOSED</span>'
 
 time_str = now_ist.strftime("%d %b | %I:%M %p")
-
-
-def get_last_trading_day(current_dt: datetime.datetime) -> datetime.date:
-    """Return the most recent trading day (skip Sat/Sun)."""
-    d = current_dt.date()
-    # If today is weekday and market already closed, still use today
-    if current_dt.weekday() < 5 and current_dt.time() >= datetime.time(15, 30):
-        return d
-    # Otherwise go back until we find a weekday
-    while True:
-        d = d - datetime.timedelta(days=1)
-        if d.weekday() < 5:  # Mon-Fri
-            return d
-
-
-# Target date for scanning
-if is_market_open:
-    TARGET_DATE = now_ist.date()
-else:
-    TARGET_DATE = get_last_trading_day(now_ist)
 
 # ---------------------------------------------------------
 # 4. Symbol Universe
@@ -380,8 +360,7 @@ def scan_single_stock(symbol: str) -> Optional[Dict]:
         clean_sym = symbol.replace("NSE:", "").replace("-EQ", "")
         tv_url = f"https://in.tradingview.com/chart/?symbol=NSE:{clean_sym}"
 
-        # Fetch enough history
-        end_dt = TARGET_DATE
+        end_dt = now_ist.date()
         start_dt = end_dt - datetime.timedelta(days=12)
 
         data = {
@@ -404,14 +383,13 @@ def scan_single_stock(symbol: str) -> Optional[Dict]:
         df["datetime"] = pd.to_datetime(df["ts"], unit="s").dt.tz_localize("UTC").dt.tz_convert(ist)
         df = df.sort_values("datetime").reset_index(drop=True)
 
-        # Filter for TARGET_DATE candles (from 09:15)
-        day_mask = (df["datetime"].dt.date == TARGET_DATE) & (df["datetime"].dt.time >= datetime.time(9, 15))
-        day_df = df[day_mask].copy()
+        today = now_ist.date()
+        today_mask = (df["datetime"].dt.date == today) & (df["datetime"].dt.time >= datetime.time(9, 15))
+        today_df = df[today_mask].copy()
 
-        if len(day_df) < 3:
+        if len(today_df) < 3:
             return None
 
-        # Indicators
         df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
         df["ema200"] = df["close"].ewm(span=200, adjust=False).mean()
 
@@ -420,10 +398,10 @@ def scan_single_stock(symbol: str) -> Optional[Dict]:
         df["cum_vol"] = df["volume"].cumsum()
         df["vwap"] = df["cum_tp_vol"] / df["cum_vol"]
 
-        day_df = df.loc[day_df.index].copy()
+        today_df = df.loc[today_df.index].copy()
 
-        first = day_df.iloc[0]
-        second = day_df.iloc[1]
+        first = today_df.iloc[0]
+        second = today_df.iloc[1]
 
         first_range_pct = ((first["high"] - first["low"]) / first["open"]) * 100
         if first_range_pct > 1.5:
@@ -451,9 +429,9 @@ def scan_single_stock(symbol: str) -> Optional[Dict]:
         if not (is_bullish_bias or is_bearish_bias):
             return None
 
-        for i in range(2, len(day_df)):
-            candle = day_df.iloc[i]
-            prev_5 = day_df.iloc[max(0, i-5):i]
+        for i in range(2, len(today_df)):
+            candle = today_df.iloc[i]
+            prev_5 = today_df.iloc[max(0, i-5):i]
             avg_vol = prev_5["volume"].mean() if len(prev_5) > 0 else candle["volume"]
 
             volume_ok = candle["volume"] > (avg_vol * 1.2)
@@ -523,7 +501,7 @@ def run_scanner() -> pd.DataFrame:
 # ---------------------------------------------------------
 # 7. Run Scanner
 # ---------------------------------------------------------
-with st.spinner(f"Scanning setups for {TARGET_DATE.strftime('%d %b %Y')}..."):
+with st.spinner("Scanning high-quality setups..."):
     df_all = run_scanner()
 
 bullish_df = df_all[df_all["type"] == "BULLISH"].head(8) if not df_all.empty else pd.DataFrame()
@@ -588,9 +566,7 @@ with c4:
     <div class="stat-box">
         <div class="stat-title">ACTIVE SETUPS</div>
         <div style="font-size:17px;font-weight:900;color:#00e5ff;margin-top:4px;">{len(df_all)}</div>
-        <div style="margin-top:8px;font-size:12px;color:{txt_muted};">
-            {TARGET_DATE.strftime('%d %b')} | Price ≥ ₹200
-        </div>
+        <div style="margin-top:8px;font-size:12px;color:{txt_muted};">Price ≥ ₹200 | High Liquidity</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -652,7 +628,7 @@ with t1:
     """, unsafe_allow_html=True)
 
     if bullish_df.empty:
-        st.info(f"کوئی Bullish Setup نہیں ملا ({TARGET_DATE.strftime('%d %b')})")
+        st.info("ابھی کوئی Bullish Setup نہیں ملا")
     else:
         for _, row in bullish_df.iterrows():
             st.markdown(f"""
@@ -680,7 +656,7 @@ with t2:
     """, unsafe_allow_html=True)
 
     if bearish_df.empty:
-        st.info(f"کوئی Bearish Setup نہیں ملا ({TARGET_DATE.strftime('%d %b')})")
+        st.info("ابھی کوئی Bearish Setup نہیں ملا")
     else:
         for _, row in bearish_df.iterrows():
             st.markdown(f"""
