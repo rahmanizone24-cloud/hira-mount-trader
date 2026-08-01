@@ -260,30 +260,7 @@ def fetch_fyers_nifty500_symbols():
     eq_symbols = df_sym[df_sym[9].str.endswith("-EQ", na=False)][9].tolist()
     return eq_symbols[:500]  # Exact Top 500 Liquid NSE Stocks
   except Exception:
-    # Pure Nifty 500 Top Benchmark Stocks Fallback
-    return [
-        "NSE:RELIANCE-EQ",
-        "NSE:TCS-EQ",
-        "NSE:HDFCBANK-EQ",
-        "NSE:ICICIBANK-EQ",
-        "NSE:INFY-EQ",
-        "NSE:BHARTIARTL-EQ",
-        "NSE:ITC-EQ",
-        "NSE:SBIN-EQ",
-        "NSE:LT-EQ",
-        "NSE:BAJFINANCE-EQ",
-        "NSE:AXISBANK-EQ",
-        "NSE:MARUTI-EQ",
-        "NSE:SUNPHARMA-EQ",
-        "NSE:TATAMOTORS-EQ",
-        "NSE:NTPC-EQ",
-        "NSE:ONGC-EQ",
-        "NSE:KOTAKBANK-EQ",
-        "NSE:TITAN-EQ",
-        "NSE:ADANIENT-EQ",
-        "NSE:ULTRACEMCO-EQ",
-    ]
-
+   
 
 NIFTY_500_SYMBOLS = fetch_fyers_nifty500_symbols()
 
