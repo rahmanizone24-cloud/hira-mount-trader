@@ -17,7 +17,6 @@ try:
     from fyers_apiv3 import fyersModel
 except ImportError:
     fyersModel = None
-    logger.warning("fyers_apiv3 not installed")
 
 # ---------------------------------------------------------
 # 1. Page Config
@@ -64,22 +63,18 @@ else:
     btn_txt = "#0f172a"
 
 # ---------------------------------------------------------
-# CSS (Corrected)
+# CSS
 # ---------------------------------------------------------
 st.markdown(
     f"""
 <style>
     header[data-testid="stHeader"] {{ display: none !important; }}
-    
     .main .block-container {{
         max-width: 100% !important;
         padding: 0.6rem 0.8rem 0.4rem 0.8rem !important;
     }}
-    
     .stApp {{ background-color: {bg_app}; color: {txt_main}; font-family: 'Inter', sans-serif; }}
-    
     [data-testid="column"] {{ padding: 0 4px !important; }}
-
     div.stButton > button {{
         background-color: {btn_bg} !important;
         color: {btn_txt} !important;
@@ -87,7 +82,6 @@ st.markdown(
         border-radius: 6px !important;
         font-weight: 700 !important;
     }}
-
     .top-bar-container {{
         background-color: {bg_card};
         padding: 8px 14px;
@@ -100,9 +94,7 @@ st.markdown(
         flex-wrap: wrap;
         gap: 8px;
     }}
-    
     .brand-title {{ font-size: 18px; font-weight: 900; color: #00e5ff; letter-spacing: 0.5px; }}
-    
     .index-badge {{
         background: {badge_bg};
         color: #38bdf8;
@@ -113,10 +105,8 @@ st.markdown(
         font-weight: 800;
         text-decoration: none;
     }}
-    
     .idx-bull {{ color: #00ff87 !important; border-color: #065f46 !important; background: #022c22 !important; }}
     .idx-bear {{ color: #f43f5e !important; border-color: #9f1239 !important; background: #4c0519 !important; }}
-
     @keyframes dotGlow {{
         0% {{ opacity: 1; }}
         50% {{ opacity: 0.35; }}
@@ -124,7 +114,6 @@ st.markdown(
     }}
     .dot-green {{ display: inline-block; width: 8px; height: 8px; background: #00ff87; border-radius: 50%; animation: dotGlow 2.2s infinite; margin-right: 5px; }}
     .dot-red {{ display: inline-block; width: 8px; height: 8px; background: #f43f5e; border-radius: 50%; animation: dotGlow 2.2s infinite; margin-right: 5px; }}
-
     .stat-box {{
         background: {bg_card};
         border: 1px solid {border_clr};
@@ -133,7 +122,6 @@ st.markdown(
         margin-bottom: 8px;
     }}
     .stat-title {{ font-size: 10px; color: {txt_muted}; font-weight: 700; letter-spacing: 0.4px; }}
-    
     .mover-box {{
         background: {bg_card};
         border: 1px solid {border_clr};
@@ -141,10 +129,8 @@ st.markdown(
         padding: 7px 6px;
         text-align: center;
     }}
-    
     .stock-title-link {{ font-size: 14px; font-weight: 800; color: #38bdf8; text-decoration: none; }}
     .stock-title-link:hover {{ text-decoration: underline; color: #7dd3fc; }}
-    
     .table-header-row {{
         display: flex;
         justify-content: space-between;
@@ -154,7 +140,6 @@ st.markdown(
         color: {txt_muted};
         margin-bottom: 4px;
     }}
-
     .setup-card {{
         background-color: {bg_card};
         border: 1px solid {border_clr};
@@ -165,7 +150,6 @@ st.markdown(
         align-items: center;
         justify-content: space-between;
     }}
-    
     .qty-badge {{
         background-color: {badge_bg};
         border: 1px solid {border_clr};
@@ -175,7 +159,6 @@ st.markdown(
         font-weight: 700;
         color: #00e5ff;
     }}
-    
     .tag-ready-bull {{ 
         background-color: #00ff87 !important; 
         color: #022c22 !important; 
@@ -184,7 +167,6 @@ st.markdown(
         font-size: 10px; 
         font-weight: 900; 
     }}
-    
     .tag-ready-bear {{ 
         background-color: #f43f5e !important; 
         color: #ffffff !important; 
@@ -193,7 +175,6 @@ st.markdown(
         font-size: 10px; 
         font-weight: 900; 
     }}
-
     #MainMenu {{visibility: hidden;}} 
     footer {{visibility: hidden;}}
 </style>
@@ -227,7 +208,7 @@ def get_fyers():
 fyers = get_fyers()
 
 # ---------------------------------------------------------
-# 3. Time & Market Status + Target Date Logic
+# 3. Time & Target Date
 # ---------------------------------------------------------
 ist = pytz.timezone("Asia/Kolkata")
 now_ist = datetime.datetime.now(ist)
@@ -245,24 +226,18 @@ else:
 time_str = now_ist.strftime("%d %b | %I:%M %p")
 
 
-def get_last_trading_day(current_dt: datetime.datetime) -> datetime.date:
-    """Return the most recent trading day (skip Sat/Sun)."""
-    d = current_dt.date()
-    # If today is weekday and market already closed, still use today
-    if current_dt.weekday() < 5 and current_dt.time() >= datetime.time(15, 30):
+def get_target_date(current: datetime.datetime) -> datetime.date:
+    """Return today if market open or after close on weekday, else last trading day."""
+    d = current.date()
+    if current.weekday() < 5:  # Mon-Fri
         return d
-    # Otherwise go back until we find a weekday
-    while True:
-        d = d - datetime.timedelta(days=1)
-        if d.weekday() < 5:  # Mon-Fri
-            return d
+    # Weekend → go back to Friday
+    while d.weekday() >= 5:
+        d -= datetime.timedelta(days=1)
+    return d
 
 
-# Target date for scanning
-if is_market_open:
-    TARGET_DATE = now_ist.date()
-else:
-    TARGET_DATE = get_last_trading_day(now_ist)
+TARGET_DATE = get_target_date(now_ist)
 
 # ---------------------------------------------------------
 # 4. Symbol Universe
@@ -278,22 +253,20 @@ def get_symbol_universe() -> List[str]:
             .unique()
             .tolist()
         )
-        return symbols[:600]
+        return symbols[:500]
     except Exception as e:
-        logger.error(f"Symbol master fetch failed: {e}")
+        logger.error(f"Symbol fetch error: {e}")
         return [
             "NSE:RELIANCE-EQ", "NSE:TCS-EQ", "NSE:HDFCBANK-EQ", "NSE:ICICIBANK-EQ",
             "NSE:INFY-EQ", "NSE:BHARTIARTL-EQ", "NSE:ITC-EQ", "NSE:SBIN-EQ",
-            "NSE:LT-EQ", "NSE:BAJFINANCE-EQ", "NSE:HINDUNILVR-EQ", "NSE:KOTAKBANK-EQ",
-            "NSE:AXISBANK-EQ", "NSE:ASIANPAINT-EQ", "NSE:MARUTI-EQ", "NSE:SUNPHARMA-EQ",
-            "NSE:TITAN-EQ", "NSE:ULTRACEMCO-EQ", "NSE:WIPRO-EQ", "NSE:NESTLEIND-EQ"
+            "NSE:LT-EQ", "NSE:BAJFINANCE-EQ", "NSE:HINDUNILVR-EQ", "NSE:KOTAKBANK-EQ"
         ]
 
 
 SYMBOL_UNIVERSE = get_symbol_universe()
 
 # ---------------------------------------------------------
-# 5. Live Index Quotes
+# 5. Live Indices
 # ---------------------------------------------------------
 @st.cache_data(ttl=20)
 def get_live_indices():
@@ -317,20 +290,18 @@ def get_live_indices():
             elif "SENSEX" in n:
                 result["sensex"] = chp
         return result
-    except Exception as e:
-        logger.error(f"Index quotes error: {e}")
+    except Exception:
         return default
 
 
 indices = get_live_indices()
 
 def make_index_badge(name: str, change: float, symbol: str) -> str:
-    if change >= 0:
-        return (f'<a href="https://in.tradingview.com/chart/?symbol={symbol}" target="_blank" '
-                f'class="index-badge idx-bull">{name} ▲ +{change:.2f}%</a>')
-    else:
-        return (f'<a href="https://in.tradingview.com/chart/?symbol={symbol}" target="_blank" '
-                f'class="index-badge idx-bear">{name} ▼ {change:.2f}%</a>')
+    cls = "idx-bull" if change >= 0 else "idx-bear"
+    sign = f"+{change:.2f}%" if change >= 0 else f"{change:.2f}%"
+    arrow = "▲" if change >= 0 else "▼"
+    return (f'<a href="https://in.tradingview.com/chart/?symbol={symbol}" target="_blank" '
+            f'class="index-badge {cls}">{name} {arrow} {sign}</a>')
 
 nifty_html = make_index_badge("NIFTY 50", indices["nifty"], "NSE:NIFTY")
 bank_html = make_index_badge("BANK NIFTY", indices["bank"], "NSE:BANKNIFTY")
@@ -364,7 +335,7 @@ with col3:
         st.rerun()
 
 # ---------------------------------------------------------
-# 6. Core Strategy Engine
+# 6. Core Scanner
 # ---------------------------------------------------------
 def calculate_qty(price: float) -> int:
     if price <= 0:
@@ -380,9 +351,8 @@ def scan_single_stock(symbol: str) -> Optional[Dict]:
         clean_sym = symbol.replace("NSE:", "").replace("-EQ", "")
         tv_url = f"https://in.tradingview.com/chart/?symbol=NSE:{clean_sym}"
 
-        # Fetch enough history
         end_dt = TARGET_DATE
-        start_dt = end_dt - datetime.timedelta(days=12)
+        start_dt = end_dt - datetime.timedelta(days=15)
 
         data = {
             "symbol": symbol,
@@ -398,132 +368,130 @@ def scan_single_stock(symbol: str) -> Optional[Dict]:
             return None
 
         df = pd.DataFrame(resp["candles"], columns=["ts", "open", "high", "low", "close", "volume"])
-        if len(df) < 50:
+        if len(df) < 40:
             return None
 
         df["datetime"] = pd.to_datetime(df["ts"], unit="s").dt.tz_localize("UTC").dt.tz_convert(ist)
         df = df.sort_values("datetime").reset_index(drop=True)
 
-        # Filter for TARGET_DATE candles (from 09:15)
+        # Full history EMAs
+        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
+        df["ema200"] = df["close"].ewm(span=200, adjust=False).mean()
+
+        # Target day candles
         day_mask = (df["datetime"].dt.date == TARGET_DATE) & (df["datetime"].dt.time >= datetime.time(9, 15))
-        day_df = df[day_mask].copy()
+        day_df = df.loc[day_mask].copy()
 
         if len(day_df) < 3:
             return None
 
-        # Indicators
-        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
-        df["ema200"] = df["close"].ewm(span=200, adjust=False).mean()
-
-        typical = (df["high"] + df["low"] + df["close"]) / 3
-        df["cum_tp_vol"] = (typical * df["volume"]).cumsum()
-        df["cum_vol"] = df["volume"].cumsum()
-        df["vwap"] = df["cum_tp_vol"] / df["cum_vol"]
-
-        day_df = df.loc[day_df.index].copy()
+        # ===== Correct Session VWAP (only for the target day) =====
+        typical = (day_df["high"] + day_df["low"] + day_df["close"]) / 3.0
+        day_df["cum_tp_vol"] = (typical * day_df["volume"]).cumsum()
+        day_df["cum_vol"] = day_df["volume"].cumsum()
+        day_df["vwap"] = day_df["cum_tp_vol"] / day_df["cum_vol"]
 
         first = day_df.iloc[0]
         second = day_df.iloc[1]
 
+        # Range check
         first_range_pct = ((first["high"] - first["low"]) / first["open"]) * 100
         if first_range_pct > 1.5:
             return None
 
+        # Second candle inside first
         if not (first["low"] <= second["open"] <= first["high"] and
                 first["low"] <= second["close"] <= first["high"] and
                 second["high"] <= first["high"] and
                 second["low"] >= first["low"]):
             return None
 
-        first_close = first["close"]
-        first_ema20 = first["ema20"]
-        first_ema200 = first["ema200"]
-        first_vwap = first["vwap"]
+        # Bias check with correct VWAP
+        first_close = float(first["close"])
+        first_ema20 = float(first["ema20"])
+        first_ema200 = float(first["ema200"])
+        first_vwap = float(first["vwap"])
 
-        is_bullish_bias = (first_close > first_ema20 and
-                          first_close > first_ema200 and
-                          first_close > first_vwap)
+        is_bullish = (first_close > first_ema20 and first_close > first_ema200 and first_close > first_vwap)
+        is_bearish = (first_close < first_ema20 and first_close < first_ema200 and first_close < first_vwap)
 
-        is_bearish_bias = (first_close < first_ema20 and
-                           first_close < first_ema200 and
-                           first_close < first_vwap)
-
-        if not (is_bullish_bias or is_bearish_bias):
+        if not (is_bullish or is_bearish):
             return None
 
+        # Look for breakout
         for i in range(2, len(day_df)):
             candle = day_df.iloc[i]
-            prev_5 = day_df.iloc[max(0, i-5):i]
-            avg_vol = prev_5["volume"].mean() if len(prev_5) > 0 else candle["volume"]
+            prev_vols = day_df.iloc[max(0, i-5):i]["volume"]
+            avg_vol = prev_vols.mean() if len(prev_vols) > 0 else float(candle["volume"])
+            volume_ok = float(candle["volume"]) > (avg_vol * 1.2)
 
-            volume_ok = candle["volume"] > (avg_vol * 1.2)
+            c_close = float(candle["close"])
+            c_vwap = float(candle["vwap"])
 
-            if is_bullish_bias:
-                if (candle["high"] > first["high"] and
-                    candle["close"] > candle["vwap"] and
+            if is_bullish:
+                if (float(candle["high"]) > float(first["high"]) and
+                    c_close > c_vwap and
                     volume_ok):
-
                     return {
                         "symbol": clean_sym,
-                        "price": round(float(candle["close"]), 2),
-                        "change": round(((candle["close"] - first["open"]) / first["open"]) * 100, 2),
+                        "price": round(c_close, 2),
+                        "change": round(((c_close - float(first["open"])) / float(first["open"])) * 100, 2),
                         "time": candle["datetime"].strftime("%H:%M"),
                         "type": "BULLISH",
                         "status": "READY",
                         "tv_url": tv_url,
-                        "qty": calculate_qty(float(candle["close"]))
+                        "qty": calculate_qty(c_close)
                     }
 
-            elif is_bearish_bias:
-                if (candle["low"] < first["low"] and
-                    candle["close"] < candle["vwap"] and
+            if is_bearish:
+                if (float(candle["low"]) < float(first["low"]) and
+                    c_close < c_vwap and
                     volume_ok):
-
                     return {
                         "symbol": clean_sym,
-                        "price": round(float(candle["close"]), 2),
-                        "change": round(((candle["close"] - first["open"]) / first["open"]) * 100, 2),
+                        "price": round(c_close, 2),
+                        "change": round(((c_close - float(first["open"])) / float(first["open"])) * 100, 2),
                         "time": candle["datetime"].strftime("%H:%M"),
                         "type": "BEARISH",
                         "status": "READY",
                         "tv_url": tv_url,
-                        "qty": calculate_qty(float(candle["close"]))
+                        "qty": calculate_qty(c_close)
                     }
 
         return None
 
     except Exception as e:
-        logger.debug(f"Error scanning {symbol}: {e}")
+        logger.debug(f"Scan error {symbol}: {e}")
         return None
 
 
-@st.cache_data(ttl=25, show_spinner=False)
+@st.cache_data(ttl=30, show_spinner=False)
 def run_scanner() -> pd.DataFrame:
     results = []
     if not fyers:
         return pd.DataFrame()
 
-    symbols_to_scan = SYMBOL_UNIVERSE[:180]
+    # Practical limit to respect rate limits
+    symbols_to_scan = SYMBOL_UNIVERSE[:150]
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {executor.submit(scan_single_stock, sym): sym for sym in symbols_to_scan}
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(scan_single_stock, sym) for sym in symbols_to_scan]
         for future in as_completed(futures):
             res = future.result()
-            if res and res["price"] >= 200:
+            if res and res.get("price", 0) >= 200:
                 results.append(res)
 
     if not results:
         return pd.DataFrame()
 
     df = pd.DataFrame(results)
-    df = df.sort_values("change", ascending=False).reset_index(drop=True)
-    return df
+    return df.sort_values("change", ascending=False).reset_index(drop=True)
 
 
 # ---------------------------------------------------------
-# 7. Run Scanner
+# 7. Execute
 # ---------------------------------------------------------
-with st.spinner(f"Scanning setups for {TARGET_DATE.strftime('%d %b %Y')}..."):
+with st.spinner(f"Scanning for {TARGET_DATE.strftime('%d %b %Y')}..."):
     df_all = run_scanner()
 
 bullish_df = df_all[df_all["type"] == "BULLISH"].head(8) if not df_all.empty else pd.DataFrame()
@@ -589,7 +557,7 @@ with c4:
         <div class="stat-title">ACTIVE SETUPS</div>
         <div style="font-size:17px;font-weight:900;color:#00e5ff;margin-top:4px;">{len(df_all)}</div>
         <div style="margin-top:8px;font-size:12px;color:{txt_muted};">
-            {TARGET_DATE.strftime('%d %b')} | Price ≥ ₹200
+            {TARGET_DATE.strftime('%d %b %Y')} | ≥ ₹200
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -634,7 +602,7 @@ for idx, (_, item) in enumerate(movers_bear.iterrows()):
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 10. Setup Tables
+# 10. Tables
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
