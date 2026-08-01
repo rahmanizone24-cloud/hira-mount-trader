@@ -8,12 +8,11 @@ import pytz
 import streamlit as st
 
 # ---------------------------------------------------------
-# Logging Setup
+# Logging
 # ---------------------------------------------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("HiraMountTrader")
 
-# Fyers API
 try:
     from fyers_apiv3 import fyersModel
 except ImportError:
@@ -21,7 +20,7 @@ except ImportError:
     logger.warning("fyers_apiv3 not installed")
 
 # ---------------------------------------------------------
-# 1. Page Config & Theme
+# 1. Page Config
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="HIRA MOUNT TRADER",
@@ -64,15 +63,23 @@ else:
     btn_bg = "#e2e8f0"
     btn_txt = "#0f172a"
 
-st.markdown(f"""
+# ---------------------------------------------------------
+# CSS (Fully Corrected)
+# ---------------------------------------------------------
+st.markdown(
+    f"""
 <style>
     header[data-testid="stHeader"] {{ display: none !important; }}
+    
     .main .block-container {{
         max-width: 100% !important;
         padding: 0.6rem 0.8rem 0.4rem 0.8rem !important;
     }}
+    
     .stApp {{ background-color: {bg_app}; color: {txt_main}; font-family: 'Inter', sans-serif; }}
+    
     [data-testid="column"] {{ padding: 0 4px !important; }}
+
     div.stButton > button {{
         background-color: {btn_bg} !important;
         color: {btn_txt} !important;
@@ -80,6 +87,7 @@ st.markdown(f"""
         border-radius: 6px !important;
         font-weight: 700 !important;
     }}
+
     .top-bar-container {{
         background-color: {bg_card};
         padding: 8px 14px;
@@ -92,7 +100,9 @@ st.markdown(f"""
         flex-wrap: wrap;
         gap: 8px;
     }}
+    
     .brand-title {{ font-size: 18px; font-weight: 900; color: #00e5ff; letter-spacing: 0.5px; }}
+    
     .index-badge {{
         background: {badge_bg};
         color: #38bdf8;
@@ -103,13 +113,18 @@ st.markdown(f"""
         font-weight: 800;
         text-decoration: none;
     }}
+    
     .idx-bull {{ color: #00ff87 !important; border-color: #065f46 !important; background: #022c22 !important; }}
     .idx-bear {{ color: #f43f5e !important; border-color: #9f1239 !important; background: #4c0519 !important; }}
+
     @keyframes dotGlow {{
-        0% {{ opacity: 1; }} 50% {{ opacity: 0.35; }} 100% {{ opacity: 1; }}
+        0% {{ opacity: 1; }}
+        50% {{ opacity: 0.35; }}
+        100% {{ opacity: 1; }}
     }}
     .dot-green {{ display: inline-block; width: 8px; height: 8px; background: #00ff87; border-radius: 50%; animation: dotGlow 2.2s infinite; margin-right: 5px; }}
     .dot-red {{ display: inline-block; width: 8px; height: 8px; background: #f43f5e; border-radius: 50%; animation: dotGlow 2.2s infinite; margin-right: 5px; }}
+
     .stat-box {{
         background: {bg_card};
         border: 1px solid {border_clr};
@@ -118,59 +133,5 @@ st.markdown(f"""
         margin-bottom: 8px;
     }}
     .stat-title {{ font-size: 10px; color: {txt_muted}; font-weight: 700; letter-spacing: 0.4px; }}
+    
     .mover-box {{
-        background: {bg_card};
-        border: 1px solid {border_clr};
-        border-radius: 8px;
-        padding: 7px 6px;
-        text-align: center;
-    }}
-    .stock-title-link {{ font-size: 14px; font-weight: 800; color: #38bdf8; text-decoration: none; }}
-    .stock-title-link:hover {{ text-decoration: underline; color: #7dd3fc; }}
-    .table-header-row {{
-        display: flex;
-        justify-content: space-between;
-        padding: 5px 12px;
-        font-size: 10px;
-        font-weight: 800;
-        color: {txt_muted};
-        margin-bottom: 4px;
-    }}
-    .setup-card {{
-        background-color: {bg_card};
-        border: 1px solid {border_clr};
-        border-radius: 8px;
-        padding: 7px 10px;
-        margin-bottom: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }}
-    .qty-badge {{
-        background-color: {badge_bg};
-        border: 1px solid {border_clr};
-        padding: 2px 7px;
-        border-radius: 5px;
-        font-size: 11px;
-        font-weight: 700;
-        color: #00e5ff;
-    }}
-    .tag-ready-bull {{
-        background-color: #00ff87 !important;
-        color: #022c22 !important;
-        padding: 3px 8px;
-        border-radius: 5px;
-        font-size: 10px;
-        font-weight: 900;
-    }}
-    .tag-ready-bear {{
-        background-color: #f43f5e !important;
-        color: #ffffff !important;
-        padding: 3px 8px;
-        border-radius: 5px;
-        font-size: 10px;
-        font-weight: 900;
-    }}
-    #MainMenu, footer {{ visibility: hidden; }}
-</style>
-""", unsafe_allow_html=
