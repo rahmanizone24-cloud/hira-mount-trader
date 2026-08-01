@@ -10,13 +10,14 @@ import streamlit as st
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("HiraMountTrader")
 
+from fyers_apiv3 import fyersModel
+
 session = fyersModel.SessionModel(client_id=st.secrets["FYERS_CLIENT_ID"], secret_key="7T15kjQ0xzuVGEE9", grant_type="authorization_code", response_type="code")
 session.set_token(st.secrets["FYERS_ACCESS_TOKEN"])
 response = session.generate_token()
 fyers = fyersModel.FyersModel(client_id=st.secrets["FYERS_CLIENT_ID"], is_async=False, token=response.get("access_token"), log_path="")
 
 st.set_page_config(page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="collapsed", page_icon="📈")
-
 try:
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=30000, key="hira_refresh")
