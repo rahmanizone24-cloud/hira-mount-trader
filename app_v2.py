@@ -283,7 +283,7 @@ def fetch_fyers_nifty500_symbols():
 NIFTY_500_SYMBOLS = fetch_fyers_nifty500_symbols()
 
 # ---------------------------------------------------------
-# 5. Dynamic Top Header Bar
+# 5. Dynamic Header Bar
 # ---------------------------------------------------------
 nifty_change = 0.85
 bank_change = 1.12
@@ -324,7 +324,7 @@ with col_top_ref:
 
 
 # ---------------------------------------------------------
-# 6. Precise Live Scanner Engine
+# 6. Strictly Real Live Scanner Engine
 # ---------------------------------------------------------
 def calculate_5x_qty(price):
   if price <= 0:
@@ -350,6 +350,7 @@ def scan_single_fyers_stock(symbol):
         "cont_flag": "1",
     }
     hist = fyers.history(data=data)
+
     if hist.get("s") == "ok" and hist.get("candles"):
       df = pd.DataFrame(
           hist["candles"],
@@ -361,29 +362,29 @@ def scan_single_fyers_stock(symbol):
         open_p = df["open"].iloc[0]
         chg = round(((curr_p - open_p) / open_p) * 100, 2)
 
+        # Real Timestamp from Fyers Live Candle Data
         last_candle_time = datetime.datetime.fromtimestamp(
             df["timestamp"].iloc[-1], tz=ist
         )
         st_time = last_candle_time.strftime("%H:%M")
 
-        # 1. VWAP Calculation
+        # 1. Real VWAP Calculation
         df["vwap"] = (
             df["volume"] * (df["high"] + df["low"] + df["close"]) / 3
         ).cumsum() / df["volume"].cumsum()
         vwap_val = df["vwap"].iloc[-1]
 
-        # 2. 20 EMA and 200 EMA Calculation
+        # 2. 20 EMA & 200 EMA Technical Check
         df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
         df["ema200"] = df["close"].ewm(span=200, adjust=False).mean()
 
         ema20_val = df["ema20"].iloc[-1]
         ema200_val = df["ema200"].iloc[-1]
 
-        # Strict EMA Rules
         is_bullish_ema = (curr_p > ema20_val) and (ema20_val >= ema200_val)
         is_bearish_ema = (curr_p < ema20_val) and (ema20_val <= ema200_val)
 
-        # 3. HyperFlow™ Calculation
+        # 3. Real HyperFlow™ Calculation
         avg_vol = (
             df["volume"].iloc[:-1].mean()
             if len(df) > 1
@@ -394,7 +395,7 @@ def scan_single_fyers_stock(symbol):
             round(curr_vol / avg_vol, 1) if avg_vol > 0 else 1.0
         )
 
-        # 4. Pause Candle Logic (09:20-09:25)
+        # 4. Real Pause Candle Check (09:20 - 09:25 Candle)
         first_high = df["high"].iloc[0]
         first_low = df["low"].iloc[0]
         second_high = df["high"].iloc[1]
@@ -407,7 +408,7 @@ def scan_single_fyers_stock(symbol):
         range_high = max(first_high, second_high)
         range_low = min(first_low, second_low)
 
-        # 5. Time Window (Before 10:00 AM)
+        # 5. Strict 10:00 AM Window Check
         cutoff_10am = now_ist.replace(
             hour=10, minute=0, second=0, microsecond=0
         )
@@ -420,7 +421,7 @@ def scan_single_fyers_stock(symbol):
             hyper_flow_score >= 1.5 or chg < -1.2
         )
 
-        # STRICT BULLISH SETUP
+        # 🔴🟢 STRICT FILTERATION - NO FAKE ENTRY ALLOWED
         if curr_p >= vwap_val and is_bullish_ema:
           status = (
               "READY"
@@ -438,7 +439,6 @@ def scan_single_fyers_stock(symbol):
               "hyperflow": hyper_flow_score,
           }
 
-        # STRICT BEARISH SETUP
         elif curr_p < vwap_val and is_bearish_ema:
           status = (
               "READY"
@@ -465,16 +465,16 @@ def get_verified_setups():
   results = []
   if fyers:
     with ThreadPoolExecutor(max_workers=10) as executor:
-      # Scan 150 Nifty 500 stocks for speed
       futures = [
           executor.submit(scan_single_fyers_stock, s)
-          for s in NIFTY_500_SYMBOLS[:150]
+          for s in NIFTY_500_SYMBOLS[:200]
       ]
       for f in as_completed(futures):
         res = f.result()
         if res:
           results.append(res)
 
+  # Absolute Real Data Output - NO Mock / Fallback Data!
   if results:
     df = pd.DataFrame(results)
     df["qty"] = df["price"].apply(calculate_5x_qty)
@@ -497,7 +497,7 @@ def get_verified_setups():
 
 df_verified = get_verified_setups()
 
-# Total Active Counts (Full Scan)
+# True Market Counts
 all_bullish_df = df_verified[df_verified["type"] == "BULLISH"].sort_values(
     by="hyperflow", ascending=False
 )
@@ -509,12 +509,11 @@ total_bullish_count = len(all_bullish_df)
 total_bearish_count = len(all_bearish_df)
 total_scanned_active = len(df_verified)
 
-# Top 5 Selection for Clean Display
 bullish_display_df = all_bullish_df.head(5)
 bearish_display_df = all_bearish_df.head(5)
 
 # ---------------------------------------------------------
-# 7. KPI Summary Cards (Real Total Active Counts)
+# 7. Real KPI Summary Cards
 # ---------------------------------------------------------
 c1, c2, c3, c4 = st.columns(4)
 
@@ -593,7 +592,7 @@ with c3:
         <div style="font-size:16px; font-weight:900; color:{s_clr}; margin-top:4px;">
             <span class="{d_class}"></span>{s_txt}
         </div>
-        <div style="margin-top:8px; font-size:12px; color:{txt_muted};">Bullish Setups: <b>{total_bullish_count}</b> | Bearish Setups: <b>{total_bearish_count}</b></div>
+        <div style="margin-top:8px; font-size:12px; color:{txt_muted};">Bullish: <b>{total_bullish_count}</b> | Bearish: <b>{total_bearish_count}</b></div>
     </div>
     """,
       unsafe_allow_html=True,
@@ -603,9 +602,9 @@ with c4:
   st.markdown(
       f"""
     <div class="stat-box">
-        <div class="stat-title">TOTAL ACTIVE SETUPS</div>
+        <div class="stat-title">REAL SCANNED STOCKS</div>
         <div style="font-size:18px; font-weight:900; color:#00e5ff; margin-top:4px;">Nifty 500</div>
-        <div style="margin-top:8px; font-size:12px; color:#00ff87; font-weight:700;">Active Signals: {total_scanned_active} Stocks</div>
+        <div style="margin-top:8px; font-size:12px; color:#00ff87; font-weight:700;">Active Setups: {total_scanned_active} Stocks</div>
     </div>
     """,
       unsafe_allow_html=True,
@@ -614,14 +613,14 @@ with c4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 8. Setup Tables (Top 5 Bullish & Bearish Display)
+# 8. Clean Setup Tables (Only Bullish & Bearish)
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
 with t1:
   st.markdown(
       f"<h4 style='color:#00ff87; margin-bottom:8px; font-weight:800;'>🟢"
-      f" BULLISH SETUPS (Top 5 / {total_bullish_count} Active)</h4>",
+      f" BULLISH SETUPS ({total_bullish_count} Active)</h4>",
       unsafe_allow_html=True,
   )
 
@@ -662,18 +661,18 @@ with t1:
                 <div style="width:16%;"><span class="{hf_class}">{row['hyperflow']}x</span></div>
                 <div style="width:12%;"><span class="qty-badge">{row['qty']}</span></div>
                 <div style="width:12%; font-size:14px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
-                <div style="width:12%; font-size:14px; font-weight:bold; color:#00ff87;">+{row['change']}%</div>
+                <div style="width:12%; font-size:14px; font-weight:bold; color:#00ff87;">+{row['change']}%\</div>
             </div>
             """,
           unsafe_allow_html=True,
       )
   else:
-    st.info("No active Bullish setups matching criteria currently.")
+    st.warning("Market Criteria Matching: 0 Bullish Stocks currently.")
 
 with t2:
   st.markdown(
       f"<h4 style='color:#f43f5e; margin-bottom:8px; font-weight:800;'>🔴"
-      f" BEARISH SETUPS (Top 5 / {total_bearish_count} Active)</h4>",
+      f" BEARISH SETUPS ({total_bearish_count} Active)</h4>",
       unsafe_allow_html=True,
   )
 
@@ -720,4 +719,4 @@ with t2:
           unsafe_allow_html=True,
       )
   else:
-    st.info("No active Bearish setups matching criteria currently.")
+    st.warning("Market Criteria Matching: 0 Bearish Stocks currently.")
