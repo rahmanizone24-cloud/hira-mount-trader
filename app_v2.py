@@ -13,7 +13,7 @@ except ImportError:
     fyersModel = None
 
 # ---------------------------------------------------------
-# 1. Page Configuration & Persistent Theme Initialization
+# 1. Page Configuration & Permanent Theme Logic (Fix)
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="collapsed"
@@ -26,18 +26,22 @@ try:
 except ImportError:
     pass
 
-# PERMANENT THEME STATE FIX: ریفریش پر بھی تھیم وہی رہے گی
-if "theme_mode" not in st.session_state:
-    st.session_state.theme_mode = "Dark"
+# PERMANENT THEME FIX: URL Query Params کے ذریعے تھیم کی ویلیو لاک کی گئی ہے
+if "theme" in st.query_params:
+    current_theme = st.query_params["theme"]
+    st.session_state["theme_mode"] = current_theme
+else:
+    if "theme_mode" not in st.session_state:
+        st.session_state["theme_mode"] = "Dark"
+        st.query_params["theme"] = "Dark"
 
 def toggle_theme():
-    if st.session_state.theme_mode == "Dark":
-        st.session_state.theme_mode = "Light"
-    else:
-        st.session_state.theme_mode = "Dark"
+    new_theme = "Light" if st.session_state["theme_mode"] == "Dark" else "Dark"
+    st.session_state["theme_mode"] = new_theme
+    st.query_params["theme"] = new_theme
 
-# Dynamic Themes Styling based on preserved session_state
-if st.session_state.theme_mode == "Dark":
+# Dynamic Themes Styling based on preserved state
+if st.session_state["theme_mode"] == "Dark":
     bg_app = "#06090e"
     bg_card = "#0f172a"
     border_clr = "#1e293b"
@@ -310,9 +314,10 @@ with col_top1:
     )
 
 with col_top_theme:
-    # تھیم سوئچ بٹن پر `on_click` کا بنیادی ہینڈلر لگایا گیا ہے
-    theme_label = "☀️ Light" if st.session_state.theme_mode == "Dark" else "🌙 Dark"
-    st.button(theme_label, on_click=toggle_theme, use_container_width=True)
+    theme_label = "☀️ Light" if st.session_state["theme_mode"] == "Dark" else "🌙 Dark"
+    if st.button(theme_label, use_container_width=True):
+        toggle_theme()
+        st.rerun()
 
 with col_top_ref:
     if st.button("🔄 Refresh", use_container_width=True):
