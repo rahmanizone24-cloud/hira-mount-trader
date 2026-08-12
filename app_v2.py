@@ -46,8 +46,8 @@ if st.session_state["theme_mode"] == "Dark":
     bg_card = "#0f172a"
     border_clr = "#1e293b"
     txt_main = "#f8fafc"
-    txt_muted = "#cbd5e1"
-    symbol_link_clr = "#00e5ff"  # ڈارک تھیم کے لیے انتہائی برائٹ سائین کلر (High Contrast)
+    txt_muted = "#cbd5e1"        # ڈارک تھیم کے لیے زیادہ روشن ٹیکسٹ
+    symbol_link_clr = "#00e5ff"  # انتہائی روشن اور چمکدار سائین رنگ (High Contrast)
     symbol_hover_clr = "#7dd3fc"
     badge_bg = "#1e293b"
     btn_bg = "#1e293b"
@@ -136,7 +136,7 @@ st.markdown(
     }}
     .stat-title {{ font-size: 10px; color: {txt_muted}; font-weight: bold; letter-spacing: 0.5px; }}
     
-    .stock-title-link {{ font-size: 14px; font-weight: 900; color: {symbol_link_clr} !important; text-decoration: none; }}
+    .stock-title-link {{ font-size: 14px; font-weight: 800; color: {symbol_link_clr} !important; text-decoration: none; }}
     .stock-title-link:hover {{ text-decoration: underline; color: {symbol_hover_clr} !important; }}
     
     .table-header-row {{
@@ -328,7 +328,7 @@ with col_top_ref:
         st.rerun()
 
 # ---------------------------------------------------------
-# 6. Advanced Engine Logic
+# 6. Direct Market Scan (No Filter Logic)
 # ---------------------------------------------------------
 def calculate_5x_qty(price):
     if price <= 0:
@@ -369,60 +369,30 @@ def scan_single_fyers_stock(symbol):
                 )
                 st_time = last_candle_time.strftime("%H:%M")
 
-                df["vwap"] = (
-                    df["volume"] * (df["high"] + df["low"] + df["close"]) / 3
-                ).cumsum() / df["volume"].cumsum()
-                vwap_val = df["vwap"].iloc[-1]
-
-                df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
-                df["ema200"] = df["close"].ewm(span=200, adjust=False).mean()
-
-                ema20_val = df["ema20"].iloc[-1]
-                ema200_val = df["ema200"].iloc[-1]
-
-                is_bullish_ema = (curr_p > ema20_val) and (ema20_val >= ema200_val)
-                is_bearish_ema = (curr_p < ema20_val) and (ema20_val <= ema200_val)
-
                 avg_vol = df["volume"].iloc[:-1].mean() if len(df) > 1 else df["volume"].iloc[-1]
                 curr_vol = df["volume"].iloc[-1]
                 hyper_flow_score = round(curr_vol / avg_vol, 1) if avg_vol > 0 else 1.0
 
-                first_high = df["high"].iloc[0]
-                first_low = df["low"].iloc[0]
-                second_high = df["high"].iloc[1]
-                second_low = df["low"].iloc[1]
-
-                is_pause_candle = (second_high <= first_high * 1.002) and (second_low >= first_low * 0.998)
-                range_high = max(first_high, second_high)
-                range_low = min(first_low, second_low)
-
-                cutoff_10am = now_ist.replace(hour=10, minute=0, second=0, microsecond=0)
-                is_before_10am = last_candle_time <= cutoff_10am
-
-                is_breakout = (curr_p > range_high) and (hyper_flow_score >= 1.5 or chg > 1.2)
-                is_breakdown = (curr_p < range_low) and (hyper_flow_score >= 1.5 or chg < -1.2)
-
-                if curr_p >= vwap_val and is_bullish_ema:
-                    status = "READY" if (is_pause_candle and is_breakout and is_before_10am) else "WATCH"
+                # بغیر کسی EMA/VWAP لاجک کے، صرف ڈائریکٹ پرائس موومنٹ کی بنیاد پر کلاسیفکیشن
+                if chg >= 0:
                     return {
                         "symbol": clean_sym,
                         "price": curr_p,
                         "change": chg,
                         "time": st_time,
                         "type": "BULLISH",
-                        "status": status,
+                        "status": "READY",
                         "tv_url": tv_url,
                         "hyperflow": hyper_flow_score,
                     }
-                elif curr_p < vwap_val and is_bearish_ema:
-                    status = "READY" if (is_pause_candle and is_breakdown and is_before_10am) else "WATCH"
+                else:
                     return {
                         "symbol": clean_sym,
                         "price": curr_p,
                         "change": chg,
                         "time": st_time,
                         "type": "BEARISH",
-                        "status": status,
+                        "status": "READY",
                         "tv_url": tv_url,
                         "hyperflow": hyper_flow_score,
                     }
