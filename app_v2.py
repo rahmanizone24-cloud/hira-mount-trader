@@ -731,14 +731,14 @@ with c4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 8. Setup Tables (VWAP + 20/200 EMA + Pause Candle Included)
+# 8. Setup Tables
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
 with t1:
   st.markdown(
       "<h4 style='color:#00ff87; margin-bottom:8px; font-weight:800;'>🟢"
-      " BULLISH SETUPS (VWAP + 20/200 EMA + 10 AM Breakout)</h4>",
+      " BULLISH SETUPS</h4>",
       unsafe_allow_html=True,
   )
 
@@ -787,7 +787,7 @@ with t1:
 with t2:
   st.markdown(
       "<h4 style='color:#f43f5e; margin-bottom:8px; font-weight:800;'>🔴"
-      " BEARISH SETUPS (VWAP + 20/200 EMA + 10 AM Breakdown)</h4>",
+      " BEARISH SETUPS</h4>",
       unsafe_allow_html=True,
   )
 
