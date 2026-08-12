@@ -40,13 +40,15 @@ def toggle_theme():
     st.session_state["theme_mode"] = new_theme
     st.query_params["theme"] = new_theme
 
-# Dynamic Themes Styling based on preserved state
+# Dynamic Themes Styling with High-Visibility Colors for Dark Mode
 if st.session_state["theme_mode"] == "Dark":
     bg_app = "#06090e"
     bg_card = "#0f172a"
     border_clr = "#1e293b"
     txt_main = "#f8fafc"
-    txt_muted = "#94a3b8"
+    txt_muted = "#cbd5e1"
+    symbol_link_clr = "#00e5ff"  # ڈارک تھیم کے لیے انتہائی برائٹ سائین کلر (High Contrast)
+    symbol_hover_clr = "#7dd3fc"
     badge_bg = "#1e293b"
     btn_bg = "#1e293b"
     btn_txt = "#f8fafc"
@@ -56,6 +58,8 @@ else:
     border_clr = "#cbd5e1"
     txt_main = "#0f172a"
     txt_muted = "#64748b"
+    symbol_link_clr = "#0284c7"  # لائٹ تھیم کے لیے ڈارک پرفیکٹ بلو
+    symbol_hover_clr = "#0369a1"
     badge_bg = "#e2e8f0"
     btn_bg = "#e2e8f0"
     btn_txt = "#0f172a"
@@ -132,8 +136,8 @@ st.markdown(
     }}
     .stat-title {{ font-size: 10px; color: {txt_muted}; font-weight: bold; letter-spacing: 0.5px; }}
     
-    .stock-title-link {{ font-size: 14px; font-weight: 800; color: #38bdf8; text-decoration: none; }}
-    .stock-title-link:hover {{ text-decoration: underline; color: #7dd3fc; }}
+    .stock-title-link {{ font-size: 14px; font-weight: 900; color: {symbol_link_clr} !important; text-decoration: none; }}
+    .stock-title-link:hover {{ text-decoration: underline; color: {symbol_hover_clr} !important; }}
     
     .table-header-row {{
         display: flex;
@@ -504,7 +508,7 @@ with c2:
     <div class="stat-box">
         <div class="stat-title">TOP LOSER 📉</div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-            <a href="{top_l['tv_url']}" target="_blank" class="stock-title-link" style="font-size:18px; color:#f43f5e;">{top_l['symbol']}</a>
+            <a href="{top_l['tv_url']}" target="_blank" class="stock-title-link" style="font-size:18px;">{top_l['symbol']}</a>
             <span style="font-size:18px; font-weight:900; color:#f43f5e;">{top_l['change']}%</span>
         </div>
         <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
