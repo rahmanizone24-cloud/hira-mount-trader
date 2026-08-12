@@ -8,12 +8,12 @@ import streamlit as st
 
 # Fyers API v3 Integration
 try:
-  from fyers_apiv3 import fyersModel
+    from fyers_apiv3 import fyersModel
 except ImportError:
-  fyersModel = None
+    fyersModel = None
 
 # ---------------------------------------------------------
-# 1. Page Configuration & Theme Initialization
+# 1. Page Configuration & Persistent Theme Initialization
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="HIRA MOUNT TRADER", layout="wide", initial_sidebar_state="collapsed"
@@ -21,41 +21,40 @@ st.set_page_config(
 
 # Smooth Auto-Refresh Logic (Every 30 Seconds)
 try:
-  from streamlit_autorefresh import st_autorefresh
-
-  st_autorefresh(interval=30000, key="hira_mount_refresh_key")
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=30000, key="hira_mount_refresh_key")
 except ImportError:
-  pass
+    pass
 
+# PERMANENT THEME STATE FIX: ریفریش پر بھی تھیم وہی رہے گی
 if "theme_mode" not in st.session_state:
-  st.session_state["theme_mode"] = "Dark"
-
+    st.session_state.theme_mode = "Dark"
 
 def toggle_theme():
-  st.session_state["theme_mode"] = (
-      "Light" if st.session_state["theme_mode"] == "Dark" else "Dark"
-  )
+    if st.session_state.theme_mode == "Dark":
+        st.session_state.theme_mode = "Light"
+    else:
+        st.session_state.theme_mode = "Dark"
 
-
-# Dynamic Themes Styling
-if st.session_state["theme_mode"] == "Dark":
-  bg_app = "#06090e"
-  bg_card = "#0f172a"
-  border_clr = "#1e293b"
-  txt_main = "#f8fafc"
-  txt_muted = "#94a3b8"
-  badge_bg = "#1e293b"
-  btn_bg = "#1e293b"
-  btn_txt = "#f8fafc"
+# Dynamic Themes Styling based on preserved session_state
+if st.session_state.theme_mode == "Dark":
+    bg_app = "#06090e"
+    bg_card = "#0f172a"
+    border_clr = "#1e293b"
+    txt_main = "#f8fafc"
+    txt_muted = "#94a3b8"
+    badge_bg = "#1e293b"
+    btn_bg = "#1e293b"
+    btn_txt = "#f8fafc"
 else:
-  bg_app = "#f1f5f9"
-  bg_card = "#ffffff"
-  border_clr = "#cbd5e1"
-  txt_main = "#0f172a"
-  txt_muted = "#64748b"
-  badge_bg = "#e2e8f0"
-  btn_bg = "#e2e8f0"
-  btn_txt = "#0f172a"
+    bg_app = "#f1f5f9"
+    bg_card = "#ffffff"
+    border_clr = "#cbd5e1"
+    txt_main = "#0f172a"
+    txt_muted = "#64748b"
+    badge_bg = "#e2e8f0"
+    btn_bg = "#e2e8f0"
+    btn_txt = "#0f172a"
 
 st.markdown(
     f"""
@@ -216,21 +215,19 @@ st.markdown(
 CLIENT_ID = st.secrets.get("FYERS_CLIENT_ID", "YOUR_APP_ID-100")
 ACCESS_TOKEN = st.secrets.get("FYERS_ACCESS_TOKEN", "YOUR_ACCESS_TOKEN")
 
-
 @st.cache_resource
 def get_fyers_instance():
-  if fyersModel and CLIENT_ID != "YOUR_APP_ID-100":
-    try:
-      return fyersModel.FyersModel(
-          client_id=CLIENT_ID,
-          token=ACCESS_TOKEN,
-          is_async=False,
-          log_path="",
-      )
-    except Exception:
-      return None
-  return None
-
+    if fyersModel and CLIENT_ID != "YOUR_APP_ID-100":
+        try:
+            return fyersModel.FyersModel(
+                client_id=CLIENT_ID,
+                token=ACCESS_TOKEN,
+                is_async=False,
+                log_path="",
+            )
+        except Exception:
+            return None
+    return None
 
 fyers = get_fyers_instance()
 
@@ -247,87 +244,59 @@ is_weekday = now_ist.weekday() < 5
 is_market_hours = market_open_time <= now_ist <= market_close_time
 
 if is_weekday and is_market_hours:
-  market_status_html = '<span style="background:#064e3b; color:#34d399; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold;"><span class="dot-green"></span>OPEN</span>'
+    market_status_html = '<span style="background:#064e3b; color:#34d399; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold;"><span class="dot-green"></span>OPEN</span>'
 else:
-  market_status_html = '<span style="background:#881337; color:#fecdd3; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold;"><span class="dot-red"></span>CLOSED</span>'
+    market_status_html = '<span style="background:#881337; color:#fecdd3; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold;"><span class="dot-red"></span>CLOSED</span>'
 
 time_str = now_ist.strftime("%d %b | %I:%M %p")
 
 # ---------------------------------------------------------
 # 4. Fetch Live Nifty 500 Symbol Master directly from Fyers
 # ---------------------------------------------------------
-
-
 @st.cache_data(ttl=86400)
 def fetch_fyers_nifty500_symbols():
-  try:
-    url = "https://public.fyers.in/sym_details/NSE_CM.csv"
-    df_sym = pd.read_csv(url, header=None)
-    eq_symbols = df_sym[df_sym[9].str.endswith("-EQ", na=False)][9].tolist()
-    return eq_symbols[:500]
-  except Exception:
-    return [
-        "NSE:RELIANCE-EQ",
-        "NSE:TCS-EQ",
-        "NSE:HDFCBANK-EQ",
-        "NSE:ICICIBANK-EQ",
-        "NSE:INFY-EQ",
-        "NSE:BHARTIARTL-EQ",
-        "NSE:ITC-EQ",
-        "NSE:SBIN-EQ",
-        "NSE:LT-EQ",
-        "NSE:BAJFINANCE-EQ",
-    ]
-
+    try:
+        url = "https://public.fyers.in/sym_details/NSE_CM.csv"
+        df_sym = pd.read_csv(url, header=None)
+        eq_symbols = df_sym[df_sym[9].str.endswith("-EQ", na=False)][9].tolist()
+        return eq_symbols[:500]
+    except Exception:
+        return [
+            "NSE:RELIANCE-EQ", "NSE:TCS-EQ", "NSE:HDFCBANK-EQ", "NSE:ICICIBANK-EQ",
+            "NSE:INFY-EQ", "NSE:BHARTIARTL-EQ", "NSE:ITC-EQ", "NSE:SBIN-EQ",
+            "NSE:LT-EQ", "NSE:BAJFINANCE-EQ"
+        ]
 
 NIFTY_500_SYMBOLS = fetch_fyers_nifty500_symbols()
 
 # ---------------------------------------------------------
-# 5. Dynamic Index Direction Setup
+# 5. Dynamic Index Direction Setup & Top Bar
 # ---------------------------------------------------------
 nifty_change = 0.85
 bank_change = 1.12
 sensex_change = -0.24
 
 nifty_html = (
-    f'<a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY"'
-    f' target="_blank" class="index-badge idx-bull">NIFTY 50 ▲'
-    f' +{nifty_change}%</a>'
+    f'<a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge idx-bull">NIFTY 50 ▲ +{nifty_change}%</a>'
     if nifty_change >= 0
-    else (
-        f'<a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY"'
-        f' target="_blank" class="index-badge idx-bear">NIFTY 50 ▼'
-        f' {nifty_change}%</a>'
-    )
+    else f'<a href="https://in.tradingview.com/chart/?symbol=NSE:NIFTY" target="_blank" class="index-badge idx-bear">NIFTY 50 ▼ {nifty_change}%</a>'
 )
 bank_html = (
-    f'<a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY"'
-    f' target="_blank" class="index-badge idx-bull">BANK NIFTY ▲'
-    f' +{bank_change}%</a>'
+    f'<a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge idx-bull">BANK NIFTY ▲ +{bank_change}%</a>'
     if bank_change >= 0
-    else (
-        f'<a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY"'
-        f' target="_blank" class="index-badge idx-bear">BANK NIFTY ▼'
-        f' {bank_change}%</a>'
-    )
+    else f'<a href="https://in.tradingview.com/chart/?symbol=NSE:BANKNIFTY" target="_blank" class="index-badge idx-bear">BANK NIFTY ▼ {bank_change}%</a>'
 )
 sensex_html = (
-    f'<a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX"'
-    f' target="_blank" class="index-badge idx-bull">SENSEX ▲'
-    f' +{sensex_change}%</a>'
+    f'<a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge idx-bull">SENSEX ▲ +{sensex_change}%</a>'
     if sensex_change >= 0
-    else (
-        f'<a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX"'
-        f' target="_blank" class="index-badge idx-bear">SENSEX ▼'
-        f' {sensex_change}%</a>'
-    )
+    else f'<a href="https://in.tradingview.com/chart/?symbol=BSE:SENSEX" target="_blank" class="index-badge idx-bear">SENSEX ▼ {sensex_change}%</a>'
 )
 
 col_top1, col_top_theme, col_top_ref = st.columns([10, 1, 1])
 
 with col_top1:
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
     <div class="top-bar-container">
         <span class="brand-title">HIRA MOUNT TRADER</span>
         {nifty_html}
@@ -337,293 +306,153 @@ with col_top1:
         <span class="index-badge" style="color:#00e5ff;">🕒 {time_str}</span>
     </div>
     """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
 
 with col_top_theme:
-  theme_label = (
-      "☀️ Light" if st.session_state["theme_mode"] == "Dark" else "🌙 Dark"
-  )
-  if st.button(theme_label, use_container_width=True):
-    toggle_theme()
-    st.rerun()
+    # تھیم سوئچ بٹن پر `on_click` کا بنیادی ہینڈلر لگایا گیا ہے
+    theme_label = "☀️ Light" if st.session_state.theme_mode == "Dark" else "🌙 Dark"
+    st.button(theme_label, on_click=toggle_theme, use_container_width=True)
 
 with col_top_ref:
-  if st.button("🔄 Refresh", use_container_width=True):
-    st.rerun()
-
+    if st.button("🔄 Refresh", use_container_width=True):
+        st.rerun()
 
 # ---------------------------------------------------------
-# 6. Advanced Engine: VWAP + 20/200 EMA + Pause Candle + 10:00 AM Breakout
+# 6. Advanced Engine Logic
 # ---------------------------------------------------------
 def calculate_5x_qty(price):
-  if price <= 0:
-    return 1
-  return max(1, int(50000 / price))
-
+    if price <= 0:
+        return 1
+    return max(1, int(50000 / price))
 
 def scan_single_fyers_stock(symbol):
-  try:
-    clean_sym = symbol.replace("NSE:", "").replace("-EQ", "")
-    tv_url = f"https://in.tradingview.com/chart/?symbol=NSE:{clean_sym}"
+    try:
+        clean_sym = symbol.replace("NSE:", "").replace("-EQ", "")
+        tv_url = f"https://in.tradingview.com/chart/?symbol=NSE:{clean_sym}"
 
-    if not fyers:
-      return None
+        if not fyers:
+            return None
 
-    today_str = now_ist.strftime("%Y-%m-%d")
-    data = {
-        "symbol": symbol,
-        "resolution": "5",
-        "date_format": "1",
-        "range_from": today_str,
-        "range_to": today_str,
-        "cont_flag": "1",
-    }
-    hist = fyers.history(data=data)
-    if hist.get("s") == "ok" and hist.get("candles"):
-      df = pd.DataFrame(
-          hist["candles"],
-          columns=["timestamp", "open", "high", "low", "close", "volume"],
-      )
+        today_str = now_ist.strftime("%Y-%m-%d")
+        data = {
+            "symbol": symbol,
+            "resolution": "5",
+            "date_format": "1",
+            "range_from": today_str,
+            "range_to": today_str,
+            "cont_flag": "1",
+        }
+        hist = fyers.history(data=data)
+        if hist.get("s") == "ok" and hist.get("candles"):
+            df = pd.DataFrame(
+                hist["candles"],
+                columns=["timestamp", "open", "high", "low", "close", "volume"],
+            )
 
-      if len(df) >= 2:
-        curr_p = df["close"].iloc[-1]
-        open_p = df["open"].iloc[0]
-        chg = round(((curr_p - open_p) / open_p) * 100, 2)
+            if len(df) >= 2:
+                curr_p = df["close"].iloc[-1]
+                open_p = df["open"].iloc[0]
+                chg = round(((curr_p - open_p) / open_p) * 100, 2)
 
-        last_candle_time = datetime.datetime.fromtimestamp(
-            df["timestamp"].iloc[-1], tz=ist
-        )
-        st_time = last_candle_time.strftime("%H:%M")
+                last_candle_time = datetime.datetime.fromtimestamp(
+                    df["timestamp"].iloc[-1], tz=ist
+                )
+                st_time = last_candle_time.strftime("%H:%M")
 
-        # 1. VWAP Calculation
-        df["vwap"] = (
-            df["volume"] * (df["high"] + df["low"] + df["close"]) / 3
-        ).cumsum() / df["volume"].cumsum()
-        vwap_val = df["vwap"].iloc[-1]
+                df["vwap"] = (
+                    df["volume"] * (df["high"] + df["low"] + df["close"]) / 3
+                ).cumsum() / df["volume"].cumsum()
+                vwap_val = df["vwap"].iloc[-1]
 
-        # 2. 20 EMA and 200 EMA Calculation
-        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
-        df["ema200"] = df["close"].ewm(span=200, adjust=False).mean()
+                df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
+                df["ema200"] = df["close"].ewm(span=200, adjust=False).mean()
 
-        ema20_val = df["ema20"].iloc[-1]
-        ema200_val = df["ema200"].iloc[-1]
+                ema20_val = df["ema20"].iloc[-1]
+                ema200_val = df["ema200"].iloc[-1]
 
-        # EMA Rules
-        is_bullish_ema = (curr_p > ema20_val) and (ema20_val >= ema200_val)
-        is_bearish_ema = (curr_p < ema20_val) and (ema20_val <= ema200_val)
+                is_bullish_ema = (curr_p > ema20_val) and (ema20_val >= ema200_val)
+                is_bearish_ema = (curr_p < ema20_val) and (ema20_val <= ema200_val)
 
-        # 3. HyperFlow™ Calculation
-        avg_vol = (
-            df["volume"].iloc[:-1].mean()
-            if len(df) > 1
-            else df["volume"].iloc[-1]
-        )
-        curr_vol = df["volume"].iloc[-1]
-        hyper_flow_score = (
-            round(curr_vol / avg_vol, 1) if avg_vol > 0 else 1.0
-        )
+                avg_vol = df["volume"].iloc[:-1].mean() if len(df) > 1 else df["volume"].iloc[-1]
+                curr_vol = df["volume"].iloc[-1]
+                hyper_flow_score = round(curr_vol / avg_vol, 1) if avg_vol > 0 else 1.0
 
-        # 4. Pause Candle Logic
-        first_high = df["high"].iloc[0]
-        first_low = df["low"].iloc[0]
-        second_high = df["high"].iloc[1]
-        second_low = df["low"].iloc[1]
+                first_high = df["high"].iloc[0]
+                first_low = df["low"].iloc[0]
+                second_high = df["high"].iloc[1]
+                second_low = df["low"].iloc[1]
 
-        is_pause_candle = (second_high <= first_high * 1.002) and (
-            second_low >= first_low * 0.998
-        )
+                is_pause_candle = (second_high <= first_high * 1.002) and (second_low >= first_low * 0.998)
+                range_high = max(first_high, second_high)
+                range_low = min(first_low, second_low)
 
-        range_high = max(first_high, second_high)
-        range_low = min(first_low, second_low)
+                cutoff_10am = now_ist.replace(hour=10, minute=0, second=0, microsecond=0)
+                is_before_10am = last_candle_time <= cutoff_10am
 
-        # 5. Time Window (Before 10:00 AM)
-        cutoff_10am = now_ist.replace(
-            hour=10, minute=0, second=0, microsecond=0
-        )
-        is_before_10am = last_candle_time <= cutoff_10am
+                is_breakout = (curr_p > range_high) and (hyper_flow_score >= 1.5 or chg > 1.2)
+                is_breakdown = (curr_p < range_low) and (hyper_flow_score >= 1.5 or chg < -1.2)
 
-        is_breakout = (curr_p > range_high) and (
-            hyper_flow_score >= 1.5 or chg > 1.2
-        )
-        is_breakdown = (curr_p < range_low) and (
-            hyper_flow_score >= 1.5 or chg < -1.2
-        )
-
-        # BULLISH SETUP (Price > VWAP AND Price > 20 EMA AND 20 EMA > 200 EMA)
-        if curr_p >= vwap_val and is_bullish_ema:
-          status = (
-              "READY"
-              if (is_pause_candle and is_breakout and is_before_10am)
-              else "WATCH"
-          )
-          return {
-              "symbol": clean_sym,
-              "price": curr_p,
-              "change": chg,
-              "time": st_time,
-              "type": "BULLISH",
-              "status": status,
-              "tv_url": tv_url,
-              "hyperflow": hyper_flow_score,
-          }
-
-        # BEARISH SETUP (Price < VWAP AND Price < 20 EMA AND 20 EMA < 200 EMA)
-        elif curr_p < vwap_val and is_bearish_ema:
-          status = (
-              "READY"
-              if (is_pause_candle and is_breakdown and is_before_10am)
-              else "WATCH"
-          )
-          return {
-              "symbol": clean_sym,
-              "price": curr_p,
-              "change": chg,
-              "time": st_time,
-              "type": "BEARISH",
-              "status": status,
-              "tv_url": tv_url,
-              "hyperflow": hyper_flow_score,
-          }
-  except Exception:
-    pass
-  return None
-
+                if curr_p >= vwap_val and is_bullish_ema:
+                    status = "READY" if (is_pause_candle and is_breakout and is_before_10am) else "WATCH"
+                    return {
+                        "symbol": clean_sym,
+                        "price": curr_p,
+                        "change": chg,
+                        "time": st_time,
+                        "type": "BULLISH",
+                        "status": status,
+                        "tv_url": tv_url,
+                        "hyperflow": hyper_flow_score,
+                    }
+                elif curr_p < vwap_val and is_bearish_ema:
+                    status = "READY" if (is_pause_candle and is_breakdown and is_before_10am) else "WATCH"
+                    return {
+                        "symbol": clean_sym,
+                        "price": curr_p,
+                        "change": chg,
+                        "time": st_time,
+                        "type": "BEARISH",
+                        "status": status,
+                        "tv_url": tv_url,
+                        "hyperflow": hyper_flow_score,
+                    }
+    except Exception:
+        pass
+    return None
 
 @st.cache_data(ttl=30)
 def get_verified_setups():
-  results = []
-  if fyers:
-    with ThreadPoolExecutor(max_workers=8) as executor:
-      futures = [
-          executor.submit(scan_single_fyers_stock, s)
-          for s in NIFTY_500_SYMBOLS[:40]
-      ]
-      for f in as_completed(futures):
-        res = f.result()
-        if res:
-          results.append(res)
+    results = []
+    if fyers:
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [
+                executor.submit(scan_single_fyers_stock, s)
+                for s in NIFTY_500_SYMBOLS[:40]
+            ]
+            for f in as_completed(futures):
+                res = f.result()
+                if res:
+                    results.append(res)
 
-  # Fallback Live Strategy Setups
-  if not results:
-    fallback_candidates = [
-        {
-            "symbol": "APLAPOLLO",
-            "price": 1895.00,
-            "change": 4.15,
-            "time": "09:35",
-            "type": "BULLISH",
-            "status": "READY",
-            "hyperflow": 8.1,
-            "tv_url": (
-                "https://in.tradingview.com/chart/?symbol=NSE:APLAPOLLO"
-            ),
-        },
-        {
-            "symbol": "DIVISLAB",
-            "price": 8476.00,
-            "change": 5.21,
-            "time": "09:44",
-            "type": "BULLISH",
-            "status": "READY",
-            "hyperflow": 5.8,
-            "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:DIVISLAB",
-        },
-        {
-            "symbol": "ABCAPITAL",
-            "price": 427.45,
-            "change": 5.73,
-            "time": "09:20",
-            "type": "BULLISH",
-            "status": "READY",
-            "hyperflow": 5.6,
-            "tv_url": (
-                "https://in.tradingview.com/chart/?symbol=NSE:ABCAPITAL"
-            ),
-        },
-        {
-            "symbol": "ABB",
-            "price": 7554.00,
-            "change": 3.70,
-            "time": "09:55",
-            "type": "BULLISH",
-            "status": "READY",
-            "hyperflow": 3.9,
-            "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ABB",
-        },
-        {
-            "symbol": "PAYTM",
-            "price": 1427.20,
-            "change": 6.27,
-            "time": "09:50",
-            "type": "BULLISH",
-            "status": "READY",
-            "hyperflow": 3.0,
-            "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:PAYTM",
-        },
-        {
-            "symbol": "AURIONPRO",
-            "price": 739.95,
-            "change": -11.56,
-            "time": "09:25",
-            "type": "BEARISH",
-            "status": "READY",
-            "hyperflow": 7.4,
-            "tv_url": (
-                "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO"
-            ),
-        },
-        {
-            "symbol": "EVERESTIND",
-            "price": 492.55,
-            "change": -8.90,
-            "time": "09:30",
-            "type": "BEARISH",
-            "status": "READY",
-            "hyperflow": 4.2,
-            "tv_url": (
-                "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND"
-            ),
-        },
-        {
-            "symbol": "CLEANMAX",
-            "price": 1316.00,
-            "change": -8.55,
-            "time": "09:27",
-            "type": "BEARISH",
-            "status": "READY",
-            "hyperflow": 5.1,
-            "tv_url": (
-                "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX"
-            ),
-        },
-        {
-            "symbol": "SUNCLAY",
-            "price": 1289.30,
-            "change": -7.89,
-            "time": "09:40",
-            "type": "BEARISH",
-            "status": "WATCH",
-            "hyperflow": 2.8,
-            "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY",
-        },
-        {
-            "symbol": "RAMCOSYS",
-            "price": 394.30,
-            "change": -7.03,
-            "time": "09:32",
-            "type": "BEARISH",
-            "status": "READY",
-            "hyperflow": 3.6,
-            "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS",
-        },
-    ]
-    results = fallback_candidates
+    if not results:
+        fallback_candidates = [
+            {"symbol": "APLAPOLLO", "price": 1895.00, "change": 4.15, "time": "09:35", "type": "BULLISH", "status": "READY", "hyperflow": 8.1, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:APLAPOLLO"},
+            {"symbol": "DIVISLAB", "price": 8476.00, "change": 5.21, "time": "09:44", "type": "BULLISH", "status": "READY", "hyperflow": 5.8, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:DIVISLAB"},
+            {"symbol": "ABCAPITAL", "price": 427.45, "change": 5.73, "time": "09:20", "type": "BULLISH", "status": "READY", "hyperflow": 5.6, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ABCAPITAL"},
+            {"symbol": "ABB", "price": 7554.00, "change": 3.70, "time": "09:55", "type": "BULLISH", "status": "READY", "hyperflow": 3.9, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ABB"},
+            {"symbol": "PAYTM", "price": 1427.20, "change": 6.27, "time": "09:50", "type": "BULLISH", "status": "READY", "hyperflow": 3.0, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:PAYTM"},
+            {"symbol": "AURIONPRO", "price": 739.95, "change": -11.56, "time": "09:25", "type": "BEARISH", "status": "READY", "hyperflow": 7.4, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO"},
+            {"symbol": "EVERESTIND", "price": 492.55, "change": -8.90, "time": "09:30", "type": "BEARISH", "status": "READY", "hyperflow": 4.2, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND"},
+            {"symbol": "CLEANMAX", "price": 1316.00, "change": -8.55, "time": "09:27", "type": "BEARISH", "status": "READY", "hyperflow": 5.1, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX"},
+            {"symbol": "SUNCLAY", "price": 1289.30, "change": -7.89, "time": "09:40", "type": "BEARISH", "status": "WATCH", "hyperflow": 2.8, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY"},
+            {"symbol": "RAMCOSYS", "price": 394.30, "change": -7.03, "time": "09:32", "type": "BEARISH", "status": "READY", "hyperflow": 3.6, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS"},
+        ]
+        results = fallback_candidates
 
-  df = pd.DataFrame(results)
-  df["qty"] = df["price"].apply(calculate_5x_qty)
-  return df
-
+    df = pd.DataFrame(results)
+    df["qty"] = df["price"].apply(calculate_5x_qty)
+    return df
 
 df_verified = get_verified_setups()
 
@@ -636,20 +465,13 @@ bearish_df = df_verified[df_verified["type"] == "BEARISH"].head(5)
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
-  top_g = (
-      bullish_df.iloc[0]
-      if not bullish_df.empty
-      else {
-          "symbol": "N/A",
-          "change": 0,
-          "time": "--:--",
-          "qty": 0,
-          "tv_url": "#",
-          "hyperflow": 1.0,
-      }
-  )
-  st.markdown(
-      f"""
+    top_g = (
+        bullish_df.iloc[0]
+        if not bullish_df.empty
+        else {"symbol": "N/A", "change": 0, "time": "--:--", "qty": 0, "tv_url": "#", "hyperflow": 1.0}
+    )
+    st.markdown(
+        f"""
     <div class="stat-box">
         <div class="stat-title">TOP GAINER ⚡</div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
@@ -663,24 +485,17 @@ with c1:
         </div>
     </div>
     """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
 
 with c2:
-  top_l = (
-      bearish_df.iloc[0]
-      if not bearish_df.empty
-      else {
-          "symbol": "N/A",
-          "change": 0,
-          "time": "--:--",
-          "qty": 0,
-          "tv_url": "#",
-          "hyperflow": 1.0,
-      }
-  )
-  st.markdown(
-      f"""
+    top_l = (
+        bearish_df.iloc[0]
+        if not bearish_df.empty
+        else {"symbol": "N/A", "change": 0, "time": "--:--", "qty": 0, "tv_url": "#", "hyperflow": 1.0}
+    )
+    st.markdown(
+        f"""
     <div class="stat-box">
         <div class="stat-title">TOP LOSER 📉</div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
@@ -694,17 +509,17 @@ with c2:
         </div>
     </div>
     """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
 
 with c3:
-  is_bull = len(bullish_df) >= len(bearish_df)
-  s_txt = "BULLISH" if is_bull else "BEARISH"
-  s_clr = "#00ff87" if is_bull else "#f43f5e"
-  d_class = "dot-green" if is_bull else "dot-red"
+    is_bull = len(bullish_df) >= len(bearish_df)
+    s_txt = "BULLISH" if is_bull else "BEARISH"
+    s_clr = "#00ff87" if is_bull else "#f43f5e"
+    d_class = "dot-green" if is_bull else "dot-red"
 
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
     <div class="stat-box">
         <div class="stat-title">MARKET SENTIMENT</div>
         <div style="font-size:18px; font-weight:900; color:{s_clr}; margin-top:4px;">
@@ -713,20 +528,20 @@ with c3:
         <div style="margin-top:8px; font-size:12px; color:{txt_muted};">Bullish: {len(bullish_df)} | Bearish: {len(bearish_df)}</div>
     </div>
     """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
 
 with c4:
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
     <div class="stat-box">
         <div class="stat-title">SCANNED STOCKS</div>
         <div style="font-size:18px; font-weight:900; color:#00e5ff; margin-top:4px;">Nifty 500</div>
         <div style="margin-top:8px; font-size:12px; color:#00ff87; font-weight:700;">Active Setups: {len(df_verified)}</div>
     </div>
     """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -736,14 +551,13 @@ st.markdown("<br>", unsafe_allow_html=True)
 t1, t2 = st.columns(2)
 
 with t1:
-  st.markdown(
-      "<h4 style='color:#00ff87; margin-bottom:8px; font-weight:800;'>🟢"
-      " BULLISH SETUPS</h4>",
-      unsafe_allow_html=True,
-  )
+    st.markdown(
+        "<h4 style='color:#00ff87; margin-bottom:8px; font-weight:800;'>🟢 BULLISH SETUPS</h4>",
+        unsafe_allow_html=True,
+    )
 
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
     <div class="table-header-row">
         <div style="width:18%;">SYMBOL</div>
         <div style="width:15%;">STATUS</div>
@@ -754,23 +568,23 @@ with t1:
         <div style="width:12%;">CHANGE %</div>
     </div>
     """,
-      unsafe_allow_html=True,
-  )
-
-  for _, row in bullish_df.iterrows():
-    status_tag = (
-        '<span class="tag-ready-bull">READY</span>'
-        if row["status"] == "READY"
-        else '<span class="tag-watchlist">WATCH</span>'
-    )
-    hf_class = (
-        "hyperflow-badge hyperflow-high"
-        if row["hyperflow"] >= 3.0
-        else "hyperflow-badge"
+        unsafe_allow_html=True,
     )
 
-    st.markdown(
-        f"""
+    for _, row in bullish_df.iterrows():
+        status_tag = (
+            '<span class="tag-ready-bull">READY</span>'
+            if row["status"] == "READY"
+            else '<span class="tag-watchlist">WATCH</span>'
+        )
+        hf_class = (
+            "hyperflow-badge hyperflow-high"
+            if row["hyperflow"] >= 3.0
+            else "hyperflow-badge"
+        )
+
+        st.markdown(
+            f"""
         <div class="setup-card">
             <div style="width:18%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
             <div style="width:15%;">{status_tag}</div>
@@ -781,18 +595,17 @@ with t1:
             <div style="width:12%; font-size:14px; font-weight:bold; color:#00ff87;">+{row['change']}%</div>
         </div>
         """,
+            unsafe_allow_html=True,
+        )
+
+with t2:
+    st.markdown(
+        "<h4 style='color:#f43f5e; margin-bottom:8px; font-weight:800;'>🔴 BEARISH SETUPS</h4>",
         unsafe_allow_html=True,
     )
 
-with t2:
-  st.markdown(
-      "<h4 style='color:#f43f5e; margin-bottom:8px; font-weight:800;'>🔴"
-      " BEARISH SETUPS</h4>",
-      unsafe_allow_html=True,
-  )
-
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
     <div class="table-header-row">
         <div style="width:18%;">SYMBOL</div>
         <div style="width:15%;">STATUS</div>
@@ -803,23 +616,23 @@ with t2:
         <div style="width:12%;">CHANGE %</div>
     </div>
     """,
-      unsafe_allow_html=True,
-  )
-
-  for _, row in bearish_df.iterrows():
-    status_tag = (
-        '<span class="tag-ready-bear">READY</span>'
-        if row["status"] == "READY"
-        else '<span class="tag-watchlist">WATCH</span>'
-    )
-    hf_class = (
-        "hyperflow-badge hyperflow-high"
-        if row["hyperflow"] >= 3.0
-        else "hyperflow-badge"
+        unsafe_allow_html=True,
     )
 
-    st.markdown(
-        f"""
+    for _, row in bearish_df.iterrows():
+        status_tag = (
+            '<span class="tag-ready-bear">READY</span>'
+            if row["status"] == "READY"
+            else '<span class="tag-watchlist">WATCH</span>'
+        )
+        hf_class = (
+            "hyperflow-badge hyperflow-high"
+            if row["hyperflow"] >= 3.0
+            else "hyperflow-badge"
+        )
+
+        st.markdown(
+            f"""
         <div class="setup-card">
             <div style="width:18%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
             <div style="width:15%;">{status_tag}</div>
@@ -830,5 +643,5 @@ with t2:
             <div style="width:12%; font-size:14px; font-weight:bold; color:#f43f5e;">{row['change']}%</div>
         </div>
         """,
-        unsafe_allow_html=True,
-    )
+            unsafe_allow_html=True,
+        )
