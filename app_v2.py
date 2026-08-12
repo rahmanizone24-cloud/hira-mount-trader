@@ -129,14 +129,6 @@ st.markdown(
     }}
     .stat-title {{ font-size: 10px; color: {txt_muted}; font-weight: bold; letter-spacing: 0.5px; }}
     
-    .mover-box {{
-        background: {bg_card};
-        border: 1px solid {border_clr};
-        border-radius: 8px;
-        padding: 6px;
-        text-align: center;
-    }}
-    
     .stock-title-link {{ font-size: 14px; font-weight: 800; color: #38bdf8; text-decoration: none; }}
     .stock-title-link:hover {{ text-decoration: underline; color: #7dd3fc; }}
     
@@ -736,58 +728,10 @@ with c4:
       unsafe_allow_html=True,
   )
 
-# ---------------------------------------------------------
-# 8. 🔥 MARKET MOVERS
-# ---------------------------------------------------------
-st.markdown(
-    "<h3 style='text-align:center; margin-top:5px; margin-bottom:12px;"
-    " font-weight:900;'>🔥 MARKET MOVERS</h3>",
-    unsafe_allow_html=True,
-)
-
-movers_4_bull = bullish_df.head(4)
-movers_4_bear = bearish_df.head(4)
-
-m_cols = st.columns(8)
-
-for idx, (_, item) in enumerate(movers_4_bull.iterrows()):
-  with m_cols[idx]:
-    st.markdown(
-        f"""
-        <div class="mover-box">
-            <a href="{item['tv_url']}" target="_blank" class="stock-title-link">{item['symbol']}</a><br>
-            <div style="font-size:13px; color:#00ff87; font-weight:bold; margin-top:2px;">₹{item['price']}</div>
-            <div style="font-size:11px; color:#00ff87; font-weight:bold;">(+{item['change']}%)</div>
-            <div style="margin-top:4px; display:flex; justify-content:center; gap:2px; align-items:center; flex-wrap:wrap;">
-                <span class="hyperflow-badge">{item['hyperflow']}x</span>
-                <span class="qty-badge">{item['qty']} QTY</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-for idx, (_, item) in enumerate(movers_4_bear.iterrows()):
-  with m_cols[idx + 4]:
-    st.markdown(
-        f"""
-        <div class="mover-box">
-            <a href="{item['tv_url']}" target="_blank" class="stock-title-link" style="color:#f43f5e;">{item['symbol']}</a><br>
-            <div style="font-size:13px; color:#f43f5e; font-weight:bold; margin-top:2px;">₹{item['price']}</div>
-            <div style="font-size:11px; color:#f43f5e; font-weight:bold;">({item['change']}%)</div>
-            <div style="margin-top:4px; display:flex; justify-content:center; gap:2px; align-items:center; flex-wrap:wrap;">
-                <span class="hyperflow-badge">{item['hyperflow']}x</span>
-                <span class="qty-badge">{item['qty']} QTY</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. Setup Tables (VWAP + 20/200 EMA + Pause Candle Included)
+# 8. Setup Tables (VWAP + 20/200 EMA + Pause Candle Included)
 # ---------------------------------------------------------
 t1, t2 = st.columns(2)
 
