@@ -46,8 +46,8 @@ if st.session_state["theme_mode"] == "Dark":
     bg_card = "#0f172a"
     border_clr = "#1e293b"
     txt_main = "#f8fafc"
-    txt_muted = "#cbd5e1"        # ڈارک تھیم کے لیے زیادہ روشن ٹیکسٹ
-    symbol_link_clr = "#00e5ff"  # انتہائی روشن اور چمکدار سائین رنگ (High Contrast)
+    txt_muted = "#cbd5e1"
+    symbol_link_clr = "#00e5ff"  # ڈارک تھیم کے لیے برائٹ سائین کلر
     symbol_hover_clr = "#7dd3fc"
     badge_bg = "#1e293b"
     btn_bg = "#1e293b"
@@ -136,7 +136,7 @@ st.markdown(
     }}
     .stat-title {{ font-size: 10px; color: {txt_muted}; font-weight: bold; letter-spacing: 0.5px; }}
     
-    .stock-title-link {{ font-size: 14px; font-weight: 800; color: {symbol_link_clr} !important; text-decoration: none; }}
+    .stock-title-link {{ font-size: 14px; font-weight: 900; color: {symbol_link_clr} !important; text-decoration: none; }}
     .stock-title-link:hover {{ text-decoration: underline; color: {symbol_hover_clr} !important; }}
     
     .table-header-row {{
@@ -270,9 +270,8 @@ def fetch_fyers_nifty500_symbols():
         return eq_symbols[:500]
     except Exception:
         return [
-            "NSE:RELIANCE-EQ", "NSE:TCS-EQ", "NSE:HDFCBANK-EQ", "NSE:ICICIBANK-EQ",
-            "NSE:INFY-EQ", "NSE:BHARTIARTL-EQ", "NSE:ITC-EQ", "NSE:SBIN-EQ",
-            "NSE:LT-EQ", "NSE:BAJFINANCE-EQ"
+            "NSE:TATATECH-EQ", "NSE:CGCL-EQ", "NSE:RELIANCE-EQ", "NSE:TCS-EQ",
+            "NSE:HDFCBANK-EQ", "NSE:ICICIBANK-EQ", "NSE:INFY-EQ", "NSE:SBIN-EQ"
         ]
 
 NIFTY_500_SYMBOLS = fetch_fyers_nifty500_symbols()
@@ -328,7 +327,7 @@ with col_top_ref:
         st.rerun()
 
 # ---------------------------------------------------------
-# 6. Direct Market Scan (No Filter Logic)
+# 6. EXACT 8-CONDITION STRATEGY ENGINE MERGED
 # ---------------------------------------------------------
 def calculate_5x_qty(price):
     if price <= 0:
@@ -343,59 +342,98 @@ def scan_single_fyers_stock(symbol):
         if not fyers:
             return None
 
-        today_str = now_ist.strftime("%Y-%m-%d")
-        data = {
-            "symbol": symbol,
-            "resolution": "5",
-            "date_format": "1",
-            "range_from": today_str,
-            "range_to": today_str,
-            "cont_flag": "1",
+        # A. پچھلے دن کا High/Low (Daily Data)
+        daily_data = {
+            "symbol": symbol, "resolution": "D",
+            "date_format": "0", "range_from": "2",
+            "range_to": "0", "cont_flag": "1"
         }
-        hist = fyers.history(data=data)
-        if hist.get("s") == "ok" and hist.get("candles"):
-            df = pd.DataFrame(
-                hist["candles"],
-                columns=["timestamp", "open", "high", "low", "close", "volume"],
-            )
+        res_daily = fyers.history(data=daily_data)
+        if not (res_daily.get("s") == "ok" and res_daily.get("candles")):
+            return None
+            
+        df_daily = pd.DataFrame(res_daily['candles'], columns=['time', 'open', 'high', 'low', 'close', 'volume'])
+        prev_day_high = df_daily.iloc[-2]['high']
+        prev_day_low = df_daily.iloc[-2]['low']
 
-            if len(df) >= 2:
-                curr_p = df["close"].iloc[-1]
-                open_p = df["open"].iloc[0]
-                chg = round(((curr_p - open_p) / open_p) * 100, 2)
+        # B. 5 منٹ کی کینڈلز (Intraday Data)
+        today_str = now_ist.strftime("%Y-%m-%d")
+        min5_data = {
+            "symbol": symbol, "resolution": "5",
+            "date_format": "1", "range_from": today_str,
+            "range_to": today_str, "cont_flag": "1"
+        }
+        res_5min = fyers.history(data=min5_data)
+        if not (res_5min.get("s") == "ok" and res_5min.get("candles")):
+            return None
 
-                last_candle_time = datetime.datetime.fromtimestamp(
-                    df["timestamp"].iloc[-1], tz=ist
-                )
-                st_time = last_candle_time.strftime("%H:%M")
+        df = pd.DataFrame(res_5min["candles"], columns=["timestamp", "open", "high", "low", "close", "volume"])
 
-                avg_vol = df["volume"].iloc[:-1].mean() if len(df) > 1 else df["volume"].iloc[-1]
-                curr_vol = df["volume"].iloc[-1]
-                hyper_flow_score = round(curr_vol / avg_vol, 1) if avg_vol > 0 else 1.0
+        if len(df) < 3:
+            return None
 
-                # بغیر کسی EMA/VWAP لاجک کے، صرف ڈائریکٹ پرائس موومنٹ کی بنیاد پر کلاسیفکیشن
-                if chg >= 0:
-                    return {
-                        "symbol": clean_sym,
-                        "price": curr_p,
-                        "change": chg,
-                        "time": st_time,
-                        "type": "BULLISH",
-                        "status": "READY",
-                        "tv_url": tv_url,
-                        "hyperflow": hyper_flow_score,
-                    }
-                else:
-                    return {
-                        "symbol": clean_sym,
-                        "price": curr_p,
-                        "change": chg,
-                        "time": st_time,
-                        "type": "BEARISH",
-                        "status": "READY",
-                        "tv_url": tv_url,
-                        "hyperflow": hyper_flow_score,
-                    }
+        # Condition 8: Volume > 100,000
+        total_vol = df["volume"].sum()
+        if total_vol < 100000:
+            return None
+
+        # کینڈل انڈیکس ٹریکنگ
+        c0 = df.iloc[-1]   # Current Candle [0]
+        c1 = df.iloc[-2]   # Previous Candle [-1]
+        c2 = df.iloc[-3]   # 2 Candles Ago [-2]
+
+        curr_p = c0["close"]
+        open_p = df["open"].iloc[0]
+        chg = round(((curr_p - open_p) / open_p) * 100, 2)
+
+        last_candle_time = datetime.datetime.fromtimestamp(c0["timestamp"], tz=ist)
+        st_time = last_candle_time.strftime("%H:%M")
+
+        # HyperFlow Flow Indicator Calculation
+        avg_vol = df["volume"].iloc[:-1].mean() if len(df) > 1 else df["volume"].iloc[-1]
+        curr_vol = df["volume"].iloc[-1]
+        hyper_flow_score = round(curr_vol / avg_vol, 1) if avg_vol > 0 else 1.0
+
+        # -------------------------------------------------------------
+        # EXACT 8 BULLISH CONDITIONS
+        # -------------------------------------------------------------
+        bullish_match = (
+            (c0['low'] < c1['high']) and                # Cond 1: [0] Low < [-1] High
+            (c0['high'] > c1['high']) and               # Cond 2: [0] High > [-1] High
+            (c0['close'] > c0['open']) and              # Cond 3: [0] Green Candle
+            (c1['close'] > c1['open']) and              # Cond 4: [-1] Green Candle
+            (c2['close'] < c2['open']) and              # Cond 5: [-2] Red Candle
+            (c0['low'] < prev_day_high) and             # Cond 6: [0] Low < PDH
+            (c0['high'] > prev_day_high)                # Cond 7: [0] High > PDH
+        )
+
+        if bullish_match:
+            return {
+                "symbol": clean_sym, "price": curr_p, "change": chg,
+                "time": st_time, "type": "BULLISH", "status": "READY",
+                "volume": total_vol, "tv_url": tv_url, "hyperflow": hyper_flow_score
+            }
+
+        # -------------------------------------------------------------
+        # EXACT 8 BEARISH CONDITIONS
+        # -------------------------------------------------------------
+        bearish_match = (
+            (c1['close'] < c1['open']) and              # Cond 1: [-1] Red Candle
+            (c2['close'] > c2['open']) and              # Cond 2: [-2] Green Candle
+            (c0['close'] < c0['open']) and              # Cond 3: [0] Red Candle
+            (c0['high'] > c1['low']) and                # Cond 4: [0] High > [-1] Low
+            (c0['low'] < c1['low']) and                 # Cond 5: [0] Low < [-1] Low
+            (c0['high'] > prev_day_low) and             # Cond 6: [0] High > PDL
+            (c0['low'] < prev_day_low)                  # Cond 7: [0] Low < PDL
+        )
+
+        if bearish_match:
+            return {
+                "symbol": clean_sym, "price": curr_p, "change": chg,
+                "time": st_time, "type": "BEARISH", "status": "READY",
+                "volume": total_vol, "tv_url": tv_url, "hyperflow": hyper_flow_score
+            }
+
     except Exception:
         pass
     return None
@@ -404,33 +442,21 @@ def scan_single_fyers_stock(symbol):
 def get_verified_setups():
     results = []
     if fyers:
-        with ThreadPoolExecutor(max_workers=8) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             futures = [
                 executor.submit(scan_single_fyers_stock, s)
-                for s in NIFTY_500_SYMBOLS[:40]
+                for s in NIFTY_500_SYMBOLS
             ]
             for f in as_completed(futures):
                 res = f.result()
                 if res:
                     results.append(res)
 
-    if not results:
-        fallback_candidates = [
-            {"symbol": "APLAPOLLO", "price": 1895.00, "change": 4.15, "time": "09:35", "type": "BULLISH", "status": "READY", "hyperflow": 8.1, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:APLAPOLLO"},
-            {"symbol": "DIVISLAB", "price": 8476.00, "change": 5.21, "time": "09:44", "type": "BULLISH", "status": "READY", "hyperflow": 5.8, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:DIVISLAB"},
-            {"symbol": "ABCAPITAL", "price": 427.45, "change": 5.73, "time": "09:20", "type": "BULLISH", "status": "READY", "hyperflow": 5.6, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ABCAPITAL"},
-            {"symbol": "ABB", "price": 7554.00, "change": 3.70, "time": "09:55", "type": "BULLISH", "status": "READY", "hyperflow": 3.9, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:ABB"},
-            {"symbol": "PAYTM", "price": 1427.20, "change": 6.27, "time": "09:50", "type": "BULLISH", "status": "READY", "hyperflow": 3.0, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:PAYTM"},
-            {"symbol": "AURIONPRO", "price": 739.95, "change": -11.56, "time": "09:25", "type": "BEARISH", "status": "READY", "hyperflow": 7.4, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:AURIONPRO"},
-            {"symbol": "EVERESTIND", "price": 492.55, "change": -8.90, "time": "09:30", "type": "BEARISH", "status": "READY", "hyperflow": 4.2, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:EVERESTIND"},
-            {"symbol": "CLEANMAX", "price": 1316.00, "change": -8.55, "time": "09:27", "type": "BEARISH", "status": "READY", "hyperflow": 5.1, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:CLEANMAX"},
-            {"symbol": "SUNCLAY", "price": 1289.30, "change": -7.89, "time": "09:40", "type": "BEARISH", "status": "WATCH", "hyperflow": 2.8, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:SUNCLAY"},
-            {"symbol": "RAMCOSYS", "price": 394.30, "change": -7.03, "time": "09:32", "type": "BEARISH", "status": "READY", "hyperflow": 3.6, "tv_url": "https://in.tradingview.com/chart/?symbol=NSE:RAMCOSYS"},
-        ]
-        results = fallback_candidates
-
     df = pd.DataFrame(results)
-    df["qty"] = df["price"].apply(calculate_5x_qty)
+    if not df.empty:
+        df["qty"] = df["price"].apply(calculate_5x_qty)
+    else:
+        df = pd.DataFrame(columns=["symbol", "price", "change", "time", "type", "status", "volume", "tv_url", "qty", "hyperflow"])
     return df
 
 df_verified = get_verified_setups()
@@ -550,32 +576,31 @@ with t1:
         unsafe_allow_html=True,
     )
 
-    for _, row in bullish_df.iterrows():
-        status_tag = (
-            '<span class="tag-ready-bull">READY</span>'
-            if row["status"] == "READY"
-            else '<span class="tag-watchlist">WATCH</span>'
-        )
-        hf_class = (
-            "hyperflow-badge hyperflow-high"
-            if row["hyperflow"] >= 3.0
-            else "hyperflow-badge"
-        )
+    if bullish_df.empty:
+        st.info("فلحال کوئی بولش راکٹ سیٹ اپ میچ نہیں ہوا ہے۔")
+    else:
+        for _, row in bullish_df.iterrows():
+            status_tag = '<span class="tag-ready-bull">READY</span>'
+            hf_class = (
+                "hyperflow-badge hyperflow-high"
+                if row["hyperflow"] >= 3.0
+                else "hyperflow-badge"
+            )
 
-        st.markdown(
-            f"""
-        <div class="setup-card">
-            <div style="width:18%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
-            <div style="width:15%;">{status_tag}</div>
-            <div style="width:15%; font-size:12px; color:{txt_muted}; font-weight:600;">🕒 {row['time']}</div>
-            <div style="width:16%;"><span class="{hf_class}">{row['hyperflow']}x</span></div>
-            <div style="width:12%;"><span class="qty-badge">{row['qty']}</span></div>
-            <div style="width:12%; font-size:14px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
-            <div style="width:12%; font-size:14px; font-weight:bold; color:#00ff87;">+{row['change']}%</div>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
+            st.markdown(
+                f"""
+            <div class="setup-card">
+                <div style="width:18%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
+                <div style="width:15%;">{status_tag}</div>
+                <div style="width:15%; font-size:12px; color:{txt_muted}; font-weight:600;">🕒 {row['time']}</div>
+                <div style="width:16%;"><span class="{hf_class}">{row['hyperflow']}x</span></div>
+                <div style="width:12%;"><span class="qty-badge">{row['qty']}</span></div>
+                <div style="width:12%; font-size:14px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
+                <div style="width:12%; font-size:14px; font-weight:bold; color:#00ff87;">+{row['change']}%</div>
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
 
 with t2:
     st.markdown(
@@ -598,29 +623,28 @@ with t2:
         unsafe_allow_html=True,
     )
 
-    for _, row in bearish_df.iterrows():
-        status_tag = (
-            '<span class="tag-ready-bear">READY</span>'
-            if row["status"] == "READY"
-            else '<span class="tag-watchlist">WATCH</span>'
-        )
-        hf_class = (
-            "hyperflow-badge hyperflow-high"
-            if row["hyperflow"] >= 3.0
-            else "hyperflow-badge"
-        )
+    if bearish_df.empty:
+        st.info("فلحال کوئی بیئرش راکٹ سیٹ اپ میچ نہیں ہوا ہے۔")
+    else:
+        for _, row in bearish_df.iterrows():
+            status_tag = '<span class="tag-ready-bear">READY</span>'
+            hf_class = (
+                "hyperflow-badge hyperflow-high"
+                if row["hyperflow"] >= 3.0
+                else "hyperflow-badge"
+            )
 
-        st.markdown(
-            f"""
-        <div class="setup-card">
-            <div style="width:18%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
-            <div style="width:15%;">{status_tag}</div>
-            <div style="width:15%; font-size:12px; color:{txt_muted}; font-weight:600;">🕒 {row['time']}</div>
-            <div style="width:16%;"><span class="{hf_class}">{row['hyperflow']}x</span></div>
-            <div style="width:12%;"><span class="qty-badge">{row['qty']}</span></div>
-            <div style="width:12%; font-size:14px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
-            <div style="width:12%; font-size:14px; font-weight:bold; color:#f43f5e;">{row['change']}%</div>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
+            st.markdown(
+                f"""
+            <div class="setup-card">
+                <div style="width:18%;"><a href="{row['tv_url']}" target="_blank" class="stock-title-link">{row['symbol']}</a></div>
+                <div style="width:15%;">{status_tag}</div>
+                <div style="width:15%; font-size:12px; color:{txt_muted}; font-weight:600;">🕒 {row['time']}</div>
+                <div style="width:16%;"><span class="{hf_class}">{row['hyperflow']}x</span></div>
+                <div style="width:12%;"><span class="qty-badge">{row['qty']}</span></div>
+                <div style="width:12%; font-size:14px; font-weight:bold; color:{txt_main};">₹{row['price']}</div>
+                <div style="width:12%; font-size:14px; font-weight:bold; color:#f43f5e;">{row['change']}%</div>
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
