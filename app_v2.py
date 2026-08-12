@@ -327,7 +327,7 @@ with col_top_ref:
         st.rerun()
 
 # ---------------------------------------------------------
-# 6. EXACT 8-CONDITION STRATEGY ENGINE MERGED
+# 6. ALL-DAY INTRADAY SCANNING ENGINE (FIXED)
 # ---------------------------------------------------------
 def calculate_5x_qty(price):
     if price <= 0:
@@ -342,10 +342,10 @@ def scan_single_fyers_stock(symbol):
         if not fyers:
             return None
 
-        # A. پچھلے دن کا High/Low (Daily Data)
+        # A. پچھلے دن کا High/Low (Daily Candle)
         daily_data = {
             "symbol": symbol, "resolution": "D",
-            "date_format": "0", "range_from": "2",
+            "date_format": "0", "range_from": "5",
             "range_to": "0", "cont_flag": "1"
         }
         res_daily = fyers.history(data=daily_data)
@@ -353,10 +353,12 @@ def scan_single_fyers_stock(symbol):
             return None
             
         df_daily = pd.DataFrame(res_daily['candles'], columns=['time', 'open', 'high', 'low', 'close', 'volume'])
+        
+        # پچھلے دن کا High اور Low
         prev_day_high = df_daily.iloc[-2]['high']
         prev_day_low = df_daily.iloc[-2]['low']
 
-        # B. 5 منٹ کی کینڈلز (Intraday Data)
+        # B. آج کی 5 منٹ کی کینڈلز
         today_str = now_ist.strftime("%Y-%m-%d")
         min5_data = {
             "symbol": symbol, "resolution": "5",
@@ -372,67 +374,62 @@ def scan_single_fyers_stock(symbol):
         if len(df) < 3:
             return None
 
-        # Condition 8: Volume > 100,000
+        # Condition 8: Daily Volume > 100,000
         total_vol = df["volume"].sum()
         if total_vol < 100000:
             return None
 
-        # کینڈل انڈیکس ٹریکنگ
-        c0 = df.iloc[-1]   # Current Candle [0]
-        c1 = df.iloc[-2]   # Previous Candle [-1]
-        c2 = df.iloc[-3]   # 2 Candles Ago [-2]
+        # پورے دن کی تمام کینڈلز پر اسکیننگ لوپ (All-Day Scan Loop)
+        for i in range(2, len(df)):
+            c0 = df.iloc[i]     # Target Candle
+            c1 = df.iloc[i-1]   # Prev Candle
+            c2 = df.iloc[i-2]   # 2 Ago Candle
 
-        curr_p = c0["close"]
-        open_p = df["open"].iloc[0]
-        chg = round(((curr_p - open_p) / open_p) * 100, 2)
+            curr_p = c0["close"]
+            open_p = df["open"].iloc[0]
+            chg = round(((curr_p - open_p) / open_p) * 100, 2)
 
-        last_candle_time = datetime.datetime.fromtimestamp(c0["timestamp"], tz=ist)
-        st_time = last_candle_time.strftime("%H:%M")
+            st_time = datetime.datetime.fromtimestamp(c0["timestamp"], tz=ist).strftime("%H:%M")
 
-        # HyperFlow Flow Indicator Calculation
-        avg_vol = df["volume"].iloc[:-1].mean() if len(df) > 1 else df["volume"].iloc[-1]
-        curr_vol = df["volume"].iloc[-1]
-        hyper_flow_score = round(curr_vol / avg_vol, 1) if avg_vol > 0 else 1.0
+            avg_vol = df["volume"].iloc[:i].mean() if i > 0 else df["volume"].iloc[i]
+            curr_vol = c0["volume"]
+            hyper_flow_score = round(curr_vol / avg_vol, 1) if avg_vol > 0 else 1.0
 
-        # -------------------------------------------------------------
-        # EXACT 8 BULLISH CONDITIONS
-        # -------------------------------------------------------------
-        bullish_match = (
-            (c0['low'] < c1['high']) and                # Cond 1: [0] Low < [-1] High
-            (c0['high'] > c1['high']) and               # Cond 2: [0] High > [-1] High
-            (c0['close'] > c0['open']) and              # Cond 3: [0] Green Candle
-            (c1['close'] > c1['open']) and              # Cond 4: [-1] Green Candle
-            (c2['close'] < c2['open']) and              # Cond 5: [-2] Red Candle
-            (c0['low'] < prev_day_high) and             # Cond 6: [0] Low < PDH
-            (c0['high'] > prev_day_high)                # Cond 7: [0] High > PDH
-        )
+            # EXACT 8 BULLISH CONDITIONS
+            bullish_match = (
+                (c0['low'] < c1['high']) and                # Cond 1
+                (c0['high'] > c1['high']) and               # Cond 2
+                (c0['close'] > c0['open']) and              # Cond 3
+                (c1['close'] > c1['open']) and              # Cond 4
+                (c2['close'] < c2['open']) and              # Cond 5
+                (c0['low'] < prev_day_high) and             # Cond 6
+                (c0['high'] > prev_day_high)                # Cond 7
+            )
 
-        if bullish_match:
-            return {
-                "symbol": clean_sym, "price": curr_p, "change": chg,
-                "time": st_time, "type": "BULLISH", "status": "READY",
-                "volume": total_vol, "tv_url": tv_url, "hyperflow": hyper_flow_score
-            }
+            if bullish_match:
+                return {
+                    "symbol": clean_sym, "price": curr_p, "change": chg,
+                    "time": st_time, "type": "BULLISH", "status": "READY",
+                    "volume": total_vol, "tv_url": tv_url, "hyperflow": hyper_flow_score
+                }
 
-        # -------------------------------------------------------------
-        # EXACT 8 BEARISH CONDITIONS
-        # -------------------------------------------------------------
-        bearish_match = (
-            (c1['close'] < c1['open']) and              # Cond 1: [-1] Red Candle
-            (c2['close'] > c2['open']) and              # Cond 2: [-2] Green Candle
-            (c0['close'] < c0['open']) and              # Cond 3: [0] Red Candle
-            (c0['high'] > c1['low']) and                # Cond 4: [0] High > [-1] Low
-            (c0['low'] < c1['low']) and                 # Cond 5: [0] Low < [-1] Low
-            (c0['high'] > prev_day_low) and             # Cond 6: [0] High > PDL
-            (c0['low'] < prev_day_low)                  # Cond 7: [0] Low < PDL
-        )
+            # EXACT 8 BEARISH CONDITIONS
+            bearish_match = (
+                (c1['close'] < c1['open']) and              # Cond 1
+                (c2['close'] > c2['open']) and              # Cond 2
+                (c0['close'] < c0['open']) and              # Cond 3
+                (c0['high'] > c1['low']) and                # Cond 4
+                (c0['low'] < c1['low']) and                 # Cond 5
+                (c0['high'] > prev_day_low) and             # Cond 6
+                (c0['low'] < prev_day_low)                  # Cond 7
+            )
 
-        if bearish_match:
-            return {
-                "symbol": clean_sym, "price": curr_p, "change": chg,
-                "time": st_time, "type": "BEARISH", "status": "READY",
-                "volume": total_vol, "tv_url": tv_url, "hyperflow": hyper_flow_score
-            }
+            if bearish_match:
+                return {
+                    "symbol": clean_sym, "price": curr_p, "change": chg,
+                    "time": st_time, "type": "BEARISH", "status": "READY",
+                    "volume": total_vol, "tv_url": tv_url, "hyperflow": hyper_flow_score
+                }
 
     except Exception:
         pass
@@ -442,7 +439,7 @@ def scan_single_fyers_stock(symbol):
 def get_verified_setups():
     results = []
     if fyers:
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=15) as executor:
             futures = [
                 executor.submit(scan_single_fyers_stock, s)
                 for s in NIFTY_500_SYMBOLS
@@ -461,8 +458,8 @@ def get_verified_setups():
 
 df_verified = get_verified_setups()
 
-bullish_df = df_verified[df_verified["type"] == "BULLISH"].head(5)
-bearish_df = df_verified[df_verified["type"] == "BEARISH"].head(5)
+bullish_df = df_verified[df_verified["type"] == "BULLISH"].head(10)
+bearish_df = df_verified[df_verified["type"] == "BEARISH"].head(10)
 
 # ---------------------------------------------------------
 # 7. Top 4 KPI Summary Cards
